@@ -1,0 +1,30 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.1.0'
+    }
+}
+
+allprojects {
+    repositories {
+        maven { url "https://jcenter.bintray.com" }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+task wrapper(type: Wrapper) {
+    // The combination of JUnit, Gradle, and Robolectric + Jacoco for code
+    // coverage is broken for Jacoco [v7.3.x, v7.5.x]. 7.2 works, but doesn't
+    // have great support for running on later versions of Android. 7.6 works,
+    // but requires Gradle 2.13+. This is the latest version of the 2.13 line
+    // at time of writing.
+    //
+    // See: https://github.com/jacoco/jacoco/pull/288
+    gradleVersion = '2.13'
+}

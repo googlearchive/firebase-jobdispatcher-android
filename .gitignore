@@ -1,0 +1,8 @@
+bazel-*
+.gradle
+build/
+local.properties
+.idea/
+*.iml
+javadoc/
+captures/

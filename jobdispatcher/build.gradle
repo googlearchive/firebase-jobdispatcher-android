@@ -1,0 +1,40 @@
+apply plugin: "com.android.library"
+apply from: "coverage.gradle"
+
+android {
+    compileSdkVersion 23
+    buildToolsVersion "23.0.3"
+
+    defaultConfig {
+        minSdkVersion 9
+        targetSdkVersion 23
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        debug {
+            testCoverageEnabled true
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    destinationDir = file("../javadoc/")
+    failOnError false
+}
+
+task aar(dependsOn: assembleRelease)
+
+dependencies {
+    testCompile "junit:junit:4.12"
+    testCompile "org.robolectric:robolectric:3.0"
+    testCompile "org.mockito:mockito-core:1.+"
+
+    compile "com.android.support:support-v4:23.3.0"
+}
