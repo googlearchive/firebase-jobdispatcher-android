@@ -155,7 +155,7 @@ sure you include the `<intent-filter>` as follows:
 ```xml
 <service android:name=".MyJobService" android:exported="false">
   <intent-filter>
-    <action android:name="com.firebase.jobdispatcher.ACTION_JOB_READY"/>
+    <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
   </intent-filter>
 </service>
 ```
