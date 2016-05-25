@@ -190,7 +190,7 @@ See the [CONTRIBUTING.md](CONTRIBUTING.md) file.
 ## Support
 
 This library is actively supported by Google engineers. If you encounter any
-problems, please create an issue in our [tracker](/issues).
+problems, please create an issue in our [tracker](https://github.com/firebase/firebase-jobdispatcher-android/issues).
 
 # License
 
