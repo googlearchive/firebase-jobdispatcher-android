@@ -1,4 +1,7 @@
-# Firebase JobDispatcher
+# Firebase JobDispatcher [![Build Status][ci-badge]][ci-link]
+
+[ci-badge]: https://travis-ci.org/firebase/firebase-jobdispatcher-android.svg?branch=master
+[ci-link]: https://travis-ci.org/firebase/firebase-jobdispatcher-android
 
 The Firebase Android JobDispatcher is a library that provides a high-level wrapper around job
 scheduling engines on Android, starting with the [GCM Network Manager][nts].
