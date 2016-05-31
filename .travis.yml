@@ -1,0 +1,11 @@
+# https://docs.travis-ci.com/user/languages/android
+language: android
+android:
+    components:
+        # https://github.com/travis-ci/travis-ci/issues/5036
+        - tools
+        - platform-tools
+        - build-tools-23.0.3
+        - android-23
+        - extra-android-m2repository
+        - extra-google-google_play_services
