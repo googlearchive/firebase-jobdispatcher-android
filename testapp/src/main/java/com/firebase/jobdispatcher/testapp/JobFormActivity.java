@@ -71,7 +71,7 @@ public class JobFormActivity extends AppCompatActivity {
                 .setRecurring(form.recurring.get())
                 .setLifetime(form.persistent.get() ? Lifetime.FOREVER : Lifetime.UNTIL_NEXT_BOOT)
                 .setService(DemoJobService.class)
-                .setTrigger(Trigger.ExecutionWindowTrigger.newInstance(
+                .setTrigger(Trigger.executionWindow(
                     form.getWinStartSeconds(), form.getWinEndSeconds()))
                 .setReplaceCurrent(form.replaceCurrent.get())
                 .setRetryStrategy(jobDispatcher.newRetryStrategy(
