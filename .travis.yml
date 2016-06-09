@@ -9,3 +9,7 @@ android:
         - android-23
         - extra-google-m2repository
         - extra-android-m2repository
+
+env:
+    # http://stackoverflow.com/questions/35634437
+    - GRADLE_OPTS="-Xmx512m -XX:MaxPermSize=512m"
