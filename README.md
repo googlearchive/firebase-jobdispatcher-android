@@ -117,7 +117,7 @@ be shared throughout your app.
 
 All Jobs are represented by subclasses of
 `com.firebase.jobdispatcher.JobService`, which exposes the same end-user API as
-the Android framework's [`JobService`][jobservice] class.'. A direct example
+the Android framework's [`JobService`][jobservice] class. A direct example
 might look like so:
 
 ```java
