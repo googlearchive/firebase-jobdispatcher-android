@@ -56,12 +56,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="number"
+                android:hint="Window start (seconds)"
                 android:text="@={form.winStartSecondsStr}" />
 
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="number"
+                android:hint="Window end (seconds)"
                 android:text="@={form.winEndSecondsStr}" />
 
             <CheckBox
@@ -128,12 +130,15 @@
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:hint="Initial backoff (seconds)"
                 android:inputType="number"
                 android:text="@={form.initialBackoffSecondsStr}" />
 
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:hint="Maximum backoff (seconds)"
+                android:inputType="number"
                 android:text="@={form.maximumBackoffSecondsStr}" />
 
             <!--
