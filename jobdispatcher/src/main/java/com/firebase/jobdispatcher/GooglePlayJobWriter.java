@@ -179,6 +179,5 @@ import java.lang.annotation.RetentionPolicy;
 
     @IntDef({LEGACY_NETWORK_ANY, LEGACY_NETWORK_CONNECTED, LEGACY_NETWORK_UNMETERED})
     @Retention(RetentionPolicy.SOURCE)
-    @interface LegacyNetworkConstant {
-    }
+    private @interface LegacyNetworkConstant {}
 }
