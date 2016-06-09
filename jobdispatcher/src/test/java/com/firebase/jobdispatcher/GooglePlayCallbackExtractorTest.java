@@ -74,7 +74,9 @@ public final class GooglePlayCallbackExtractorTest {
 
     @Test
     public void testExtractCallback_goodParcelable() {
-        PendingCallback pcb = new PendingCallback(new NopCallback());
+        Parcel container = Parcel.obtain();
+        container.writeStrongBinder(new NopCallback());
+        PendingCallback pcb = new PendingCallback(container);
 
         Bundle validBundle = new Bundle();
         validBundle.putParcelable("callback", pcb);
