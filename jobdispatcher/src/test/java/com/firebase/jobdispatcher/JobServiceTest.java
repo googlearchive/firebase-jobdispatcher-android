@@ -20,6 +20,7 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Parcel;
 
 import com.google.android.gms.gcm.PendingCallback;
 
@@ -117,7 +118,9 @@ public class JobServiceTest {
         int startId = 7;
 
         Intent executeJobIntent = new Intent(JobService.ACTION_EXECUTE);
-        executeJobIntent.putExtra("callback", new PendingCallback(mock(IBinder.class)));
+        Parcel p = Parcel.obtain();
+        p.writeStrongBinder(mock(IBinder.class));
+        executeJobIntent.putExtra("callback", new PendingCallback(p));
 
         service.onStartCommand(executeJobIntent, 0, startId);
 

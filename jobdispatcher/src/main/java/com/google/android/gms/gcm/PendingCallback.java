@@ -43,10 +43,6 @@ public final class PendingCallback implements Parcelable {
         mBinder = in.readStrongBinder();
     }
 
-    public PendingCallback(IBinder binder) {
-        mBinder = binder;
-    }
-
     public IBinder getIBinder() {
         return mBinder;
     }
