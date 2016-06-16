@@ -183,6 +183,32 @@ if (result != FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS) {
 }
 ```
 
+
+To create recurring jobs, first determine the periodicity (e.g "fire twice a day"), and tolerance interval ("OK to fire within an hour's tolerance window, twice a day") you desire. Then use `Trigger.executionWindow` as shown below and pass the generated `Trigger` object to  `setTrigger`. Don't forget to call `setRecurring(true)` :
+
+```java
+// arguments for recurring job
+final int periodicity = (int)TimeUnit.HOURS.toSeconds(12); // Every 12 hours periodicity expressed as seconds
+final int toleranceInterval = (int)TimeUnit.HOURS.toSeconds(1); // a small(ish) window of time when triggering is OK
+
+Job job = dispatcher.newJobBuilder()
+    .setService(MyJobService.class)
+    .setTag("my-recurring-tag")
+    .setConstraints(
+        Constraint.DEVICE_CHARGING,
+        Constraint.ON_UNMETERED_NETWORK)
+    .setTrigger(Trigger.executionWindow(periodicity, periodicity + toleranceInterval))
+    .setLifetime(Lifetime.FOREVER)
+    .setRecurring(true)
+    .setReplaceCurrent(true)
+    .build();
+
+int result = dispatcher.schedule(job);
+if (result != FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS) {
+    // handle error
+}
+```
+
 For more usage examples, see the `JobFormActivity` class in the included
 `testapp`.
 
