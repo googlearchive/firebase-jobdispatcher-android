@@ -21,6 +21,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.firebase.jobdispatcher.Constraint.JobConstraint;
+import java.util.Arrays;
 
 /**
  * An internal non-Job implementation of JobParameters. Passed to JobService invocations.
@@ -117,5 +118,19 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
     @Override
     public boolean shouldReplaceCurrent() {
         return mReplaceCurrent;
+    }
+
+    @Override public String toString() {
+        return "JobInvocation{" +
+            "mTag='" + mTag + '\'' +
+            ", mService='" + mService + '\'' +
+            ", mTrigger=" + mTrigger +
+            ", mRecurring=" + mRecurring +
+            ", mLifetime=" + mLifetime +
+            ", mConstraints=" + Arrays.toString(mConstraints) +
+            ", mExtras=" + mExtras +
+            ", mRetryStrategy=" + mRetryStrategy +
+            ", mReplaceCurrent=" + mReplaceCurrent +
+            '}';
     }
 }

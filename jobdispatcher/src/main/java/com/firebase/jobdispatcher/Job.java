@@ -21,6 +21,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.firebase.jobdispatcher.Constraint.JobConstraint;
+import java.util.Arrays;
 
 /**
  * Job is the embodiment of a unit of work and an associated set of triggers, settings, and runtime
@@ -125,6 +126,20 @@ public final class Job implements JobParameters {
     @Override
     public String getService() {
         return mService;
+    }
+
+    @Override public String toString() {
+        return "Job{" +
+            "mService='" + mService + '\'' +
+            ", mTag='" + mTag + '\'' +
+            ", mTrigger=" + mTrigger +
+            ", mRetryStrategy=" + mRetryStrategy +
+            ", mLifetime=" + mLifetime +
+            ", mRecurring=" + mRecurring +
+            ", mConstraints=" + Arrays.toString(mConstraints) +
+            ", mReplaceCurrent=" + mReplaceCurrent +
+            ", mExtras=" + mExtras +
+            '}';
     }
 
     /**
