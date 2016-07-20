@@ -16,7 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
-/* package */ class JobTrigger {
+public class JobTrigger {
     /* package */ static final class ImmediateTrigger extends JobTrigger {
         /* package */ ImmediateTrigger() {}
     }

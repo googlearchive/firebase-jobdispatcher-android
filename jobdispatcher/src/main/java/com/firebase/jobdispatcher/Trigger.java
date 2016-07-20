@@ -29,7 +29,7 @@ public final class Trigger {
      * <p/>
      * It is invalid to schedule an Immediate with a recurring Job.
      */
-    public final static JobTrigger.ImmediateTrigger NOW = new JobTrigger.ImmediateTrigger();
+    public final static JobTrigger NOW = new JobTrigger.ImmediateTrigger();
 
     /**
      * Creates a new ExecutionWindow based on the provided time interval.
@@ -44,7 +44,7 @@ public final class Trigger {
      * @throws IllegalArgumentException if the provided parameters are too
      *                                  restrictive.
      */
-    public static JobTrigger.ExecutionWindowTrigger executionWindow(int windowStart, int windowEnd) {
+    public static JobTrigger executionWindow(int windowStart, int windowEnd) {
         if (windowStart < 0) {
             throw new IllegalArgumentException("Window start can't be less than 0");
         } else if (windowEnd < windowStart) {
