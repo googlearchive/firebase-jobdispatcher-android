@@ -18,6 +18,7 @@ package com.firebase.jobdispatcher;
 
 import android.app.Service;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Handler;
@@ -60,7 +61,7 @@ import com.firebase.jobdispatcher.JobService.JobResult;
 
         connection.onJobFinished(jobParameters);
         if (connection.shouldDie()) {
-            unbindService(connection);
+            connection.close(this);
             synchronized (serviceConnections) {
                 serviceConnections.remove(connection);
             }
@@ -179,6 +180,13 @@ import com.firebase.jobdispatcher.JobService.JobResult;
         public boolean shouldDie() {
             synchronized (jobSpecs) {
                 return jobSpecs.isEmpty();
+            }
+        }
+
+        public void close(Context context) {
+            if(isBound) {
+                isBound = false;
+                context.unbindService(this);
             }
         }
     }
