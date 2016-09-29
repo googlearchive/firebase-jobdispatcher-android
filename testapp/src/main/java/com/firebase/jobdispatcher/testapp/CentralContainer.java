@@ -19,14 +19,12 @@ package com.firebase.jobdispatcher.testapp;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import android.util.Log;
-
-import com.firebase.jobdispatcher.FirebaseJobDispatcher;
 import com.firebase.jobdispatcher.Driver;
+import com.firebase.jobdispatcher.FirebaseJobDispatcher;
 import com.firebase.jobdispatcher.GooglePlayDriver;
 import com.firebase.jobdispatcher.Job;
 import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.JobValidator;
-
 import java.util.Iterator;
 
 public final class CentralContainer {

@@ -18,9 +18,7 @@ package com.firebase.jobdispatcher;
 
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
-
 import com.firebase.jobdispatcher.RetryStrategy.RetryPolicy;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 

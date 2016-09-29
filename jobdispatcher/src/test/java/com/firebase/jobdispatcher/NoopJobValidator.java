@@ -17,7 +17,6 @@
 package com.firebase.jobdispatcher;
 
 import android.support.annotation.Nullable;
-
 import java.util.List;
 
 /**

@@ -18,7 +18,6 @@ package com.firebase.jobdispatcher;
 
 import android.support.annotation.IntDef;
 import android.support.annotation.VisibleForTesting;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 

@@ -17,7 +17,6 @@
 package com.firebase.jobdispatcher.testapp;
 
 import com.firebase.jobdispatcher.JobParameters;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;

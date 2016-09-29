@@ -22,7 +22,6 @@ import android.view.View;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-
 import com.firebase.jobdispatcher.JobParameters;
 
 public class JobDetailActivity extends AppCompatActivity {

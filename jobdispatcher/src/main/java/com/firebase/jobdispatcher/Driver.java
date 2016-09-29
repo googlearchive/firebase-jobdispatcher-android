@@ -17,7 +17,6 @@
 package com.firebase.jobdispatcher;
 
 import android.support.annotation.NonNull;
-
 import com.firebase.jobdispatcher.FirebaseJobDispatcher.CancelResult;
 import com.firebase.jobdispatcher.FirebaseJobDispatcher.ScheduleResult;
 

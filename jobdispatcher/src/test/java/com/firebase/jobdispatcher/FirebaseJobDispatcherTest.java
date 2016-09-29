@@ -16,9 +16,17 @@
 
 package com.firebase.jobdispatcher;
 
-import com.firebase.jobdispatcher.FirebaseJobDispatcher.ScheduleFailedException;
-import com.firebase.jobdispatcher.GooglePlayDriverTest.TestJobService;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.firebase.jobdispatcher.FirebaseJobDispatcher.ScheduleFailedException;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,19 +39,8 @@ import org.mockito.stubbing.Answer;
 import org.robolectric.RobolectricGradleTestRunner;
 import org.robolectric.annotation.Config;
 
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 @RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 21)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class FirebaseJobDispatcherTest {
 
     @Rule
@@ -87,21 +84,22 @@ public class FirebaseJobDispatcherTest {
     @Test
     public void testSchedule_unavailable() throws Exception {
         setDriverAvailability(false);
-        assertEquals(FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE, mDispatcher.schedule(null));
+        assertEquals(
+            FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE,
+            mDispatcher.schedule(null));
         verify(mDriver, never()).schedule(null);
     }
 
     @Test
     public void testCancelJob() throws Exception {
         final String tag = "foo";
-        final Class<TestJobService> endpoint = TestJobService.class;
 
         // simulate success
         when(mDriver.cancel(tag))
             .thenReturn(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS);
 
         assertEquals(
-            "Expected FirebaseJobDispatcher to pass the result of Driver#cancel(String, Class) through",
+            "Expected dispatcher to pass the result of Driver#cancel(String, Class) through",
             FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS,
             mDispatcher.cancel(tag));
 
@@ -123,8 +121,6 @@ public class FirebaseJobDispatcherTest {
 
     @Test
     public void testCancelAllJobs() throws Exception {
-        final Class<TestJobService> endpoint = TestJobService.class;
-
         when(mDriver.cancelAll()).thenReturn(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS);
 
         assertEquals(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS, mDispatcher.cancelAll());
@@ -172,7 +168,7 @@ public class FirebaseJobDispatcherTest {
             try {
                 mDispatcher.mustSchedule(null);
 
-                fail("Expected schedule error " + scheduleError + " to cause mustSchedule() to fail");
+                fail("Expected mustSchedule() with error code " + scheduleError + " to fail");
             } catch (ScheduleFailedException expected) { /* expected */ }
         }
 

@@ -18,7 +18,6 @@ package com.firebase.jobdispatcher.testapp;
 
 import android.os.Bundle;
 import android.util.Log;
-
 import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.JobService;
 

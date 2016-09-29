@@ -23,10 +23,8 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
-
 import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.testapp.JobStore.OnChangeListener;
-
 import java.util.Locale;
 
 public class JobStoreAdapter extends ArrayAdapter<JobHistory> implements OnChangeListener {

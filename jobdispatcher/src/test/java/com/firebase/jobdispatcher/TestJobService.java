@@ -19,7 +19,7 @@ package com.firebase.jobdispatcher;
 /**
  * A very simple JobService that can be referenced in tests.
  */
-public class MyTestJobService extends JobService {
+public class TestJobService extends JobService {
     @Override
     public boolean onStartJob(JobParameters job) {
         return false;

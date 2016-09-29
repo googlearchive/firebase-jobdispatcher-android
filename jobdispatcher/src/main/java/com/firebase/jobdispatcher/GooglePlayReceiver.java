@@ -24,7 +24,6 @@ import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.support.v4.util.SimpleArrayMap;
 import android.util.Log;
-
 import com.firebase.jobdispatcher.JobService.JobResult;
 
 /**

@@ -20,7 +20,6 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.annotation.Nullable;
 import android.util.Log;
-
 import com.google.android.gms.gcm.PendingCallback;
 
 /** Responsible for extracting a JobCallback from a given Bundle. */

@@ -16,12 +16,12 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.Constraint.compact;
+import static com.firebase.jobdispatcher.Constraint.uncompact;
+
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-
-import static com.firebase.jobdispatcher.Constraint.compact;
-import static com.firebase.jobdispatcher.Constraint.uncompact;
 
 /**
  * JobCoder is a tool to encode and decode JobSpecs from Bundles.

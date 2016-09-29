@@ -18,7 +18,6 @@ package com.firebase.jobdispatcher;
 
 import android.os.IBinder;
 import android.os.RemoteException;
-
 import com.google.android.gms.gcm.INetworkTaskCallback;
 
 /**
