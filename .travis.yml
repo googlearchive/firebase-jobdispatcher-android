@@ -9,3 +9,8 @@ android:
         - android-23
         - extra-android-m2repository
         - extra-google-google_play_services
+
+# Necessary because otherwise Gradle will OOM during the compilation phase:
+# https://travis-ci.org/firebase/firebase-jobdispatcher-android/builds/164194294
+env:
+    - GRADLE_OPTS="-XX:MaxPermSize=8096m"
