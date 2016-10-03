@@ -58,8 +58,12 @@ import com.firebase.jobdispatcher.JobService.JobResult;
         }
 
         connection.onJobFinished(jobParameters);
-        if (connection.shouldDie()) {
-            unbindService(connection);
+        if (connection.shouldDie() && connection.isBound()) {
+            try {
+                unbindService(connection);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "Error unbinding service: " + e.getMessage());
+            }
             synchronized (serviceConnections) {
                 serviceConnections.remove(connection);
             }
@@ -179,6 +183,10 @@ import com.firebase.jobdispatcher.JobService.JobResult;
             synchronized (jobSpecs) {
                 return jobSpecs.isEmpty();
             }
+        }
+
+        public boolean isBound() {
+            return isBound;
         }
     }
 }
