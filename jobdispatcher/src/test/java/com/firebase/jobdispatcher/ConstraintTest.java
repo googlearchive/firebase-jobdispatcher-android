@@ -16,20 +16,18 @@
 
 package com.firebase.jobdispatcher;
 
-import android.text.TextUtils;
+import static org.junit.Assert.assertEquals;
 
+import android.text.TextUtils;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricGradleTestRunner;
 import org.robolectric.annotation.Config;
 
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-
 @RunWith(RobolectricGradleTestRunner.class)
-@Config(sdk = 21, constants = BuildConfig.class)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class ConstraintTest {
 
     private static final List<List<Integer>> POSSIBLE_COMBINATIONS = TestUtil

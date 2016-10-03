@@ -16,6 +16,17 @@
 
 package com.firebase.jobdispatcher;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -23,45 +34,39 @@ import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-
 import com.firebase.jobdispatcher.JobService.JobResult;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.robolectric.RobolectricGradleTestRunner;
-import org.robolectric.annotation.Config;
-
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
 
 @SuppressWarnings("WrongConstant")
 @RunWith(RobolectricGradleTestRunner.class)
-@Config(sdk = 21, constants = BuildConfig.class)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class ExternalReceiverTest {
 
-    private static List<JobParameters> JOB_COMBINATIONS = TestUtil.getJobCombinations(
-        TestUtil.getBuilderWithNoopValidator());
-    @Mock
-    Context mMockContext;
+    private static List<JobParameters> jobCombinations;
+    private Context mMockContext;
     private TestJobReceiver mReceiver;
+
+    @BeforeClass
+    public static void setUpClass() {
+        // uses a Bundle, so can't happen before Robolectric's mucked with the classpath
+        jobCombinations = TestUtil.getJobCombinations(TestUtil.getBuilderWithNoopValidator());
+    }
 
     @Before
     public void setUp() {
-        MockitoAnnotations.initMocks(this);
+        mMockContext = spy(RuntimeEnvironment.application);
+        doReturn("com.example.foo").when(mMockContext).getPackageName();
+
         mReceiver = new TestJobReceiver(mMockContext);
     }
 
@@ -69,7 +74,7 @@ public class ExternalReceiverTest {
     public void testExecuteJob_sendsBroadcastWithJobAndMessage() throws Exception {
         mReceiver.onCreate();
 
-        for (JobParameters input : JOB_COMBINATIONS) {
+        for (JobParameters input : jobCombinations) {
             verifyExecuteJob(input);
         }
 
@@ -135,7 +140,7 @@ public class ExternalReceiverTest {
     @Test
     public void testHandleMessage_doesntCrashOnBadJobData() {
         Job j = TestUtil.getBuilderWithNoopValidator()
-            .setService(MyTestJobService.class)
+            .setService(TestJobService.class)
             .build();
 
         mReceiver.onCreate();
@@ -163,6 +168,10 @@ public class ExternalReceiverTest {
 
         public TestJobReceiver(Context ctx) {
             mContext = ctx;
+
+            // Required for getPackageName() and other basic Context methods to work correctly
+            // without a manifest defined.
+            attachBaseContext(ctx);
         }
 
         /**

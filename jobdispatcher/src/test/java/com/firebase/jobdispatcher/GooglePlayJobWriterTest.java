@@ -16,27 +16,24 @@
 
 package com.firebase.jobdispatcher;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import android.os.Bundle;
-
 import com.firebase.jobdispatcher.Job.Builder;
-
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricGradleTestRunner;
 import org.robolectric.annotation.Config;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 @RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 21)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class GooglePlayJobWriterTest {
 
     private static final boolean[] ALL_BOOLEANS = {true, false};
@@ -51,7 +48,7 @@ public class GooglePlayJobWriterTest {
             .setRecurring(false)
             .setReplaceCurrent(false)
             .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
-            .setService(MyTestJobService.class)
+            .setService(TestJobService.class)
             .setTag("tag")
             .setTrigger(Trigger.NOW);
     }
@@ -103,7 +100,7 @@ public class GooglePlayJobWriterTest {
     @Test
     public void testWriteToBundle_service() {
         Bundle b = mWriter.writeToBundle(
-            initializeDefaultBuilder().setService(MyTestJobService.class).build(),
+            initializeDefaultBuilder().setService(TestJobService.class).build(),
             new Bundle());
 
         assertEquals("service", GooglePlayReceiver.class.getName(), b.getString("service"));

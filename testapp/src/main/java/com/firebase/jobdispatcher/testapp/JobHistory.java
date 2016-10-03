@@ -17,10 +17,8 @@
 package com.firebase.jobdispatcher.testapp;
 
 import android.os.SystemClock;
-
-import com.firebase.jobdispatcher.JobService.JobResult;
 import com.firebase.jobdispatcher.JobParameters;
-
+import com.firebase.jobdispatcher.JobService.JobResult;
 import java.util.LinkedList;
 import java.util.List;
 

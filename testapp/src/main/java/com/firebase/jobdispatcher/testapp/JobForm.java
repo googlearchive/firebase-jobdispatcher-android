@@ -2,13 +2,10 @@ package com.firebase.jobdispatcher.testapp;
 
 import android.databinding.BaseObservable;
 import android.databinding.Bindable;
-import android.databinding.BindingAdapter;
 import android.databinding.ObservableBoolean;
 import android.databinding.ObservableField;
 import android.databinding.ObservableInt;
 import android.text.TextUtils;
-import android.widget.EditText;
-
 import com.firebase.jobdispatcher.RetryStrategy;
 
 /** POJO that represents the job form (via databinding). */
