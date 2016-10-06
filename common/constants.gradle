@@ -1,0 +1,14 @@
+project.ext.projectName = "firebase-jobdispatcher-android"
+project.ext.group = "com.firebase"
+project.ext.version = "1.0.0"
+project.ext.buildtools = "23.0.3"
+project.ext.compileSdk = 23
+project.ext.minSdk = 9
+
+project.ext.licenseName = "The Apache Software License, Version 2.0"
+project.ext.licenseUrl = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+project.ext.licenseDist = "repo"
+
+project.ext.scmUrl = "https://github.com/firebase/firebase-jobdispatcher-android"
+project.ext.scmConnection = "scm:git:https://github.com/firebase/firebase-jobdispatcher-android.git"
+project.ext.scmDevConnection = "scm:git:git@github.com:firebase/firebase-jobdispatcher-android.git"
