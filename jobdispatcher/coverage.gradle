@@ -21,21 +21,19 @@ android {
 // ignore these when generating coverage
 def ignoredPrefixes = ['R$', 'R.class', 'BuildConfig.class']
 
-task coverage(type: JacocoReport, dependsOn: "testDebugUnitTest") {
+task coverage(type: JacocoReport, dependsOn: ["testNoDepDebugUnitTest"]) {
     group = "Reports"
     description = "Generate a coverage report"
 
     classDirectories = fileTree(
-        // being overly specific so we exclude the GCM classes
-        dir: "${project.buildDir}/intermediates/classes/debug/com/firebase/",
+        dir: "${project.buildDir}/intermediates/classes/noDep/debug/com/firebase/",
         exclude: { d -> ignoredPrefixes.any { p -> d.file.name.startsWith(p) } }
     )
-    sourceDirectories = files(['src/main/java/com/firebase/'])
-    executionData = files("${project.buildDir}/jacoco/testDebugUnitTest.exec")
+    sourceDirectories = files(["src/main/java/com/firebase/"])
+    executionData = files("${project.buildDir}/jacoco/testNoDepDebugUnitTest.exec")
 
     reports {
         xml.enabled = true
-
         html.enabled = true
         html.destination "${buildDir}/coverage_html"
     }
