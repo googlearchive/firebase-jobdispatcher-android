@@ -1,0 +1,17 @@
+// Settings shared between the different modules and build flavors
+project.ext {
+    projectName = "firebase-jobdispatcher-android"
+    group = "com.firebase"
+    version = "0.5.0"
+    buildtools = "23.0.3"
+    compileSdk = 23
+    minSdk = 9
+
+    licenseName = "The Apache Software License, Version 2.0"
+    licenseUrl = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+    licenseDist = "repo"
+
+    scmUrl = "https://github.com/firebase/firebase-jobdispatcher-android"
+    scmConnection = "scm:git:https://github.com/firebase/firebase-jobdispatcher-android.git"
+    scmDevConnection = "scm:git:git@github.com:firebase/firebase-jobdispatcher-android.git"
+}
