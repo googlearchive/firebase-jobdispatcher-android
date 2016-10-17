@@ -1,4 +1,5 @@
 apply plugin: "com.android.library"
+apply plugin: "com.jfrog.bintray"
 apply plugin: "maven-publish"
 
 apply from: "coverage.gradle"
@@ -55,7 +56,8 @@ dependencies {
     // manually copy the required classes into the noDep flavor (below).
     provided project(":gcm_defs")
     // the withGcmDep version has an explicit dependency on the GCM library.
-    withGcmDepCompile "com.google.android.gms:play-services-gcm:8.4.0" }
+    withGcmDepCompile "com.google.android.gms:play-services-gcm:8.4.0"
+}
 
 task javadocs(type: Javadoc) {
     description "Generate Javadocs"
@@ -90,11 +92,11 @@ def withGcmDepDesc = noDepDesc + " This version should be used by anyone with a"
 def flavorsToPublicationsMap = [
     noDep: [
         description: noDepDesc,
-        artifactId: "firebase-jobdispatcher-android",
+        artifactId: "firebase-jobdispatcher",
     ],
     withGcmDep: [
         description: withGcmDepDesc,
-        artifactId: "firebase-jobdispatcher-android-with-gcm-dep",
+        artifactId: "firebase-jobdispatcher-with-gcm-dep",
     ],
 ]
 
@@ -227,6 +229,23 @@ afterEvaluate {
 
             def jarTask = tasks["process${flavor.name.capitalize()}${bt.name.capitalize()}JavaRes"]
             jarTask.dependsOn syncClasses
+        }
+    }
+
+    bintray {
+        user = findProperty("BINTRAY_USER") ?: System.getenv("BINTRAY_USER")
+        key = findProperty("BINTRAY_KEY") ?: System.getenv("BINTRAY_KEY")
+
+        publications = ["dispatcherNoDepLibrary", "dispatcherWithGcmDepLibrary"]
+
+        pkg {
+            userOrg = "firebase"
+            repo = "firebase-jobdispatcher"
+            name = "jobdispatcher"
+            vcsUrl = "https://github.com/firebase/firebase-jobdispatcher-android.git"
+            licenses = ["Apache-2.0"]
+
+            version.name = project.ext.version
         }
     }
 }
