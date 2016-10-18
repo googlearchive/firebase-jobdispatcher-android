@@ -21,4 +21,4 @@ android:
     - extra-google-m2repository
     - extra-android-m2repository
     - addon-google_apis-google-24
-script: ./gradlew clean :library:testAll :library:prepareArtifacts
+script: ./gradlew clean test
