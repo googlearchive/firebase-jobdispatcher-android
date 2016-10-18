@@ -1,5 +1,10 @@
 # https://docs.travis-ci.com/user/languages/android
 language: android
+jdk: oraclejdk8
+# Container builds don't have enough memory to reliably finish without being
+# killed, so pretend sudo is required so we don't use the container infra.
+# See: https://github.com/travis-ci/travis-ci/issues/5582
+sudo: required
 android:
     components:
         # https://github.com/travis-ci/travis-ci/issues/5036
@@ -10,20 +15,13 @@ android:
         - extra-android-m2repository
         - extra-google-m2repository
 
-# Necessary because otherwise Gradle will OOM during the compilation phase:
-# https://travis-ci.org/firebase/firebase-jobdispatcher-android/builds/164194294
-# But also can't be >= 3gb, otherwise Travis will kill our process:
-# https://docs.travis-ci.com/user/common-build-problems/#My-build-script-is-killed-without-any-error
-env:
-    - GRADLE_OPTS="-XX:MaxPermSize=1024m"
-
-script:
-    - ./gradlew jobdispatcher:build testapp:assemble
-
 # "avoid uploading the cache after every build"
 before_cache:
     - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+    - rm -rf $HOME/.gradle/caches/*/plugin-resolution/
 cache:
     directories:
         - $HOME/.gradle/caches/
         - $HOME/.gradle/wrapper/
+
+script: ./gradlew jobdispatcher:build testapp:assemble
