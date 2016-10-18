@@ -12,5 +12,7 @@ android:
 
 # Necessary because otherwise Gradle will OOM during the compilation phase:
 # https://travis-ci.org/firebase/firebase-jobdispatcher-android/builds/164194294
+# But also can't be > 3gb, otherwise Travis will kill our process:
+# https://docs.travis-ci.com/user/common-build-problems/#My-build-script-is-killed-without-any-error
 env:
-    - GRADLE_OPTS="-XX:MaxPermSize=8096m"
+    - GRADLE_OPTS="-XX:MaxPermSize=2048m"
