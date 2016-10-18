@@ -3,188 +3,206 @@
 [ci-badge]: https://travis-ci.org/firebase/firebase-jobdispatcher-android.svg?branch=master
 [ci-link]: https://travis-ci.org/firebase/firebase-jobdispatcher-android
 
-The Firebase Android JobDispatcher is a library that provides a high-level wrapper around job
-scheduling engines on Android, starting with the [GCM Network Manager][nts].
+The Firebase JobDispatcher is a library for scheduling background jobs in your
+Android app. It provides a [JobScheduler][]-compatible API that works on all
+recent versions of Android (API level 9+) that have Google Play services
+installed.
 
-This replaces the old GCM Network Manager library.
+## Overview
 
-## Installation
+### What's a [JobScheduler][]?
 
-For now, clone the repo:
+The JobScheduler is an Android system service available on API levels 21
+(Lollipop)+. It provides an API for scheduling units of work (represented by
+[`JobService`][JobService] subclasses) that will be executed in your app's
+process.
+
+### Why is this better than background services and listening for system broadcasts?
+
+Running apps in the background is expensive, which is especially harmful when
+they're not actively doing work that's important to the user. That problem is
+multiplied when those background services are listening for frequently sent
+broadcasts (`android.net.conn.CONNECTIVITY_CHANGE` and
+`android.hardware.action.NEW_PICTURE` are common examples). Even worse, there's
+no way of specifying prerequisites for these broadcasts. Listening for
+`CONNECTIVITY_CHANGE` broadcasts does not guarantee that the device has an
+active network connection, only that the connection was recently changed.
+
+In recognition of these issues, the Android framework team created the
+[JobScheduler][]. This provides developers a simple way of specifying runtime
+constraints on their jobs. Available constraints include [network
+type][js-network-type], [charging state][js-charging-state], and [idle
+state][js-idle-state].
+
+This library uses the scheduling engine inside [Google Play
+services](formerly the [GCM Network Manager][nts] component) to provide a
+backwards compatible (back to Gingerbread) [JobScheduler][]-like API.
+
+This I/O presentation has more information on why background services can be
+harmful and what you can do about them:
+
+[![Android battery and memory optimizations][io-video-img]][io-video-link]
+
+There's more information on upcoming changes to Android's approach to background
+services on the [Android developer preview page][n-preview-bg-optimizations].
+
+[n-preview-bg-optimizations]: https://developer.android.com/preview/features/background-optimization.html
+[io-video-img]: http://img.youtube.com/vi/VC2Hlb22mZM/hqdefault.jpg
+[io-video-link]: https://youtu.be/VC2Hlb22mZM
+[js-network-type]: https://developer.android.com/reference/android/app/job/JobInfo.Builder.html#setRequiredNetworkType(int)
+[js-charging-state]: https://developer.android.com/reference/android/app/job/JobInfo.Builder.html#setRequiresCharging(boolean)
+[js-idle-state]: https://developer.android.com/reference/android/app/job/JobInfo.Builder.html#setRequiresDeviceIdle(boolean)
+
+### Requirements
+
+The FirebaseJobDispatcher currently relies on the scheduling component in Google
+Play services. Because of that, it won't work on environments without Google
+Play services installed.
+
+### Comparison to other libraries
+
+Library                    | Minimum API | Requires Google Play   | Service API<sup>[1](#fn1)</sup> | Custom retry strategies
+-------------------------- | ----------- | ---------------------- | ------------------------------- | -----------------------
+Framework [JobScheduler][] | 21          | No                     | JobScheduler                    | Yes
+Firebase JobDispatcher     | 9           | Yes                    | JobScheduler                    | Yes
+[evernote/android-job][]   | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes<sup>[3](#fn3)</sup>
+
+<a name="fn1">1</a>: Refers to the methods that need to be implemented in the
+Service subclass.<br>
+<a name="fn2">2</a>: Uses AlarmManager to support API levels <= 21 if Google
+Play services is unavailable.<br>
+<a name="fn3">3</a>: Supported for the AlarmManager and JobScheduler drivers.<br>
+
+## Getting started
+
+### Installation
+
+If you **don't** have a dependency on
+[`com.google.android.gms:play-services-gcm`][gcm], add the following to your
+`build.gradle`'s dependencies section:
+
 ```
-git clone https://github.com/firebase/firebase-jobdispatcher-android
-cd firebase-jobdispatcher-android
+compile 'com.firebase:firebase-jobdispatcher:0.5.0'
 ```
 
-Build the `aar` bundle:
+Otherwise add the following:
+
 ```
-./gradlew aar
-```
-And copy it to where you need it:
-```
-cp jobdispatcher/build/outputs/aar/jobdispatcher-release.aar
+compile 'com.firebase:firebase-jobdispatcher-with-gcm-dep:0.5.0'
 ```
 
-## Concepts
+NOTE: These variants are a temporary requirement. Work is ongoing to consolidate
+them into the same bulid.
 
-### Job
+### Usage
 
-A Job is a description of a unit of work. At its heart, it's composed of a
-series of mandatory attributes:
+#### Writing a new JobService
 
--   A string tag that (within your app) uniquely identifies the job.
-
--   A `JobService` subclass that contains the job-specific business logic.
-
--   A `JobTrigger` that determines whether the Job is ready to run.
-
-As well as a set of optional attributes:
-
--   A set of `Constraints` that need to be satisfied in order to run the Job.
-    The default is the empty set, which signals that the Job will be run as soon
-    as the `JobTrigger` is activated.
-
--   A `RetryStrategy` that specifies how failures should be handled. The default
-    is to handle failures using an exponential backoff strategy.
-
--   A `lifetime` that specifies how long the Job should remain scheduled. The
-    default is to keep it until the next boot.
-
--   An optional `Bundle` of user-supplied extras. The default is an empty
-    Bundle.
-
--   A boolean indicating whether the Job should repeat. The default is false
-    (i.e. the Job will be executed once).
-
--   A boolean indicating whether the Job should replace any pre-existing Job
-    with the same tag. The default is false.
-
-### Driver
-
-`Driver` is an interface that represents a component that can schedule, cancel,
-and execute Jobs. The only bundled Driver is the `GooglePlayDriver`, which
-relies on the scheduler built-in to Google Play services.
-
-### Trigger
-
-A `Trigger` is a "sticky" condition. When a `Trigger` is activated (or
-"triggered") it remains triggered until its associated Job is successfully
-executed.
-
-There are two currently supported `Triggers`:
-
--   The `ImmediateTrigger` (`Trigger.NOW`), which is only available on
-    non-recurring Jobs, means that the Job should be run as soon as its runtime
-    constraints are satisfied.
-
--   The `ExecutionWindowTrigger` (`Trigger.executionWindow`), which specifies a
-    time window in which the Job should be executed. This becomes triggered as
-    soon as the window start deadline is reached, and drivers are encouraged to
-    run the Job before the window end if possible. Ultimately when the Job is
-    executed is decided by the backing driver, so this is more of a suggestion
-    than a hard deadline.
-
-### Constraints
-
-Constraints are runtime conditions that need to be met in order to run the Job.
-
-There are three currently supported constraints:
-
--   `Constraint.ON_ANY_NETWORK` signals that the Job should only be run if the
-    device has a working network connection. This should be used for only small
-    data transfers.
-
--   `Constraint.ON_UNMETERED_NETWORK` signals that the Job should only be run
-    when the device is connected to an **unmetered** network. This should be
-    used for Jobs that require large data transfers.
-
--   `Constraint.DEVICE_CHARGING` signals that the Job should only be run when
-    the device is charging.
-
-## Usage
-
-All access to Jobs is handled through a root `FirebaseJobDispatcher` object,
-which wraps a `Driver`. You can create an instance that uses the Google Play
-driver like so:
+The simplest possible `JobService`:
 
 ```java
-Driver myDriver = new GooglePlayDriver(myContext);
-FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(myDriver);
-```
+import com.firebase.jobdispatcher.JobParameters;
+import com.firebase.jobdispatcher.JobService;
 
-Usually you'll want to create a single `FirebaseJobDispatcher` instance that can
-be shared throughout your app.
-
-All Jobs are represented by subclasses of
-`com.firebase.jobdispatcher.JobService`, which exposes the same end-user API as
-the Android framework's [`JobService`][jobservice] class. A direct example
-might look like so:
-
-```java
 public class MyJobService extends JobService {
-    private AsyncTask asyncTask;
-
     @Override
     public boolean onStartJob(JobParameters job) {
-        // Begin some async work
-        asyncTask = new AsyncTask<Object, Object, Object>() {
-            protected Object doInBackground(Object... objects) {
-                /* do some work */
-            }
+        // Do some work here
 
-            protected void onPostExecute(Object result) {
-                jobFinished(job, false /* no need to reschedule, we're done */);
-            }
-        };
-
-        asyncTask.execute();
-
-        return true; /* Still doing work */
+        return false; // Answers the question: "Is there still work going on?"
     }
 
     @Override
     public boolean onStopJob(JobParameters job) {
-        asyncTask.cancel();
-
-        return true; /* we're not done, please reschedule */
+        return false; // Answers the question: "Should this job be retried?"
     }
 }
 ```
 
-Just like any other `Service`, you'll need to register your subclass in your
-`AndroidManifest.xml`. **For security reasons it should not be exported**. Make
-sure you include the `<intent-filter>` as follows:
+#### Adding it to the manifest
 
 ```xml
-<service android:name=".MyJobService" android:exported="false">
-  <intent-filter>
-    <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
-  </intent-filter>
+<service
+    android:exported="false"
+    android:name=".MyJobService">
+    <intent-filter>
+        <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>"
+    </intent-filter>
 </service>
 ```
 
-Finally, you can create and schedule your Job:
+#### Creating a Dispatcher
 
 ```java
-Job job = dispatcher.newJobBuilder()
-    .setService(MyJobService.class)
-    .setTag("my-tag")
-    .setConstraints(
-        Constraint.DEVICE_CHARGING,
-        Constraint.ON_UNMETERED_NETWORK)
-    .setTrigger(Trigger.NOW)
-    .setLifetime(Lifetime.UNTIL_NEXT_BOOT)
-    .setRecurring(false)
-    .build();
-
-int result = dispatcher.schedule(job);
-if (result != FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS) {
-    // handle error
-}
+// Create a new dispatcher using the Google Play driver.
+FirebaseJobDispatcher dispatcher = new FirebaseJobDispatcher(new GooglePlayDriver(context));
 ```
 
-For more usage examples, see the `JobFormActivity` class in the included
-`testapp`.
+#### Scheduling a simple job
+
+```java
+Job myJob = dispatcher.newJobBuilder()
+    .setService(MyJobService.class) // the JobService that will be called
+    .setTag("my-unique-tag")        // uniquely identifies the job
+    .build();
+
+dispatcher.mustSchedule(myJob);
+```
+
+#### Scheduling a more complex job
+
+```java
+Bundle myExtrasBundle = new Bundle();
+myExtrasBundle.putString("some_key", "some_value");
+
+Job myJob = dispatcher.newJobBuilder()
+    // the JobService that will be called
+    .setService(MyJobService.class)
+    // uniquely identifies the job
+    .setTag("my-unique-tag")
+    // one-off job
+    .setRecurring(false)
+    // don't persist past a device reboot
+    .setLifetime(Lifetime.UNTIL_NEXT_BOOT)
+    // start between 0 and 60 seconds from now
+    .setTrigger(Trigger.executionWindow(0, 60))
+    // don't overwrite an existing job with the same tag
+    .setReplaceCurrent(false)
+    // retry with exponential backoff
+    .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+    // constraints that need to be satisfied for the job to run
+    .setConstraints(
+        // only run on an unmetered network
+        Constraint.ON_UNMETERED_NETWORK,
+        // only run when the device is charging
+        Constraint.DEVICE_CHARGING
+    )
+    .setExtras(myExtrasBundle)
+    .build();
+
+dispatcher.mustSchedule(myJob);
+```
+
+#### Cancelling a job
+
+```java
+dispatcher.cancel("my-unique-tag");
+```
+
+#### Cancelling all jobs
+
+```java
+dispatcher.cancelAll();
+```
+
+<!--
+## Next steps
+
+- Browse the [API documentation][]
+
+[API documentation]: TODO: put link here
+
+-->
 
 ## Contributing
 
@@ -193,12 +211,17 @@ See the [CONTRIBUTING.md](CONTRIBUTING.md) file.
 ## Support
 
 This library is actively supported by Google engineers. If you encounter any
-problems, please create an issue in our [tracker](https://github.com/firebase/firebase-jobdispatcher-android/issues).
+problems, please create an issue in our [tracker][].
 
 # License
 
 Apache, see the [LICENSE](LICENSE) file.
 
+[tracker]: https://github.com/firebase/firebase-jobdispatcher-android/issues
 [nts]: https://developers.google.com/cloud-messaging/network-manager
-[jobservice]: https://developer.android.com/reference/android/app/job/JobService.html
-
+[fcm]: https://firebase.google.com/docs/cloud-messaging/
+[gcm]: https://developers.google.com/cloud-messaging/
+[JobService]: https://developer.android.com/reference/android/app/job/JobService.html
+[JobScheduler]: https://developer.android.com/reference/android/app/job/JobScheduler.html
+[Google Play services]: https://developers.google.com/android/guides/overview
+[evernote/android-job]: https://github.com/evernote/android-job

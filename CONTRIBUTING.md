@@ -32,8 +32,8 @@ again.
 Clone the repository:
 
 ```bash
-git clone https://github.com/firebase/jobdispatcher-android
-cd jobdispatcher-android
+git clone https://github.com/firebase/firebase-jobdispatcher-android.git
+cd firebase-jobdispatcher-android
 ```
 
 Point Gradle to your copy of the Android SDK:
