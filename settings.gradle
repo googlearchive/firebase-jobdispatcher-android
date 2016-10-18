@@ -1,2 +1,3 @@
-include ':jobdispatcher'
-include ':testapp'
+include ':jobdispatcher', ':gcm_defs', ':testapp'
+
+rootProject.name = "firebase-jobdispatcher"

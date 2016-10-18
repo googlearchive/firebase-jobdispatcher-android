@@ -1,16 +1,22 @@
 apply plugin: "com.android.library"
+apply plugin: "com.jfrog.bintray"
+apply plugin: "maven-publish"
+
 apply from: "coverage.gradle"
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.3"
+    compileSdkVersion project.ext.compileSdk
+    buildToolsVersion project.ext.buildtools
 
     defaultConfig {
-        minSdkVersion 9
-        targetSdkVersion 23
+        minSdkVersion project.ext.minSdk
+        targetSdkVersion project.ext.compileSdk
         versionCode 1
-        versionName "1.0"
+        versionName project.ext.version
     }
+
+    defaultPublishConfig "noDepRelease"
+    publishNonDefault true
 
     buildTypes {
         debug {
@@ -20,16 +26,12 @@ android {
             minifyEnabled false
         }
     }
-}
 
-task javadoc(type: Javadoc) {
-    source = android.sourceSets.main.java.srcDirs
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-    destinationDir = file("../javadoc/")
-    failOnError false
+    productFlavors {
+        withGcmDep
+        noDep
+    }
 }
-
-task aar(dependsOn: assembleRelease)
 
 dependencies {
     testCompile "junit:junit:4.12"
@@ -37,4 +39,213 @@ dependencies {
     testCompile "org.mockito:mockito-core:1.10.19"
 
     compile "com.android.support:support-v4:23.3.0"
+
+    // In a perfect world we'd have these dependencies totally handled by the
+    // Android plugin using a combination of "provided" (compile-time only) and
+    // "package" (runtime only) rules:
+    //
+    // noDepCompile project(":gcm_defs")
+    // withGcmDepProvided project(":gcm_defs")
+    //
+    // Unfortunately this doesn't work. We can't import the same project with
+    // different visibility settings because the Android plugin reuses the
+    // same identifier when it creates the necessary backing rules, so we get a
+    // dupe rule error.
+    //
+    // So, instead we mark the gcm_defs as provided (compile-time only) and
+    // manually copy the required classes into the noDep flavor (below).
+    provided project(":gcm_defs")
+    // the withGcmDep version has an explicit dependency on the GCM library.
+    withGcmDepCompile "com.google.android.gms:play-services-gcm:8.4.0"
+}
+
+task javadocs(type: Javadoc) {
+    description "Generate Javadocs"
+    source = android.sourceSets.main.java.sourceFiles
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task javadocsJar(type: Jar, dependsOn: javadocs) {
+    description "Package Javadocs into a jar"
+    classifier = "javadoc"
+    from javadocs.destinationDir
+}
+
+task sourcesJar(type: Jar) {
+    description "Package sources into a jar"
+    classifier = "sources"
+    from android.sourceSets.main.java.sourceFiles
+}
+
+task aar(dependsOn: assembleRelease) {
+    group "artifact"
+    description "Builds the library AARs"
+}
+
+// Artifact descriptions (surfaced in JCenter / Maven)
+def noDepDesc = "The Firebase JobDispatcher is a library that provides a common" +
+    " interface to scheduling engines on Android."
+def withGcmDepDesc = noDepDesc + " This version should be used by anyone with a" +
+    " dependency on the legacy GCM library (com.google.android.gms:play-services-gcm)."
+
+// Maps flavors to descriptions + artifacts
+def flavorsToPublicationsMap = [
+    noDep: [
+        description: noDepDesc,
+        artifactId: "firebase-jobdispatcher",
+    ],
+    withGcmDep: [
+        description: withGcmDepDesc,
+        artifactId: "firebase-jobdispatcher-with-gcm-dep",
+    ],
+]
+
+publishing {
+    repositories {
+        // build repo for quick validation
+        maven {
+            name "buildLocal"
+            url "${buildDir}/repo"
+        }
+    }
+
+    publications {
+        // Create a new MavenPublication for each of the flavors (noDep, withGcmDep)
+        android.productFlavors.each { flavor ->
+            "dispatcher${flavor.name.capitalize()}Library"(MavenPublication) {
+                artifactId flavorsToPublicationsMap[flavor.name].artifactId
+                groupId project.ext.group
+                version project.ext.version
+
+                // Add the AAR artifact
+                artifact("${buildDir}/outputs/aar/jobdispatcher-${flavor.name}-release.aar") {
+                    // wrap in a closure because this task isn't defined 'till
+                    // the android plugin finishes
+                    builtBy { tasks["bundle${flavor.name.capitalize()}Release"] }
+                }
+                // Add the sources and javadoc JARs
+                artifact sourcesJar
+                artifact javadocsJar
+
+                // Define the POM file programatically
+                pom.withXml {
+                    def n = asNode()
+
+                    n.appendNode("description", flavorsToPublicationsMap[flavor.name].description)
+                    n.appendNode("inceptionYear", 2016)
+
+                    def licensesNode = n.appendNode("licenses")
+                    def licenseNode = licensesNode.appendNode("license")
+                    licenseNode.appendNode("name", project.ext.licenseName)
+                    licenseNode.appendNode("url", project.ext.licenseUrl)
+                    licenseNode.appendNode("distribution", project.ext.licenseDist)
+
+                    def developersNode = n.appendNode("developers")
+                    def devNode = developersNode.appendNode("developer")
+                    devNode.appendNode("id", "firebase")
+                    devNode.appendNode("name", "Firebase")
+                    devNode.appendNode("email", "support@firebase.com")
+                    devNode.appendNode("url", "https://firebase.com/")
+                    devNode.appendNode("organization", "Firebase")
+                    devNode.appendNode("organizationUrl", "https://firebase.com/")
+                    def rolesNode = devNode.appendNode("roles")
+                    rolesNode.appendNode("role", "architect")
+                    rolesNode.appendNode("role", "developer")
+
+                    def scmNode = n.appendNode("scm")
+                    scmNode.appendNode("url", project.ext.scmUrl)
+                    scmNode.appendNode("connection", project.ext.scmConnection)
+                    scmNode.appendNode("developerConnection", project.ext.scmDevConnection)
+
+                    def depsNode = n.getAt("dependencies")[0]
+                    if (depsNode == null) {
+                        depsNode = n.appendNode("dependencies");
+                    }
+
+                    def addDep = {
+                        def dependencyNode = depsNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                    }
+
+                    // add deps that everyone has
+                    configurations.compile.allDependencies.each addDep
+                    // add config specific deps
+                    configurations["${flavor.name}Compile"].allDependencies.each addDep
+                }
+            }
+        }
+    }
+}
+
+// Merges required classes into the resulting AAR (UberJAR style). Without
+// this, the classes from gcm_defs wouldn't be packed into the AAR. We also
+// need to make sure that the withGcmDeps flavor doesn't include the GCM
+// parcelables.
+afterEvaluate {
+    android.productFlavors.each { flavor ->
+        android.buildTypes.each { bt ->
+            def artifactName = "gcm_defs-release"
+            def jarDestDir = "${buildDir}/intermediates/libs/${flavor.name}/${bt.name}/libs"
+            def unpackedDestDir = "${buildDir}/unpacked/${artifactName}"
+
+            def copyLibs = task("copy${flavor.name.capitalize()}${bt.name.capitalize()}Libs",
+                                 type: Copy) {
+                description "Copies gcm_defs aar into the build dir"
+
+                from configurations.provided
+                include "${artifactName}.aar"
+                into jarDestDir
+            }
+
+            def unzipClasses = task("unzip${flavor.name.capitalize()}${bt.name.capitalize()}Libs",
+                                     type: Copy, dependsOn: copyLibs) {
+                description "Unzips the copied gcm_defs aar contents"
+
+                from zipTree("${jarDestDir}/${artifactName}.aar")
+                into unpackedDestDir
+            }
+
+            def syncClasses = task("sync${flavor.name.capitalize()}${bt.name.capitalize()}Libs",
+                                    type: Copy, dependsOn: unzipClasses) {
+                description "Merges the copied gcm_defs classes with the aar classes"
+
+                from(zipTree("${unpackedDestDir}/classes.jar")) {
+                    exclude "**/BuildConfig.class"
+
+                    if (flavor.name == "withGcmDep") {
+                        // Parcelable included unobfuscated in the GCM lib
+                        exclude "**/com/google/android/gms/gcm/PendingCallback*.class"
+
+                        // AIDL-derived IBinder that's obfuscated in the GCM
+                        // lib, so we don't have to (and shouldn't) strip our
+                        // copy because it doesn't conflict.
+                        // exclude "**/com/google/android/gms/gcm/INetworkTaskCallback*.class"
+                    }
+                }
+                into "${buildDir}/intermediates/classes/${flavor.name}/${bt.name}"
+            }
+
+            def jarTask = tasks["process${flavor.name.capitalize()}${bt.name.capitalize()}JavaRes"]
+            jarTask.dependsOn syncClasses
+        }
+    }
+
+    bintray {
+        user = findProperty("BINTRAY_USER") ?: System.getenv("BINTRAY_USER")
+        key = findProperty("BINTRAY_KEY") ?: System.getenv("BINTRAY_KEY")
+
+        publications = ["dispatcherNoDepLibrary", "dispatcherWithGcmDepLibrary"]
+
+        pkg {
+            userOrg = "firebase"
+            repo = "firebase-jobdispatcher"
+            name = "jobdispatcher"
+            vcsUrl = "https://github.com/firebase/firebase-jobdispatcher-android.git"
+            licenses = ["Apache-2.0"]
+
+            version.name = project.ext.version
+        }
+    }
 }
