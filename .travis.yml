@@ -12,7 +12,18 @@ android:
 
 # Necessary because otherwise Gradle will OOM during the compilation phase:
 # https://travis-ci.org/firebase/firebase-jobdispatcher-android/builds/164194294
-# But also can't be > 3gb, otherwise Travis will kill our process:
+# But also can't be >= 3gb, otherwise Travis will kill our process:
 # https://docs.travis-ci.com/user/common-build-problems/#My-build-script-is-killed-without-any-error
 env:
-    - GRADLE_OPTS="-XX:MaxPermSize=2048m"
+    - GRADLE_OPTS="-XX:MaxPermSize=1024m"
+
+script:
+    - ./gradlew jobdispatcher:build testapp:assemble
+
+# "avoid uploading the cache after every build"
+before_cache:
+    - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+cache:
+    directories:
+        - $HOME/.gradle/caches/
+        - $HOME/.gradle/wrapper/
