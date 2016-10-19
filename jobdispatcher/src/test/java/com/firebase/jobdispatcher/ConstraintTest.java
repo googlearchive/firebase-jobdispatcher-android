@@ -41,7 +41,6 @@ public class ConstraintTest {
      */
     @Test
     public void testPrivateConstructor() throws Exception {
-        assertTrue(false);
         TestUtil.assertHasSinglePrivateConstructor(Constraint.class);
     }
 
