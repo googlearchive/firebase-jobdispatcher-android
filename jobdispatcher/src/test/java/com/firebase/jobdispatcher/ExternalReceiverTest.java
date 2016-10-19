@@ -16,6 +16,29 @@
 
 package com.firebase.jobdispatcher;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+
+import com.firebase.jobdispatcher.JobService.JobResult;
+
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
+
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -27,29 +50,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.os.IBinder;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import com.firebase.jobdispatcher.JobService.JobResult;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.robolectric.RobolectricGradleTestRunner;
-import org.robolectric.RuntimeEnvironment;
-import org.robolectric.annotation.Config;
-
-@SuppressWarnings("WrongConstant")
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, sdk = 23)
 public class ExternalReceiverTest {
 
     private static List<JobParameters> jobCombinations;

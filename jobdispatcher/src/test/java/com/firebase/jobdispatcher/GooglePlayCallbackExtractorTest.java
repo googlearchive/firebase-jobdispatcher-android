@@ -16,26 +16,28 @@
 
 package com.firebase.jobdispatcher;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.RemoteException;
+
 import com.google.android.gms.gcm.INetworkTaskCallback;
 import com.google.android.gms.gcm.PendingCallback;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, sdk = 23)
 public final class GooglePlayCallbackExtractorTest {
     @Mock
     private IBinder mBinder;
@@ -51,9 +53,7 @@ public final class GooglePlayCallbackExtractorTest {
 
     @Test
     public void testExtractCallback_nullBundle() {
-        Bundle nullBundle = null;
-
-        assertNull(mExtractor.extractCallback(nullBundle));
+        assertNull(mExtractor.extractCallback(null));
     }
 
     @Test
@@ -80,6 +80,8 @@ public final class GooglePlayCallbackExtractorTest {
         validBundle.putParcelable("callback", pcb);
 
         assertNotNull(mExtractor.extractCallback(validBundle));
+
+        container.recycle();
     }
 
     private final static class BadParcelable implements Parcelable {

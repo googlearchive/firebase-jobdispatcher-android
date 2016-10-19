@@ -16,17 +16,8 @@
 
 package com.firebase.jobdispatcher;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.firebase.jobdispatcher.FirebaseJobDispatcher.ScheduleFailedException;
-import java.util.Arrays;
-import java.util.List;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -36,18 +27,29 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, sdk = 23)
 public class FirebaseJobDispatcherTest {
 
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
 
     @Mock
-    public Driver mDriver;
+    private Driver mDriver;
 
     @Mock
     private JobValidator mValidator;

@@ -16,15 +16,6 @@
 
 package com.firebase.jobdispatcher;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -34,25 +25,34 @@ import android.content.pm.ServiceInfo;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
-import java.util.Arrays;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
-public class GooglePlayDriverTest {
+import java.util.Arrays;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, sdk = 23)
+public class GooglePlayDriverTest {
     @Mock
     public Context mMockContext;
 
     private TestJobDriver mDriver;
-
     private FirebaseJobDispatcher mDispatcher;
 
     @Before

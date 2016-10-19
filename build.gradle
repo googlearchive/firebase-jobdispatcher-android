@@ -6,8 +6,8 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.1.0'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
+        classpath 'com.android.tools.build:gradle:2.2.0'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7'
     }
 }
 
@@ -30,5 +30,5 @@ task wrapper(type: Wrapper) {
     // but requires Gradle 2.13+.
     //
     // See: https://github.com/jacoco/jacoco/pull/288
-    gradleVersion = '2.13'
+    gradleVersion = '3.1'
 }

@@ -16,16 +16,16 @@
 
 package com.firebase.jobdispatcher;
 
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+import static org.junit.Assert.assertEquals;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, sdk = 23)
 public class JobBuilderTest {
     private static final int[] ALL_LIFETIMES = {Lifetime.UNTIL_NEXT_BOOT, Lifetime.FOREVER};
 

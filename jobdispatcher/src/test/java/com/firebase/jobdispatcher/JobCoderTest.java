@@ -16,23 +16,23 @@
 
 package com.firebase.jobdispatcher;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
 import android.os.Bundle;
+
 import com.firebase.jobdispatcher.Job.Builder;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, sdk = 23)
 public class JobCoderTest {
-
     private final JobCoder mCoder = new JobCoder();
-
     private Builder mBuilder;
 
     private static Builder setValidBuilderDefaults(Builder mBuilder) {
