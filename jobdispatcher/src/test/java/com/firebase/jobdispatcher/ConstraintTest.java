@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, sdk = 23)
@@ -40,6 +41,7 @@ public class ConstraintTest {
      */
     @Test
     public void testPrivateConstructor() throws Exception {
+        assertTrue(false);
         TestUtil.assertHasSinglePrivateConstructor(Constraint.class);
     }
 
