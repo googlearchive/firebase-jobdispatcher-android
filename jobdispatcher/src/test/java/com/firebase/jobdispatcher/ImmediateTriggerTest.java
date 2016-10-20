@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 23)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class ImmediateTriggerTest {
     /**
      * Code coverage.

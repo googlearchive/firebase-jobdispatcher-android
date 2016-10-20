@@ -26,7 +26,7 @@ import org.robolectric.annotation.Config;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 23)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class ExecutionWindowTriggerTest {
     @Rule
     public ExpectedException expectedException = ExpectedException.none();

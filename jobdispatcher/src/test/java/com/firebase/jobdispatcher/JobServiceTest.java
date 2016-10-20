@@ -41,7 +41,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 23)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobServiceTest {
     private static CountDownLatch countDownLatch;
 

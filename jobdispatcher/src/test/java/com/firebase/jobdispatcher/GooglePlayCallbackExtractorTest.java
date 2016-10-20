@@ -37,7 +37,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 23)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public final class GooglePlayCallbackExtractorTest {
     @Mock
     private IBinder mBinder;

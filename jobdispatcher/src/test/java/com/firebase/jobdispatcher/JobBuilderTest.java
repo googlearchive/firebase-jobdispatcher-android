@@ -25,7 +25,7 @@ import org.robolectric.annotation.Config;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = 23)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobBuilderTest {
     private static final int[] ALL_LIFETIMES = {Lifetime.UNTIL_NEXT_BOOT, Lifetime.FOREVER};
 
