@@ -34,7 +34,7 @@ import android.content.pm.ServiceInfo;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
-
+import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -43,8 +43,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
-
-import java.util.Arrays;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)

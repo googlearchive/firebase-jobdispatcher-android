@@ -24,10 +24,8 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.RemoteException;
-
 import com.google.android.gms.gcm.INetworkTaskCallback;
 import com.google.android.gms.gcm.PendingCallback;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

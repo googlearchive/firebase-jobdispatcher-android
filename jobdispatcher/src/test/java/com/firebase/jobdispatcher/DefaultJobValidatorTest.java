@@ -16,12 +16,16 @@
 
 package com.firebase.jobdispatcher;
 
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
-
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,12 +33,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
@@ -58,25 +56,25 @@ public class DefaultJobValidatorTest {
         Map<RetryStrategy, List<String>> testCases = new HashMap<>();
         testCases.put(
             new RetryStrategy(0 /* bad policy */, 30, 3600),
-            Collections.singletonList("Unknown retry policy provided"));
+            singletonList("Unknown retry policy provided"));
         testCases.put(
             new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 15, 3600),
-            Collections.singletonList("Initial backoff must be at least 30s"));
+            singletonList("Initial backoff must be at least 30s"));
         testCases.put(
             new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 15, 3600),
-            Collections.singletonList("Initial backoff must be at least 30s"));
+            singletonList("Initial backoff must be at least 30s"));
         testCases.put(
             new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 30, 60),
-            Collections.singletonList("Maximum backoff must be greater than 300s (5 minutes)"));
+            singletonList("Maximum backoff must be greater than 300s (5 minutes)"));
         testCases.put(
             new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 30, 60),
-            Collections.singletonList("Maximum backoff must be greater than 300s (5 minutes)"));
+            singletonList("Maximum backoff must be greater than 300s (5 minutes)"));
         testCases.put(
             new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 301, 300),
-            Collections.singletonList("Maximum backoff must be greater than or equal to initial backoff"));
+            singletonList("Maximum backoff must be greater than or equal to initial backoff"));
         testCases.put(
             new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 301, 300),
-            Collections.singletonList("Maximum backoff must be greater than or equal to initial backoff"));
+            singletonList("Maximum backoff must be greater than or equal to initial backoff"));
 
         for (Entry<RetryStrategy, List<String>> testCase : testCases.entrySet()) {
             List<String> validationErrors = mValidator.validate(testCase.getKey());
