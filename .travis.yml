@@ -1,3 +1,4 @@
+# https://docs.travis-ci.com/user/languages/android
 language: android
 jdk: oraclejdk8
 # Container builds don't have enough memory to reliably finish without being
