@@ -7,11 +7,10 @@ jdk: oraclejdk8
 sudo: required
 android:
     components:
-        # https://github.com/travis-ci/travis-ci/issues/5036
         - tools
         - platform-tools
-        - build-tools-23.0.3
-        - android-23
+        - build-tools-25.0.0
+        - android-25
         - extra-android-m2repository
         - extra-google-m2repository
 

@@ -36,18 +36,18 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class FirebaseJobDispatcherTest {
 
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
 
     @Mock
-    public Driver mDriver;
+    private Driver mDriver;
 
     @Mock
     private JobValidator mValidator;

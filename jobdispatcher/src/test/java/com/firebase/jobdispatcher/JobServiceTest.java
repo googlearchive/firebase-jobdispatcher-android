@@ -34,14 +34,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobServiceTest {
-
-    public static CountDownLatch countDownLatch;
+    private static CountDownLatch countDownLatch;
 
     @Before
     public void setUp() throws Exception {}
@@ -122,6 +121,8 @@ public class JobServiceTest {
         service.onStartCommand(executeJobIntent, 0, startId);
 
         verify(service).stopSelf(startId);
+
+        p.recycle();
     }
 
     @Test

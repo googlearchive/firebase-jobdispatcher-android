@@ -31,11 +31,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public final class GooglePlayCallbackExtractorTest {
     @Mock
     private IBinder mBinder;
@@ -51,9 +51,7 @@ public final class GooglePlayCallbackExtractorTest {
 
     @Test
     public void testExtractCallback_nullBundle() {
-        Bundle nullBundle = null;
-
-        assertNull(mExtractor.extractCallback(nullBundle));
+        assertNull(mExtractor.extractCallback(null));
     }
 
     @Test
@@ -80,6 +78,8 @@ public final class GooglePlayCallbackExtractorTest {
         validBundle.putParcelable("callback", pcb);
 
         assertNotNull(mExtractor.extractCallback(validBundle));
+
+        container.recycle();
     }
 
     private final static class BadParcelable implements Parcelable {

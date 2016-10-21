@@ -32,23 +32,27 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class ValidationEnforcerTest {
+    private static final List<String> ERROR_LIST = Collections.singletonList("error: foo");
 
-    public static final List<String> ERROR_LIST = Collections.singletonList("error: foo");
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
-    private ValidationEnforcer mEnforcer;
+
     @Mock
     private JobValidator mValidator;
+
     @Mock
     private JobParameters mMockJobParameters;
+
     @Mock
     private JobTrigger mMockTrigger;
+
+    private ValidationEnforcer mEnforcer;
     private RetryStrategy mRetryStrategy = RetryStrategy.DEFAULT_EXPONENTIAL;
 
     @Before

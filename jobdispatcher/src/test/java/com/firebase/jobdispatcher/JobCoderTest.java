@@ -24,15 +24,13 @@ import com.firebase.jobdispatcher.Job.Builder;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@RunWith(RobolectricTestRunner.class)
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobCoderTest {
-
     private final JobCoder mCoder = new JobCoder();
-
     private Builder mBuilder;
 
     private static Builder setValidBuilderDefaults(Builder mBuilder) {
