@@ -16,13 +16,11 @@
 
 package com.firebase.jobdispatcher;
 
-import android.os.Bundle;
-
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import android.os.Bundle;
 import com.firebase.jobdispatcher.Job.Builder;
 import java.util.Arrays;
 import java.util.HashMap;
