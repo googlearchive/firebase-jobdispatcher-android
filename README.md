@@ -65,13 +65,12 @@ Library                    | Minimum API | Requires Google Play   | Service API<
 -------------------------- | ----------- | ---------------------- | ------------------------------- | -----------------------
 Framework [JobScheduler][] | 21          | No                     | JobScheduler                    | Yes
 Firebase JobDispatcher     | 9           | Yes                    | JobScheduler                    | Yes
-[evernote/android-job][]   | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes<sup>[3](#fn3)</sup>
+[evernote/android-job][]   | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes
 
 <a name="fn1">1</a>: Refers to the methods that need to be implemented in the
 Service subclass.<br>
 <a name="fn2">2</a>: Uses AlarmManager to support API levels <= 21 if Google
 Play services is unavailable.<br>
-<a name="fn3">3</a>: Supported for the AlarmManager and JobScheduler drivers.<br>
 
 ## Getting started
 
