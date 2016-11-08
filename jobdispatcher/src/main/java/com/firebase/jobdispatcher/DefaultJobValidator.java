@@ -187,13 +187,14 @@ public class DefaultJobValidator implements JobValidator {
 
     @Nullable
     private List<String> validateForPersistence(Bundle extras) {
+        if (extras == null){
+            return null;
+        }
+        
         List<String> errors = null;
-
-        if (extras != null) {
-            // check the types to make sure they're persistable
-            for (String k : extras.keySet()) {
-                errors = addError(errors, validateExtrasType(extras, k));
-            }
+        // check the types to make sure they're persistable
+        for (String k : extras.keySet()) {
+            errors = addError(errors, validateExtrasType(extras, k));
         }
 
         return errors;
