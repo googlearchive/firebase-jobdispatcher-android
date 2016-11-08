@@ -14,7 +14,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-// Old path for backcompat reasons
+// Old path for backward compatibility reasons
 package com.google.android.gms.gcm;
 
 /**
