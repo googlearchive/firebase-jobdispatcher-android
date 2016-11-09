@@ -282,7 +282,7 @@ public class DefaultJobValidator implements JobValidator {
     }
 
     @NonNull
-    private static List<String> getMutableSingletonList(String msg) {
+    private static List<String> getMutableSingletonList(@NonNull String msg) {
         ArrayList<String> strings = new ArrayList<>();
         strings.add(msg);
         return strings;
