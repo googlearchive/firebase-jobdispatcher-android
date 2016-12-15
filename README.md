@@ -125,7 +125,7 @@ public class MyJobService extends JobService {
     android:exported="false"
     android:name=".MyJobService">
     <intent-filter>
-        <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>"
+        <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
     </intent-filter>
 </service>
 ```
