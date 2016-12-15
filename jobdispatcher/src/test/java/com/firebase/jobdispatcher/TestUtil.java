@@ -107,22 +107,25 @@ public class TestUtil {
         for (String tag : TAG_COMBINATIONS) {
             for (List<Integer> constraintList : getAllConstraintCombinations()) {
                 for (boolean recurring : new boolean[]{true, false}) {
-                    for (int lifetime : LIFETIME_COMBINATIONS) {
-                        for (JobTrigger trigger : TRIGGER_COMBINATIONS) {
-                            for (Class<TestJobService> service : SERVICE_COMBINATIONS) {
-                                for (Bundle extras : getBundleCombinations()) {
-                                    for (RetryStrategy rs : RETRY_STRATEGY_COMBINATIONS) {
-                                        //noinspection WrongConstant
-                                        jobs.add(builder
-                                            .setTag(tag)
-                                            .setRecurring(recurring)
-                                            .setConstraints(toIntArray(constraintList))
-                                            .setLifetime(lifetime)
-                                            .setTrigger(trigger)
-                                            .setService(service)
-                                            .setExtras(extras)
-                                            .setRetryStrategy(rs)
-                                            .build());
+                    for (boolean replaceCurrent : new boolean[]{true, false}) {
+                        for (int lifetime : LIFETIME_COMBINATIONS) {
+                            for (JobTrigger trigger : TRIGGER_COMBINATIONS) {
+                                for (Class<TestJobService> service : SERVICE_COMBINATIONS) {
+                                    for (Bundle extras : getBundleCombinations()) {
+                                        for (RetryStrategy rs : RETRY_STRATEGY_COMBINATIONS) {
+                                            //noinspection WrongConstant
+                                            jobs.add(builder
+                                                .setTag(tag)
+                                                .setRecurring(recurring)
+                                                .setReplaceCurrent(replaceCurrent)
+                                                .setConstraints(toIntArray(constraintList))
+                                                .setLifetime(lifetime)
+                                                .setTrigger(trigger)
+                                                .setService(service)
+                                                .setExtras(extras)
+                                                .setRetryStrategy(rs)
+                                                .build());
+                                        }
                                     }
                                 }
                             }
@@ -154,6 +157,7 @@ public class TestUtil {
         assertNotNull("output", output);
 
         assertEquals("isRecurring()", input.isRecurring(), output.isRecurring());
+        assertEquals("shouldReplaceCurrent()", input.shouldReplaceCurrent(), output.shouldReplaceCurrent());
         assertEquals("getLifetime()", input.getLifetime(), output.getLifetime());
         assertEquals("getTag()", input.getTag(), output.getTag());
         assertEquals("getService()", input.getService(), output.getService());
@@ -164,7 +168,6 @@ public class TestUtil {
         assertTriggersEqual(input.getTrigger(), output.getTrigger());
         assertBundlesEqual(input.getExtras(), output.getExtras());
         assertRetryStrategiesEqual(input.getRetryStrategy(), output.getRetryStrategy());
-
     }
 
     static void assertRetryStrategiesEqual(RetryStrategy in, RetryStrategy out) {

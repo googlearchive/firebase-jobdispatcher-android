@@ -49,6 +49,8 @@ import android.support.annotation.Nullable;
             jobParameters.getLifetime());
         data.putBoolean(prefix + BundleProtocol.PACKED_PARAM_RECURRING,
             jobParameters.isRecurring());
+        data.putBoolean(prefix + BundleProtocol.PACKED_PARAM_REPLACE_CURRENT,
+            jobParameters.shouldReplaceCurrent());
         data.putString(prefix + BundleProtocol.PACKED_PARAM_TAG,
             jobParameters.getTag());
         data.putString(prefix + BundleProtocol.PACKED_PARAM_SERVICE,
