@@ -81,13 +81,13 @@ If you **don't** have a dependency on
 `build.gradle`'s dependencies section:
 
 ```
-compile 'com.firebase:firebase-jobdispatcher:0.5.0'
+compile 'com.firebase:firebase-jobdispatcher-with-gcm-dep:0.5.0'
 ```
 
 Otherwise add the following:
 
 ```
-compile 'com.firebase:firebase-jobdispatcher-with-gcm-dep:0.5.0'
+compile 'com.firebase:firebase-jobdispatcher:0.5.0'
 ```
 
 NOTE: These variants are a temporary requirement. Work is ongoing to consolidate
