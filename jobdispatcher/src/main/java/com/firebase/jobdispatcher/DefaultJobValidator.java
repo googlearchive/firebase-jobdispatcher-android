@@ -219,7 +219,8 @@ public class DefaultJobValidator implements JobValidator {
     private String validateExtrasType(Bundle extras, String key) {
         Object o = extras.get(key);
 
-        if (o instanceof Integer
+        if (o == null
+            || o instanceof Integer
             || o instanceof Long
             || o instanceof Double
             || o instanceof String
