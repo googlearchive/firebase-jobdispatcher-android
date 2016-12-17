@@ -16,9 +16,10 @@
 
 package com.firebase.jobdispatcher;
 
-/* package */ class JobTrigger {
-    /* package */ static final class ImmediateTrigger extends JobTrigger {
-        /* package */ ImmediateTrigger() {}
+public class JobTrigger {
+
+    public static final class ImmediateTrigger extends JobTrigger {
+        public ImmediateTrigger() {}
     }
 
     /**
@@ -27,11 +28,11 @@ package com.firebase.jobdispatcher;
      * value. The scheduler backend is encouraged to use the windowEnd value as a
      * signal that the job should be run, but this is not an enforced behavior.
      */
-    /* package */ static final class ExecutionWindowTrigger extends JobTrigger {
+    public static final class ExecutionWindowTrigger extends JobTrigger {
         private final int mWindowStart;
         private final int mWindowEnd;
 
-        /* package */ ExecutionWindowTrigger(int windowStart, int windowEnd) {
+        public ExecutionWindowTrigger(int windowStart, int windowEnd) {
             this.mWindowStart = windowStart;
             this.mWindowEnd = windowEnd;
         }
