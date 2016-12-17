@@ -62,6 +62,8 @@ task javadocs(type: Javadoc) {
     description "Generate Javadocs"
     source = android.sourceSets.main.java.sourceFiles
     classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    classpath += configurations.compile
+    failOnError false
 }
 
 task javadocsJar(type: Jar, dependsOn: javadocs) {
