@@ -54,7 +54,7 @@ dependencies {
     // manually copy the required classes into the noDep flavor (below).
     provided project(':gcm_defs')
     // the withGcmDep version has an explicit dependency on the GCM library.
-    withGcmDepCompile "com.google.android.gms:play-services-gcm:9.6.1"
+    withGcmDepCompile "com.google.android.gms:play-services-gcm:10.0.1"
 }
 
 task javadocs(type: Javadoc) {
