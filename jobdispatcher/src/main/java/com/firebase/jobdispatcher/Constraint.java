@@ -32,8 +32,8 @@ public final class Constraint {
     public static final int ON_UNMETERED_NETWORK = 1;
 
     /**
-     * Only run the job when a network connection is available. If both this and ON_ANY_NETWORK is
-     * provided, ON_ANY_NETWORK will take precedence.
+     * Only run the job when a network connection is available.
+     * If both this and ON_UNMETERED_NETWORK is provided, ON_ANY_NETWORK will take precedence.
      */
     public static final int ON_ANY_NETWORK = 1 << 1;
 
