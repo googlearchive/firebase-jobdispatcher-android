@@ -17,5 +17,9 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    dependencies {
+        compile "com.android.support:support-annotations:$supportLibraryVersion"
+    }
 }
 
