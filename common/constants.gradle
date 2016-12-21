@@ -3,8 +3,8 @@ project.ext {
     projectName = "firebase-jobdispatcher-android"
     group = "com.firebase"
     version = "0.5.1"
-    buildtools = "25.0.0"
-    supportLibraryVersion = "25.0.0"
+    buildtools = "25.0.2"
+    supportLibraryVersion = "25.1.0"
     compileSdk = 25
     minSdk = 9
 
