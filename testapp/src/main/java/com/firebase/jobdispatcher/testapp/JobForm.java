@@ -51,7 +51,7 @@ public class JobForm extends BaseObservable {
     }
 
     public void setInitialBackoffSecondsStr(String in) {
-        this.initialBackoffSeconds = Integer.valueOf(in, 10);
+        this.initialBackoffSeconds = convertToInt(in);
     }
 
     @Bindable
@@ -60,7 +60,7 @@ public class JobForm extends BaseObservable {
     }
 
     public void setMaximumBackoffSecondsStr(String in) {
-        this.maximumBackoffSeconds = Integer.valueOf(in, 10);
+        this.maximumBackoffSeconds = convertToInt(in);
     }
 
     public int getWinStartSeconds() {
