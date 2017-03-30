@@ -30,7 +30,8 @@ import org.robolectric.annotation.Config;
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobCoderTest {
-    private final JobCoder mCoder = new JobCoder();
+    private final JobCoder mCoder = new JobCoder(PREFIX, true);
+    private static final String PREFIX = "prefix";
     private Builder mBuilder;
 
     private static Builder setValidBuilderDefaults(Builder mBuilder) {
@@ -49,12 +50,8 @@ public class JobCoderTest {
     @Test
     public void testCodingIsLossless() {
         for (JobParameters input : TestUtil.getJobCombinations(mBuilder)) {
-            if (input.getExtras() == null) {
-                // the encode -> decode process adds a Bundle if one wasn't there
-                continue;
-            }
 
-            JobParameters output = mCoder.decode(mCoder.encode(input, new Bundle()));
+            JobParameters output = mCoder.decode(mCoder.encode(input, input.getExtras())).build();
 
             TestUtil.assertJobsEqual(input, output);
         }
@@ -81,11 +78,12 @@ public class JobCoderTest {
             mCoder.decode(mCoder.encode(
                 setValidBuilderDefaults(mBuilder).setService(null).build(),
                 new Bundle())));
+    }
 
-        assertNull("Expected null trigger to cause decoding to fail",
-            mCoder.decode(mCoder.encode(
-                setValidBuilderDefaults(mBuilder).setTrigger(null).build(),
-                new Bundle())));
+    @Test(expected = IllegalArgumentException.class)
+    public void testDecode_failsUnsupportedTrigger() {
+            mCoder.decode(mCoder.encode(setValidBuilderDefaults(mBuilder).setTrigger(null).build(),
+                    new Bundle()));
     }
 
     @Test

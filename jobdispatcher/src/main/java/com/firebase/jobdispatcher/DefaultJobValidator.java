@@ -148,11 +148,8 @@ public class DefaultJobValidator implements JobValidator {
     @Override
     @CallSuper
     public List<String> validate(JobTrigger trigger) {
-        if (trigger == Trigger.NOW) {
-            return null;
-        }
-
-        if (!(trigger instanceof JobTrigger.ExecutionWindowTrigger)) {
+        if (trigger != Trigger.NOW
+                && !(trigger instanceof JobTrigger.ExecutionWindowTrigger)) {
             return getMutableSingletonList("Unknown trigger provided");
         }
 
@@ -232,7 +229,7 @@ public class DefaultJobValidator implements JobValidator {
             "Received value of type '%s' for key '%s', but only the"
                 + " following extra parameter types are supported:"
                 + " Integer, Long, Double, String, and Boolean",
-            key, o == null ? null : o.getClass());
+            o == null ? null : o.getClass(), key);
     }
 
     private List<String> validateService(String service) {

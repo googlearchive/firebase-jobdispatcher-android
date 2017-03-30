@@ -23,8 +23,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.os.RemoteException;
-import com.google.android.gms.gcm.INetworkTaskCallback;
+import com.firebase.jobdispatcher.TestUtil.NopCallback;
 import com.google.android.gms.gcm.PendingCallback;
 import org.junit.Before;
 import org.junit.Test;
@@ -113,13 +112,6 @@ public final class GooglePlayCallbackExtractorTest {
         @Override
         public void writeToParcel(Parcel dst, int flags) {
             dst.writeInt(mNum);
-        }
-    }
-
-    public final static class NopCallback extends INetworkTaskCallback.Stub {
-        @Override
-        public void taskFinished(int result) throws RemoteException {
-            // nop
         }
     }
 }

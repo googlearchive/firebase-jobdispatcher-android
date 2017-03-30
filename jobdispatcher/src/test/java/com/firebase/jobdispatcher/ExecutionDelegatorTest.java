@@ -31,15 +31,11 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.os.IBinder;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import com.firebase.jobdispatcher.JobService.JobResult;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -47,46 +43,38 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
+@SuppressWarnings("WrongConstant")
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
-public class ExternalReceiverTest {
+@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+public class ExecutionDelegatorTest {
 
-    private static List<JobParameters> jobCombinations;
     private Context mMockContext;
     private TestJobReceiver mReceiver;
-
-    @BeforeClass
-    public static void setUpClass() {
-        // uses a Bundle, so can't happen before Robolectric's mucked with the classpath
-        jobCombinations = TestUtil.getJobCombinations(TestUtil.getBuilderWithNoopValidator());
-    }
+    private ExecutionDelegator mExecutionDelegator;
 
     @Before
     public void setUp() {
         mMockContext = spy(RuntimeEnvironment.application);
         doReturn("com.example.foo").when(mMockContext).getPackageName();
 
-        mReceiver = new TestJobReceiver(mMockContext);
+        mReceiver = new TestJobReceiver();
+        mExecutionDelegator = new ExecutionDelegator(mMockContext, mReceiver);
     }
 
     @Test
     public void testExecuteJob_sendsBroadcastWithJobAndMessage() throws Exception {
-        mReceiver.onCreate();
-
-        for (JobParameters input : jobCombinations) {
+        for (JobInvocation input : TestUtil.getJobInvocationCombinations()) {
             verifyExecuteJob(input);
         }
-
-        mReceiver.onDestroy();
     }
 
-    private void verifyExecuteJob(JobParameters input) throws Exception {
+    private void verifyExecuteJob(JobInvocation input) throws Exception {
         reset(mMockContext);
         mReceiver.lastResult = -1;
 
         mReceiver.setLatch(new CountDownLatch(1));
 
-        mReceiver.executeJob(input);
+        mExecutionDelegator.executeJob(input);
 
         final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
         final ArgumentCaptor<ServiceConnection> connCaptor =
@@ -133,55 +121,91 @@ public class ExternalReceiverTest {
     @Test
     public void testExecuteJob_handlesNull() {
         assertFalse("Expected calling triggerExecution on null to fail and return false",
-            mReceiver.triggerExecution(null));
+            mExecutionDelegator.executeJob(null));
     }
 
     @Test
     public void testHandleMessage_doesntCrashOnBadJobData() {
-        Job j = TestUtil.getBuilderWithNoopValidator()
-            .setService(TestJobService.class)
-            .build();
+        JobInvocation j = new JobInvocation.Builder()
+                .setService(TestJobService.class.getName())
+                .setTag("tag")
+                .setTrigger(Trigger.NOW)
+                .build();
 
-        mReceiver.onCreate();
-        mReceiver.triggerExecution(j);
+        mExecutionDelegator.executeJob(j);
 
-        ArgumentCaptor<Intent> intentCapto =
+        ArgumentCaptor<Intent> intentCaptor =
             ArgumentCaptor.forClass(Intent.class);
         ArgumentCaptor<ServiceConnection> connCaptor =
             ArgumentCaptor.forClass(ServiceConnection.class);
 
         //noinspection WrongConstant
-        verify(mMockContext).bindService(intentCapto.capture(), connCaptor.capture(), anyInt());
+        verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
 
-        Intent executeReq = intentCapto.getValue();
+        Intent executeReq = intentCaptor.getValue();
         assertEquals(JobService.ACTION_EXECUTE, executeReq.getAction());
-
-        mReceiver.onDestroy();
     }
 
-    public final static class TestJobReceiver extends ExternalReceiver {
-        public int lastResult;
+    @Test
+    public void onStop_mock() throws InterruptedException {
+        JobInvocation job = new JobInvocation.Builder()
+                .setTag("TAG")
+                .setTrigger(Trigger.NOW)
+                .setService(TestJobService.class.getName())
+                .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+                .build();
+
+        reset(mMockContext);
+        mReceiver.lastResult = -1;
+
+        mExecutionDelegator.executeJob(job);
+
+        final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+        final ArgumentCaptor<ServiceConnection> connCaptor =
+                ArgumentCaptor.forClass(ServiceConnection.class);
+        verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+
+        final Intent result = intentCaptor.getValue();
+        // verify the intent was sent to the right place
+        assertEquals(job.getService(), result.getComponent().getClassName());
+        assertEquals(JobService.ACTION_EXECUTE, result.getAction());
+
+        final JobParameters[] out = new JobParameters[2];
+
+        JobService mockJobService = new JobService() {
+            @Override
+            public boolean onStartJob(JobParameters job) {
+                out[0] = job;
+                return true;
+            }
+
+            @Override
+            public boolean onStopJob(JobParameters job) {
+                out[1] = job;
+                return false;
+            }
+        };
+
+        JobService.LocalBinder mockLocalBinder = mock(JobService.LocalBinder.class);
+        when(mockLocalBinder.getService()).thenReturn(mockJobService);
+
+        ComponentName componentName = mock(ComponentName.class);
+        final ServiceConnection connection = connCaptor.getValue();
+        connection.onServiceConnected(componentName, mockLocalBinder);
+
+        mExecutionDelegator.stopJob(job);
+
+        TestUtil.assertJobsEqual(job, out[0]);
+        TestUtil.assertJobsEqual(job, out[1]);
+    }
+
+    private final static class TestJobReceiver implements ExecutionDelegator.JobFinishedCallback {
+        int lastResult;
 
         private CountDownLatch mLatch;
-        private Context mContext;
-
-        public TestJobReceiver(Context ctx) {
-            mContext = ctx;
-
-            // Required for getPackageName() and other basic Context methods to work correctly
-            // without a manifest defined.
-            attachBaseContext(ctx);
-        }
-
-        /**
-         * Exposes the protected {@link #executeJob(JobParameters)} method.
-         */
-        public boolean triggerExecution(JobParameters jobParameters) {
-            return executeJob(jobParameters);
-        }
 
         @Override
-        protected void onJobFinished(@NonNull JobParameters js, @JobResult int result) {
+        public void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
             lastResult = result;
 
             if (mLatch != null) {
@@ -194,21 +218,6 @@ public class ExternalReceiverTest {
          */
         public void setLatch(CountDownLatch latch) {
             mLatch = latch;
-        }
-
-        /**
-         * Wire it up to use the passed Context, otherwise Robolectric uses a hidden Context and
-         * doesn't actually do the correct thing.
-         */
-        @Override
-        public boolean bindService(Intent service, ServiceConnection conn, int flags) {
-            return mContext.bindService(service, conn, flags);
-        }
-
-        @Nullable
-        @Override
-        public IBinder onBind(Intent intent) {
-            return null;
         }
     }
 }

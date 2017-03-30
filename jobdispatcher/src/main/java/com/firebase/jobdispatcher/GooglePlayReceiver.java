@@ -16,9 +16,13 @@
 
 package com.firebase.jobdispatcher;
 
+import android.app.Service;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Messenger;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
@@ -29,7 +33,7 @@ import com.firebase.jobdispatcher.JobService.JobResult;
 /**
  * Handles incoming execute requests from the GooglePlay driver and forwards them to your Service.
  */
-public final class GooglePlayReceiver extends ExternalReceiver {
+public class GooglePlayReceiver extends Service implements ExecutionDelegator.JobFinishedCallback {
     /**
      * Logging tag.
      */
@@ -48,10 +52,22 @@ public final class GooglePlayReceiver extends ExternalReceiver {
     private static final String ERROR_UNKNOWN_ACTION = "Unknown action received, terminating";
     private static final String ERROR_NO_DATA = "No data provided, terminating";
 
-    private final JobCoder prefixedCoder =
+    private static final JobCoder prefixedCoder =
         new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
 
-    private GooglePlayCallbackExtractor callbackExtractor = new GooglePlayCallbackExtractor();
+    private final Object lock = new Object();
+    private final GooglePlayCallbackExtractor callbackExtractor = new GooglePlayCallbackExtractor();
+
+    /**
+     * The single Messenger that's returned from valid onBind requests. Guarded by {@link #lock}.
+     */
+    @VisibleForTesting
+    Messenger serviceMessenger;
+
+    /**
+     * The ExecutionDelegator used to communicate with client JobServices. Guarded by {@link #lock}.
+     */
+    private ExecutionDelegator executionDelegator;
 
     /**
      * Endpoint (String) -> Tag (String) -> JobCallback
@@ -79,7 +95,7 @@ public final class GooglePlayReceiver extends ExternalReceiver {
 
             String action = intent.getAction();
             if (ACTION_EXECUTE.equals(action)) {
-                executeJob(prepareJob(intent));
+                getExecutionDelegator().executeJob(prepareJob(intent));
                 return START_NOT_STICKY;
             } else if (ACTION_INITIALIZE.equals(action)) {
                 return START_NOT_STICKY;
@@ -99,41 +115,63 @@ public final class GooglePlayReceiver extends ExternalReceiver {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        // Only Lollipop+ supports UID checking messages, so we can't trust this system on older
+        // platforms.
+        if (intent == null
+                || Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP
+                || !ACTION_EXECUTE.equals(intent.getAction())) {
+            return null;
+        }
+        return getServiceMessenger().getBinder();
+    }
+
+    private Messenger getServiceMessenger() {
+        synchronized (lock) {
+            if (serviceMessenger == null) {
+                serviceMessenger =
+                    new Messenger(new GooglePlayMessageHandler(Looper.getMainLooper(), this));
+            }
+
+            return serviceMessenger;
+        }
+    }
+
+    /* package */ ExecutionDelegator getExecutionDelegator() {
+        synchronized (lock) {
+            if (executionDelegator == null) {
+                executionDelegator = new ExecutionDelegator(this, this);
+            }
+
+            return executionDelegator;
+        }
     }
 
     @Nullable
-    private JobParameters prepareJob(Intent intent) {
-        Bundle data = intent.getExtras();
-        if (data == null) {
+    @VisibleForTesting
+    JobInvocation prepareJob(Intent intent) {
+        Bundle intentExtras = intent.getExtras();
+        if (intentExtras == null) {
             Log.e(TAG, ERROR_NO_DATA);
             return null;
         }
 
         // get the callback first. If we don't have this we can't talk back to the backend.
-        JobCallback callback = callbackExtractor.extractCallback(data);
+        JobCallback callback = callbackExtractor.extractCallback(intentExtras);
         if (callback == null) {
             Log.i(TAG, "no callback found");
             return null;
         }
+        return prepareJob(intentExtras, callback);
+    }
 
-        Bundle extras = data.getBundle(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS);
-        if (extras == null) {
-            Log.i(TAG, "no 'extras' bundle found");
-            sendResultSafely(callback, JobService.RESULT_FAIL_NORETRY);
-            return null;
-        }
-
-        JobInvocation job = prefixedCoder.decode(extras);
+    @Nullable
+    JobInvocation prepareJob(Bundle bundle, JobCallback callback) {
+        JobInvocation job = prefixedCoder.decodeIntentBundle(bundle);
         if (job == null) {
-            Log.i(TAG, "unable to decode job from extras");
+            Log.e(TAG, "unable to decode job");
             sendResultSafely(callback, JobService.RESULT_FAIL_NORETRY);
             return null;
         }
-
-        // repack the extras
-        job.getExtras().putAll(extras);
-
         synchronized (this) {
             SimpleArrayMap<String, JobCallback> map = callbacks.get(job.getService());
             if (map == null) {
@@ -148,22 +186,26 @@ public final class GooglePlayReceiver extends ExternalReceiver {
     }
 
     @Override
-    protected void onJobFinished(@NonNull JobParameters js, @JobResult int result) {
-        synchronized (this) {
-            SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
-            if (map == null) {
-                return;
-            }
-
-            JobCallback callback = map.remove(js.getTag());
-            if (callback != null) {
-                Log.i(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
-                sendResultSafely(callback, result);
-            }
-
-            if (map.isEmpty()) {
-                callbacks.remove(js.getService());
-            }
+    public synchronized void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
+        SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
+        if (map == null) {
+            return;
         }
+
+        JobCallback callback = map.remove(js.getTag());
+        if (callback != null) {
+            if (Log.isLoggable(TAG, Log.VERBOSE)) {
+                Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
+            }
+            sendResultSafely(callback, result);
+        }
+
+        if (map.isEmpty()) {
+            callbacks.remove(js.getService());
+        }
+    }
+
+    static JobCoder getJobCoder() {
+        return prefixedCoder;
     }
 }
