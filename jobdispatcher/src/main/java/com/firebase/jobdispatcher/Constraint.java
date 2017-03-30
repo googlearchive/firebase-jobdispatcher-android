@@ -66,6 +66,9 @@ public final class Constraint {
      */
     static int compact(@JobConstraint int[] constraints) {
         int result = 0;
+        if (constraints == null) {
+            return result;
+        }
         for (int c : constraints) {
             result |= c;
         }

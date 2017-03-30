@@ -59,10 +59,6 @@ import java.lang.annotation.RetentionPolicy;
 
     private JobCoder jobCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, false);
 
-    private static boolean isSupported(JobTrigger trigger) {
-        return trigger instanceof JobTrigger.ExecutionWindowTrigger || trigger == Trigger.NOW;
-    }
-
     private static void writeExecutionWindowTriggerToBundle(JobParameters job, Bundle b,
                                                             JobTrigger.ExecutionWindowTrigger trigger) {
 
@@ -137,14 +133,13 @@ import java.lang.annotation.RetentionPolicy;
 
     private void writeTriggerToBundle(JobParameters job, Bundle b) {
         final JobTrigger trigger = job.getTrigger();
-        if (!isSupported(trigger)) {
-            throw new IllegalArgumentException("Unknown trigger: " + trigger.getClass());
-        }
 
         if (trigger == Trigger.NOW) {
             writeImmediateTriggerToBundle(b);
-        } else {
+        } else if (trigger instanceof JobTrigger.ExecutionWindowTrigger) {
             writeExecutionWindowTriggerToBundle(job, b, (JobTrigger.ExecutionWindowTrigger) trigger);
+        } else {
+            throw new IllegalArgumentException("Unknown trigger: " + trigger.getClass());
         }
     }
 

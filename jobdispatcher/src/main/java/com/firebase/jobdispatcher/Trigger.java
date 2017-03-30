@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+
 /**
  * Generally, a Trigger is an object that can answer the question, "is this job ready to run?"
  * <p/>

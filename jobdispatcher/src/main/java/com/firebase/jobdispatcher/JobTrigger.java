@@ -16,8 +16,15 @@
 
 package com.firebase.jobdispatcher;
 
+/**
+ * Contains all supported triggers.
+ */
 public class JobTrigger {
 
+    /**
+     * ImmediateTrigger is a Trigger that's immediately available. The Job will be run as soon as
+     * the runtime constraints are satisfied.
+     */
     public static final class ImmediateTrigger extends JobTrigger {
         /* package */ ImmediateTrigger() {}
     }

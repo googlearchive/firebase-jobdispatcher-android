@@ -18,7 +18,6 @@ package com.firebase.jobdispatcher;
 
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import com.firebase.jobdispatcher.Constraint.JobConstraint;
 
 /**
@@ -50,21 +49,16 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
 
     private final boolean mReplaceCurrent;
 
-    JobInvocation(@NonNull String tag, @NonNull String service, @NonNull JobTrigger trigger,
-                  @NonNull RetryStrategy retryStrategy, boolean recurring,
-                  @Lifetime.LifetimeConstant int lifetime,
-                  @NonNull @JobConstraint int[] constraints, @Nullable Bundle extras,
-                  boolean replaceCurrent) {
-
-        mTag = tag;
-        mService = service;
-        mTrigger = trigger;
-        mRetryStrategy = retryStrategy;
-        mRecurring = recurring;
-        mLifetime = lifetime;
-        mConstraints = constraints;
-        mExtras = extras != null ? extras : new Bundle();
-        mReplaceCurrent = replaceCurrent;
+    private JobInvocation(Builder builder) {
+        mTag = builder.mTag;
+        mService = builder.mService;
+        mTrigger = builder.mTrigger;
+        mRetryStrategy = builder.mRetryStrategy;
+        mRecurring = builder.mRecurring;
+        mLifetime = builder.mLifetime;
+        mConstraints = builder.mConstraints;
+        mExtras = builder.mExtras;
+        mReplaceCurrent = builder.mReplaceCurrent;
     }
 
     @NonNull
@@ -116,5 +110,114 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
     @Override
     public boolean shouldReplaceCurrent() {
         return mReplaceCurrent;
+    }
+
+    static final class Builder {
+
+        @NonNull
+        private String mTag;
+
+        @NonNull
+        private String mService;
+
+        @NonNull
+        private JobTrigger mTrigger;
+
+        private boolean mRecurring;
+
+        private int mLifetime;
+
+        @NonNull
+        @JobConstraint
+        private int[] mConstraints;
+
+        @NonNull
+        private final Bundle mExtras = new Bundle();
+
+        private RetryStrategy mRetryStrategy;
+
+        private boolean mReplaceCurrent;
+
+        JobInvocation build() {
+            if (mTag == null || mService == null || mTrigger == null) {
+                throw new IllegalArgumentException("Required fields were not populated.");
+            }
+            return new JobInvocation(this);
+        }
+
+        public Builder setTag(@NonNull String mTag) {
+            this.mTag = mTag;
+            return this;
+        }
+
+        public Builder setService(@NonNull String mService) {
+            this.mService = mService;
+            return this;
+        }
+
+        public Builder setTrigger(@NonNull JobTrigger mTrigger) {
+            this.mTrigger = mTrigger;
+            return this;
+        }
+
+        public Builder setRecurring(boolean mRecurring) {
+            this.mRecurring = mRecurring;
+            return this;
+        }
+
+        public Builder setLifetime(@Lifetime.LifetimeConstant int mLifetime) {
+            this.mLifetime = mLifetime;
+            return this;
+        }
+
+        public Builder setConstraints(@JobConstraint @NonNull int[] mConstraints) {
+            this.mConstraints = mConstraints;
+            return this;
+        }
+
+        public Builder addExtras(@NonNull Bundle bundle) {
+            if (bundle != null) {
+                mExtras.putAll(bundle);
+            }
+            return this;
+        }
+
+        public Builder setRetryStrategy(RetryStrategy mRetryStrategy) {
+            this.mRetryStrategy = mRetryStrategy;
+            return this;
+        }
+
+        public Builder setReplaceCurrent(boolean mReplaceCurrent) {
+            this.mReplaceCurrent = mReplaceCurrent;
+            return this;
+        }
+    }
+
+    /**
+     * @return true if the tag, the service, and the trigger of provided {@link JobInvocation} have
+     * the same values.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || !getClass().equals(o.getClass())) {
+            return false;
+        }
+
+        JobInvocation jobInvocation = (JobInvocation) o;
+
+        return mTag.equals(jobInvocation.mTag)
+                && mService.equals(jobInvocation.mService)
+                && mTrigger.equals(jobInvocation.mTrigger);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = mTag.hashCode();
+        result = 31 * result + mService.hashCode();
+        result = 31 * result + mTrigger.hashCode();
+        return result;
     }
 }

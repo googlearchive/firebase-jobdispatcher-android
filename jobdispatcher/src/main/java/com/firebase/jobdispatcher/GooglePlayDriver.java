@@ -31,7 +31,7 @@ import com.firebase.jobdispatcher.FirebaseJobDispatcher.ScheduleResult;
  * @see <a href="https://developers.google.com/android/reference/com/google/android/gms/common/GoogleApiAvailability#isGooglePlayServicesAvailable(android.content.Context)">GoogleApiAvailability</a>
  */
 public final class GooglePlayDriver implements Driver {
-    private final static String BACKEND_PACKAGE = "com.google.android.gms";
+    static final String BACKEND_PACKAGE = "com.google.android.gms";
     private final static String ACTION_SCHEDULE = "com.google.android.gms.gcm.ACTION_SCHEDULE";
 
     private final static String BUNDLE_PARAM_SCHEDULER_ACTION = "scheduler_action";
@@ -42,6 +42,11 @@ public final class GooglePlayDriver implements Driver {
     private final static String SCHEDULER_ACTION_SCHEDULE_TASK = "SCHEDULE_TASK";
     private final static String SCHEDULER_ACTION_CANCEL_TASK = "CANCEL_TASK";
     private final static String SCHEDULER_ACTION_CANCEL_ALL = "CANCEL_ALL";
+    private static final String INTENT_PARAM_SOURCE = "source";
+    private static final String INTENT_PARAM_SOURCE_VERSION = "source_version";
+
+    private static final int JOB_DISPATCHER_SOURCE_CODE = 1 << 3;
+    private static final int JOB_DISPATCHER_SOURCE_VERSION_CODE = 1;
 
     private final JobValidator mValidator;
     /**
@@ -74,6 +79,7 @@ public final class GooglePlayDriver implements Driver {
         mValidator = new DefaultJobValidator(context);
     }
 
+    @Override
     public boolean isAvailable() {
         return mAvailable;
     }
@@ -143,6 +149,8 @@ public final class GooglePlayDriver implements Driver {
         scheduleReq.setPackage(BACKEND_PACKAGE);
         scheduleReq.putExtra(BUNDLE_PARAM_SCHEDULER_ACTION, schedulerAction);
         scheduleReq.putExtra(BUNDLE_PARAM_TOKEN, mToken);
+        scheduleReq.putExtra(INTENT_PARAM_SOURCE, JOB_DISPATCHER_SOURCE_CODE);
+        scheduleReq.putExtra(INTENT_PARAM_SOURCE_VERSION, JOB_DISPATCHER_SOURCE_VERSION_CODE);
 
         return scheduleReq;
     }

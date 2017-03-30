@@ -30,9 +30,6 @@ import org.robolectric.annotation.Config;
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class ConstraintTest {
 
-    private static final List<List<Integer>> POSSIBLE_COMBINATIONS = TestUtil
-        .getAllConstraintCombinations();
-
     /**
      * Just to get 100% coverage.
      */
@@ -43,7 +40,7 @@ public class ConstraintTest {
 
     @Test
     public void testCompactAndUnCompact() {
-        for (List<Integer> combo : POSSIBLE_COMBINATIONS) {
+        for (List<Integer> combo : TestUtil.getAllConstraintCombinations()) {
             int[] input = TestUtil.toIntArray(combo);
             Arrays.sort(input);
 
@@ -60,5 +57,10 @@ public class ConstraintTest {
                 input.length,
                 output.length);
         }
+    }
+
+    @Test
+    public void compactNull() {
+        assertEquals(0, Constraint.compact(null));
     }
 }

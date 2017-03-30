@@ -16,9 +16,11 @@
 
 package com.firebase.jobdispatcher;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -26,10 +28,13 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.Parcel;
+import com.firebase.jobdispatcher.JobInvocation.Builder;
 import com.google.android.gms.gcm.PendingCallback;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -160,9 +165,77 @@ public class JobServiceTest {
 
         ((JobService.LocalBinder) service.onBind(executeJobIntent))
             .getService()
-            .start(jobSpec, h.obtainMessage(ExternalReceiver.JOB_FINISHED, jobSpec));
+            .start(jobSpec, h.obtainMessage(ExecutionDelegator.JOB_FINISHED, jobSpec));
 
         assertTrue("Expected job to run to completion", countDownLatch.await(5, TimeUnit.SECONDS));
+    }
+
+    @Test
+    public void testOnStartCommand_handlesStartJob_doNotStartRunningJobAgain() {
+        StoppableJobService service = new StoppableJobService(false);
+
+        Job jobSpec = TestUtil.getBuilderWithNoopValidator()
+                .setTag("tag")
+                .setService(StoppableJobService.class)
+                .setTrigger(Trigger.NOW)
+                .build();
+
+        ((JobService.LocalBinder) service.onBind(null)).getService().start(jobSpec, null);
+        ((JobService.LocalBinder) service.onBind(null)).getService().start(jobSpec, null);
+
+        assertEquals(1, service.getNumberOfExecutionRequestsReceived());
+    }
+
+    @Test
+    public void stop_noCallback_finished() {
+        JobService service = spy(new StoppableJobService(false));
+        JobInvocation job = new Builder()
+                .setTag("Tag")
+                .setTrigger(Trigger.NOW)
+                .setService(StoppableJobService.class.getName())
+                .build();
+        service.stop(job);
+        verify(service, never()).onStopJob(job);
+    }
+
+    @Test
+    public void stop_withCallback_retry() {
+        JobService service = spy(new StoppableJobService(false));
+
+        JobInvocation job = new Builder()
+                .setTag("Tag")
+                .setTrigger(Trigger.NOW)
+                .setService(StoppableJobService.class.getName())
+                .build();
+
+        Handler handlerMock = mock(Handler.class);
+        Message message = Message.obtain(handlerMock);
+        service.start(job, message);
+
+        service.stop(job);
+        verify(service).onStopJob(job);
+        verify(handlerMock).sendMessage(message);
+        assertEquals(message.arg1, JobService.RESULT_SUCCESS);
+    }
+
+    @Test
+    public void stop_withCallback_done() {
+        JobService service = spy(new StoppableJobService(true));
+
+        JobInvocation job = new Builder()
+                .setTag("Tag")
+                .setTrigger(Trigger.NOW)
+                .setService(StoppableJobService.class.getName())
+                .build();
+
+        Handler handlerMock = mock(Handler.class);
+        Message message = Message.obtain(handlerMock);
+        service.start(job, message);
+
+        service.stop(job);
+        verify(service).onStopJob(job);
+        verify(handlerMock).sendMessage(message);
+        assertEquals(message.arg1, JobService.RESULT_FAIL_RETRY);
     }
 
     public static class ExampleJobService extends JobService {
@@ -176,5 +249,33 @@ public class JobServiceTest {
         public boolean onStopJob(JobParameters job) {
             return false;
         }
+    }
+
+    public static class StoppableJobService extends JobService {
+
+        private final boolean shouldReschedule;
+
+        public int getNumberOfExecutionRequestsReceived() {
+            return amountOfExecutionRequestReceived.get();
+        }
+
+        private final AtomicInteger amountOfExecutionRequestReceived = new AtomicInteger();
+
+        public StoppableJobService(boolean shouldReschedule) {
+            this.shouldReschedule = shouldReschedule;
+        }
+
+        @Override
+        public boolean onStartJob(JobParameters job) {
+            amountOfExecutionRequestReceived.incrementAndGet();
+            return true;
+        }
+
+        @Override
+        public boolean onStopJob(JobParameters job) {
+            return shouldReschedule;
+        }
+
+
     }
 }

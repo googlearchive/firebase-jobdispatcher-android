@@ -22,13 +22,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.robolectric.Shadows.shadowOf;
 
 import android.os.Bundle;
-import android.os.Looper;
+import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.Job.Builder;
+import com.google.android.gms.gcm.INetworkTaskCallback;
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -101,9 +102,18 @@ public class TestUtil {
         return input;
     }
 
-    static List<JobParameters> getJobCombinations(Builder builder) {
-        List<JobParameters> jobs = new LinkedList<>();
+    static List<Job> getJobCombinations(Builder builder) {
+        return getCombination(new JobBuilder(builder));
+    }
 
+    static List<JobInvocation> getJobInvocationCombinations() {
+        return getCombination(new JobInvocationBuilder());
+    }
+
+    private static <T extends JobParameters> List<T> getCombination(
+            JobParameterBuilder<T> buildJobParam) {
+
+        List<T> result = new ArrayList<>();
         for (String tag : TAG_COMBINATIONS) {
             for (List<Integer> constraintList : getAllConstraintCombinations()) {
                 for (boolean recurring : new boolean[]{true, false}) {
@@ -113,18 +123,16 @@ public class TestUtil {
                                 for (Class<TestJobService> service : SERVICE_COMBINATIONS) {
                                     for (Bundle extras : getBundleCombinations()) {
                                         for (RetryStrategy rs : RETRY_STRATEGY_COMBINATIONS) {
-                                            //noinspection WrongConstant
-                                            jobs.add(builder
-                                                .setTag(tag)
-                                                .setRecurring(recurring)
-                                                .setReplaceCurrent(replaceCurrent)
-                                                .setConstraints(toIntArray(constraintList))
-                                                .setLifetime(lifetime)
-                                                .setTrigger(trigger)
-                                                .setService(service)
-                                                .setExtras(extras)
-                                                .setRetryStrategy(rs)
-                                                .build());
+                                            result.add(buildJobParam.build(
+                                                tag,
+                                                replaceCurrent,
+                                                constraintList,
+                                                recurring,
+                                                lifetime,
+                                                trigger,
+                                                service,
+                                                extras,
+                                                rs));
                                         }
                                     }
                                 }
@@ -134,13 +142,11 @@ public class TestUtil {
                 }
             }
         }
-
-        return jobs;
+        return result;
     }
 
     private static Bundle[] getBundleCombinations() {
         List<Bundle> bundles = new LinkedList<>();
-        bundles.add(null);
         bundles.add(new Bundle());
 
         Bundle b = new Bundle();
@@ -218,8 +224,69 @@ public class TestUtil {
         return new Builder(new ValidationEnforcer(new NoopJobValidator()));
     }
 
-    /** Advances the provided Looper. */
-    static void advanceLooper(Looper looper) {
-        shadowOf(looper).getScheduler().advanceBy(100);
+    /**
+     * Callback for testing.
+     */
+    public static final class NopCallback extends INetworkTaskCallback.Stub {
+        @Override
+        public void taskFinished(int result) throws RemoteException {
+            // nop
+        }
+    }
+
+    private static class JobInvocationBuilder implements
+            JobParameterBuilder<JobInvocation> {
+
+        @Override
+        public JobInvocation build(String tag, boolean replaceCurrent, List<Integer> constraintList,
+            boolean recurring, int lifetime, JobTrigger trigger, Class<TestJobService> service,
+            Bundle extras, RetryStrategy rs) {
+            //noinspection WrongConstant
+            return new JobInvocation.Builder()
+                    .setTag(tag)
+                    .setReplaceCurrent(replaceCurrent)
+                    .setRecurring(recurring)
+                    .setConstraints(toIntArray(constraintList))
+                    .setLifetime(lifetime)
+                    .setTrigger(trigger)
+                    .setService(service.getName())
+                    .addExtras(extras)
+                    .setRetryStrategy(rs)
+                    .build();
+        }
+    }
+
+    private static class JobBuilder implements JobParameterBuilder<Job> {
+
+        private final Builder builder;
+
+        public JobBuilder(Builder builder){
+            this.builder = builder;
+        }
+
+        @Override
+        public Job build(String tag, boolean replaceCurrent, List<Integer> constraintList,
+                boolean recurring, int lifetime, JobTrigger trigger, Class<TestJobService> service,
+                Bundle extras, RetryStrategy rs) {
+            //noinspection WrongConstant
+            return builder
+                    .setTag(tag)
+                    .setReplaceCurrent(replaceCurrent)
+                    .setRecurring(recurring)
+                    .setConstraints(toIntArray(constraintList))
+                    .setLifetime(lifetime)
+                    .setTrigger(trigger)
+                    .setService(service)
+                    .setExtras(extras)
+                    .setRetryStrategy(rs)
+                    .build();
+        }
+    }
+
+    private interface JobParameterBuilder<T extends JobParameters> {
+
+        T build(String tag, boolean replaceCurrent, List<Integer> constraintList, boolean recurring,
+                int lifetime, JobTrigger trigger, Class<TestJobService> service, Bundle extras,
+                RetryStrategy rs);
     }
 }

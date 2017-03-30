@@ -32,6 +32,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Locale;
 
 /**
  * JobService is the fundamental unit of work used in the JobDispatcher.
@@ -92,23 +93,42 @@ public abstract class JobService extends Service {
     /**
      * Called when the scheduling engine has decided to interrupt the execution of a running job,
      * most likely because the runtime constraints associated with the job are no longer satisfied.
+     * The job must stop execution.
      *
-     * @return whether the job should be retried
-     * @see Builder#setRetryStrategy(RetryStrategy)
+     * @return true if the job should be retried
+     * @see com.firebase.jobdispatcher.JobInvocation.Builder#setRetryStrategy(RetryStrategy)
      * @see RetryStrategy
      */
     public abstract boolean onStopJob(JobParameters job);
 
-    final void start(JobParameters job, Message msg) {
+    void start(JobParameters job, Message msg) {
         synchronized (runningJobs) {
-            runningJobs.put(job.getTag(), new JobCallback(job, msg));
-        }
+            if (runningJobs.containsKey(job.getTag())) {
+                Log.w(TAG, String
+                        .format(Locale.US, "Job with tag = %s was already running.", job.getTag()));
+                return;
+            }
+            runningJobs.put(job.getTag(), new JobCallback(msg));
 
-        boolean moreWork = onStartJob(job);
-        if (!moreWork) {
-            synchronized (runningJobs) {
+            boolean moreWork = onStartJob(job);
+            if (!moreWork) {
                 runningJobs.remove(job.getTag()).sendResult(RESULT_SUCCESS);
             }
+        }
+    }
+
+    void stop(JobInvocation job) {
+        synchronized (runningJobs) {
+            JobCallback jobCallback = runningJobs.remove(job.getTag());
+
+            if (jobCallback == null) {
+                if (Log.isLoggable(TAG, Log.DEBUG)) {
+                    Log.d(TAG, "Provided job has already been executed.");
+                }
+                return;
+            }
+            boolean shouldRetry = onStopJob(job);
+            jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
         }
     }
 
@@ -118,7 +138,7 @@ public abstract class JobService extends Service {
      * @param job
      * @param needsReschedule whether the job should be rescheduled
      *
-     * @see Builder#setRetryStrategy(RetryStrategy)
+     * @see com.firebase.jobdispatcher.JobInvocation.Builder#setRetryStrategy(RetryStrategy)
      */
     public final void jobFinished(@NonNull JobParameters job, boolean needsReschedule) {
         if (job == null) {
@@ -126,13 +146,12 @@ public abstract class JobService extends Service {
             return;
         }
 
-        JobCallback jobCallback;
         synchronized (runningJobs) {
-            jobCallback = runningJobs.remove(job.getTag());
-        }
+            JobCallback jobCallback = runningJobs.remove(job.getTag());
 
-        if (jobCallback != null) {
-            jobCallback.sendResult(needsReschedule ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
+            if (jobCallback != null) {
+                jobCallback.sendResult(needsReschedule ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
+            }
         }
     }
 
@@ -153,9 +172,9 @@ public abstract class JobService extends Service {
     public final boolean onUnbind(Intent intent) {
         synchronized (runningJobs) {
             for (int i = runningJobs.size() - 1; i >= 0; i--) {
-                JobCallback message = runningJobs.get(runningJobs.keyAt(i));
-                if (message != null) {
-                    message.sendResult(onStopJob(message.jobParameters)
+                JobCallback callback = runningJobs.get(runningJobs.keyAt(i));
+                if (callback != null) {
+                    callback.sendResult(onStopJob((JobParameters) callback.message.obj)
                         // returned true, would like to be rescheduled
                         ? RESULT_FAIL_RETRY
                         // returned false, but was interrupted so consider it a fail
@@ -200,11 +219,9 @@ public abstract class JobService extends Service {
     }
 
     private final static class JobCallback {
-        public final JobParameters jobParameters;
         public final Message message;
 
-        private JobCallback(JobParameters jobParameters, Message message) {
-            this.jobParameters = jobParameters;
+        private JobCallback(Message message) {
             this.message = message;
         }
 

@@ -124,6 +124,8 @@ public class GooglePlayDriverTest {
         assertEquals("com.google.android.gms.gcm.ACTION_SCHEDULE", broadcast.getAction());
         assertEquals("SCHEDULE_TASK", broadcast.getStringExtra("scheduler_action"));
         assertEquals("com.google.android.gms", broadcast.getPackage());
+        assertEquals(8, broadcast.getIntExtra("source", -1));
+        assertEquals(1, broadcast.getIntExtra("source_version", -1));
 
         final Parcelable parcelablePendingIntent = broadcast.getParcelableExtra("app");
         assertTrue("Expected 'app' value to be a PendingIntent",

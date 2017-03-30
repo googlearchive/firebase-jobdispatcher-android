@@ -18,11 +18,12 @@ package com.firebase.jobdispatcher;
 
 import static com.firebase.jobdispatcher.Constraint.compact;
 import static com.firebase.jobdispatcher.Constraint.uncompact;
+import static com.firebase.jobdispatcher.ExecutionDelegator.TAG;
 
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-
+import android.util.Log;
 /**
  * JobCoder is a tool to encode and decode JobSpecs from Bundles.
  */
@@ -30,17 +31,13 @@ import android.support.annotation.Nullable;
     private final boolean includeExtras;
     private final String prefix;
 
-    public JobCoder() {
-        this("", true);
-    }
-
-    public JobCoder(String prefix, boolean includeExtras) {
+    JobCoder(String prefix, boolean includeExtras) {
         this.includeExtras = includeExtras;
         this.prefix = prefix;
     }
 
     @NonNull
-    public Bundle encode(@NonNull JobParameters jobParameters, @NonNull Bundle data) {
+    Bundle encode(@NonNull JobParameters jobParameters, @NonNull Bundle data) {
         if (data == null) {
             throw new IllegalArgumentException("Unexpected null Bundle provided");
         }
@@ -69,8 +66,24 @@ import android.support.annotation.Nullable;
         return data;
     }
 
+    JobInvocation decodeIntentBundle(@NonNull Bundle bundle) {
+        if (bundle == null) {
+            Log.e(TAG, "Unexpected null Bundle provided");
+            return null;
+        }
+
+        Bundle taskExtras = bundle.getBundle(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS);
+        if (taskExtras == null) {
+            return null;
+        }
+
+        JobInvocation.Builder builder = decode(taskExtras);
+
+        return builder.build();
+    }
+
     @Nullable
-    public JobInvocation decode(@NonNull Bundle data) {
+    public JobInvocation.Builder decode(@NonNull Bundle data) {
         if (data == null) {
             throw new IllegalArgumentException("Unexpected null Bundle provided");
         }
@@ -90,15 +103,24 @@ import android.support.annotation.Nullable;
             return null;
         }
 
-        Bundle extras = includeExtras
-            ? data.getBundle(prefix + BundleProtocol.PACKED_PARAM_EXTRAS)
-            : null;
-
+        JobInvocation.Builder builder = new JobInvocation.Builder();
+        builder.setTag(tag);
+        builder.setService(service);
+        builder.setTrigger(trigger);
+        builder.setRetryStrategy(retryStrategy);
+        builder.setRecurring(recur);
         //noinspection WrongConstant
-        return new JobInvocation(
-            tag, service, trigger, retryStrategy, recur, lifetime, constraints, extras, replaceCur);
+        builder.setLifetime(lifetime);
+        //noinspection WrongConstant
+        builder.setConstraints(constraints);
+        builder.setReplaceCurrent(replaceCur);
+
+        // repack the taskExtras
+        builder.addExtras(data);
+        return builder;
     }
 
+    @NonNull
     private JobTrigger decodeTrigger(Bundle data) {
         switch (data.getInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_TYPE)) {
             case BundleProtocol.TRIGGER_TYPE_IMMEDIATE:
@@ -110,9 +132,11 @@ import android.support.annotation.Nullable;
                     data.getInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_WINDOW_END));
 
             default:
+                if (Log.isLoggable(TAG, Log.DEBUG)) {
+                    Log.d(TAG, "Unsupported trigger.");
+                }
                 return null;
         }
-
     }
 
     private void encodeTrigger(JobTrigger trigger, Bundle data) {
@@ -128,9 +152,10 @@ import android.support.annotation.Nullable;
                 t.getWindowStart());
             data.putInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_WINDOW_END,
                 t.getWindowEnd());
+        } else {
+            throw new IllegalArgumentException("Unsupported trigger.");
         }
     }
-
 
     private RetryStrategy decodeRetryStrategy(Bundle data) {
         int policy = data.getInt(prefix + BundleProtocol.PACKED_PARAM_RETRY_STRATEGY_POLICY);
