@@ -194,8 +194,8 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
     }
 
     /**
-     * @return true if the tag, the service, and the trigger of provided {@link JobInvocation} have
-     * the same values.
+     * @return true if the tag and the service of provided {@link JobInvocation} have the same
+     * values.
      */
     @Override
     public boolean equals(Object o) {
@@ -209,15 +209,13 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
         JobInvocation jobInvocation = (JobInvocation) o;
 
         return mTag.equals(jobInvocation.mTag)
-                && mService.equals(jobInvocation.mService)
-                && mTrigger.equals(jobInvocation.mTrigger);
+                && mService.equals(jobInvocation.mService);
     }
 
     @Override
     public int hashCode() {
         int result = mTag.hashCode();
         result = 31 * result + mService.hashCode();
-        result = 31 * result + mTrigger.hashCode();
         return result;
     }
 }

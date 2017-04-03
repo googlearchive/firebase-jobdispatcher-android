@@ -23,6 +23,7 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.os.Message;
 import android.support.annotation.IntDef;
+import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
@@ -84,10 +85,16 @@ public abstract class JobService extends Service {
 
     /**
      * The entry point to your Job. Implementations should offload work to another thread of
-     * execution as soon as possible.
+     * execution as soon as possible because this runs on the main thread. If work was offloaded,
+     * call {@link JobService#jobFinished(JobParameters, boolean)} to notify the scheduling service
+     * that the work is completed.
      *
-     * @return whether there is more work remaining.
+     * In order to reschedule use {@link JobService#jobFinished(JobParameters, boolean)}.
+     *
+     * @return {@code true} if there is more work remaining in the worker thread, {@code false} if
+     * the job was completed.
      */
+    @MainThread
     public abstract boolean onStartJob(JobParameters job);
 
     /**
@@ -99,8 +106,10 @@ public abstract class JobService extends Service {
      * @see com.firebase.jobdispatcher.JobInvocation.Builder#setRetryStrategy(RetryStrategy)
      * @see RetryStrategy
      */
+    @MainThread
     public abstract boolean onStopJob(JobParameters job);
 
+    @MainThread
     void start(JobParameters job, Message msg) {
         synchronized (runningJobs) {
             if (runningJobs.containsKey(job.getTag())) {
@@ -112,11 +121,15 @@ public abstract class JobService extends Service {
 
             boolean moreWork = onStartJob(job);
             if (!moreWork) {
-                runningJobs.remove(job.getTag()).sendResult(RESULT_SUCCESS);
+                JobCallback callback = runningJobs.remove(job.getTag());
+                if (callback != null) {
+                    callback.sendResult(RESULT_SUCCESS);
+                }
             }
         }
     }
 
+    @MainThread
     void stop(JobInvocation job) {
         synchronized (runningJobs) {
             JobCallback jobCallback = runningJobs.remove(job.getTag());
@@ -133,7 +146,8 @@ public abstract class JobService extends Service {
     }
 
     /**
-     * Called to indicate that execution of the provided {@code job} has completed.
+     * Callback to inform the scheduling driver that you've finished executing. Can be called from
+     * any thread. When the system receives this message, it will release the wakelock being held.
      *
      * @param job
      * @param needsReschedule whether the job should be rescheduled

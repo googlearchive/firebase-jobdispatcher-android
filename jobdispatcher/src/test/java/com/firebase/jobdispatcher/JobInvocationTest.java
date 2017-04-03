@@ -72,4 +72,12 @@ public class JobInvocationTest {
         assertNotEquals(jobInvocation, jobInvocationNew);
         assertNotEquals(jobInvocation.hashCode(), jobInvocationNew.hashCode());
     }
+
+    @Test
+    public void contract_hashCode_equals_triggerShouldBeIgnored() {
+        JobInvocation jobInvocation = builder.build();
+        JobInvocation periodic = builder.setTrigger(Trigger.executionWindow(0, 1)).build();
+        assertEquals(jobInvocation, periodic);
+        assertEquals(jobInvocation.hashCode(), periodic.hashCode());
+    }
 }
