@@ -238,6 +238,71 @@ public class JobServiceTest {
         assertEquals(message.arg1, JobService.RESULT_FAIL_RETRY);
     }
 
+    @Test
+    public void onStartJob_jobFinishedReschedule() {
+        // Verify that a retry request from within onStartJob will cause the retry result to be sent
+        // to the bouncer service's handler, regardless of what value is ultimately returned from
+        // onStartJob.
+        JobService reschedulingService = new JobService() {
+            @Override
+            public boolean onStartJob(JobParameters job) {
+                // Reschedules job.
+                jobFinished(job, true /* retry this job */);
+                return false;
+            }
+
+            @Override
+            public boolean onStopJob(JobParameters job) {
+                return false;
+            }
+        };
+
+        Job jobSpec = TestUtil.getBuilderWithNoopValidator()
+                .setTag("tag")
+                .setService(reschedulingService.getClass())
+                .setTrigger(Trigger.NOW)
+                .build();
+        Handler mock = mock(Handler.class);
+        Message message = new Message();
+        message.setTarget(mock);
+        reschedulingService.start(jobSpec, message);
+
+        verify(mock).sendMessage(message);
+        assertEquals(message.arg1, JobService.RESULT_FAIL_RETRY);
+    }
+
+    @Test
+    public void onStartJob_jobFinishedNotReschedule() {
+        // Verify that a termination request from within onStartJob will cause the result to be sent
+        // to the bouncer service's handler, regardless of what value is ultimately returned from
+        // onStartJob.
+        JobService reschedulingService = new JobService() {
+            @Override
+            public boolean onStartJob(JobParameters job) {
+                jobFinished(job, false /* don't retry this job */);
+                return false;
+            }
+
+            @Override
+            public boolean onStopJob(JobParameters job) {
+                return false;
+            }
+        };
+
+        Job jobSpec = TestUtil.getBuilderWithNoopValidator()
+                .setTag("tag")
+                .setService(reschedulingService.getClass())
+                .setTrigger(Trigger.NOW)
+                .build();
+        Handler mock = mock(Handler.class);
+        Message message = new Message();
+        message.setTarget(mock);
+        reschedulingService.start(jobSpec, message);
+
+        verify(mock).sendMessage(message);
+        assertEquals(message.arg1, JobService.RESULT_SUCCESS);
+    }
+
     public static class ExampleJobService extends JobService {
         @Override
         public boolean onStartJob(JobParameters job) {
