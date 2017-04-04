@@ -124,6 +124,18 @@ public class GooglePlayJobWriterTest {
     }
 
     @Test
+    public void testWriteToBundle_unmeteredConstraintShouldTakePrecendence() {
+        Bundle b = mWriter.writeToBundle(
+            initializeDefaultBuilder()
+                .setConstraints(Constraint.ON_ANY_NETWORK, Constraint.ON_UNMETERED_NETWORK)
+                .build(),
+            new Bundle());
+
+        assertEquals("expected ON_UNMETERED_NETWORK to take precendence over ON_ANY_NETWORK",
+            GooglePlayJobWriter.LEGACY_NETWORK_UNMETERED, b.getInt("requiredNetwork"));
+    }
+
+    @Test
     public void testWriteToBundle_requiresCharging() {
         assertTrue("requiresCharging", mWriter.writeToBundle(
             initializeDefaultBuilder().setConstraints(Constraint.DEVICE_CHARGING).build(),
