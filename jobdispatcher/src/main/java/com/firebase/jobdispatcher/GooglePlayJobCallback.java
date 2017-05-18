@@ -17,25 +17,40 @@
 package com.firebase.jobdispatcher;
 
 import android.os.IBinder;
+import android.os.Parcel;
 import android.os.RemoteException;
-import com.google.android.gms.gcm.INetworkTaskCallback;
 
 /**
  * Wraps the GooglePlay-specific callback class in a JobCallback-compatible interface.
  */
 /* package */ final class GooglePlayJobCallback implements JobCallback {
-    private final INetworkTaskCallback mCallback;
+
+    private static final String DESCRIPTOR = "com.google.android.gms.gcm.INetworkTaskCallback";
+    /** The only supported transaction ID. */
+    private static final int TRANSACTION_TASK_FINISHED = IBinder.FIRST_CALL_TRANSACTION + 1;
+
+    private final IBinder mRemote;
 
     public GooglePlayJobCallback(IBinder binder) {
-        mCallback = INetworkTaskCallback.Stub.asInterface(binder);
+        mRemote = binder;
     }
 
     @Override
     public void jobFinished(@JobService.JobResult int status) {
+        Parcel request = Parcel.obtain();
+        Parcel response = Parcel.obtain();
         try {
-            mCallback.taskFinished(status);
+            request.writeInterfaceToken(DESCRIPTOR);
+            request.writeInt(status);
+
+            mRemote.transact(TRANSACTION_TASK_FINISHED, request, response, 0);
+
+            response.readException();
         } catch (RemoteException e) {
             throw new RuntimeException(e);
+        } finally {
+            request.recycle();
+            response.recycle();
         }
     }
 }

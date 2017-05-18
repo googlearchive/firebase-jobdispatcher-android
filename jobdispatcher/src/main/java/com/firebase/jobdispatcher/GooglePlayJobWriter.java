@@ -30,6 +30,7 @@ import java.lang.annotation.RetentionPolicy;
     static final String REQUEST_PARAM_PERSISTED = "persisted";
     static final String REQUEST_PARAM_REQUIRED_NETWORK = "requiredNetwork";
     static final String REQUEST_PARAM_REQUIRES_CHARGING = "requiresCharging";
+    static final String REQUEST_PARAM_REQUIRES_IDLE = "requiresIdle";
     static final String REQUEST_PARAM_RETRY_STRATEGY = "retryStrategy";
     static final String REQUEST_PARAM_SERVICE = "service";
     static final String REQUEST_PARAM_TAG = "tag";
@@ -148,7 +149,8 @@ import java.lang.annotation.RetentionPolicy;
 
         b.putBoolean(REQUEST_PARAM_REQUIRES_CHARGING,
             (c & Constraint.DEVICE_CHARGING) == Constraint.DEVICE_CHARGING);
-
+        b.putBoolean(REQUEST_PARAM_REQUIRES_IDLE,
+            (c & Constraint.DEVICE_IDLE) == Constraint.DEVICE_IDLE);
         b.putInt(REQUEST_PARAM_REQUIRED_NETWORK, convertConstraintsToLegacyNetConstant(c));
     }
 

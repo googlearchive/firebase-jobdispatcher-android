@@ -22,40 +22,40 @@ import android.os.Parcelable;
 import android.support.annotation.Keep;
 
 /**
- * Parcelable class to wrap the binder we send to the client over IPC.
- *
- * @hide
+ * Parcelable class to wrap the binder we send to the client over IPC. Only included for the benefit
+ * of tests.
  */
 @Keep
 public final class PendingCallback implements Parcelable {
-    public static final Creator<PendingCallback> CREATOR = new Creator<PendingCallback>() {
+  public static final Creator<PendingCallback> CREATOR =
+      new Creator<PendingCallback>() {
         @Override
         public PendingCallback createFromParcel(Parcel parcel) {
-            return new PendingCallback(parcel);
+          return new PendingCallback(parcel);
         }
 
         @Override
         public PendingCallback[] newArray(int i) {
-            return new PendingCallback[i];
+          return new PendingCallback[i];
         }
-    };
-    private final IBinder mBinder;
+      };
+  private final IBinder mBinder;
 
-    public PendingCallback(Parcel in) {
-        mBinder = in.readStrongBinder();
-    }
+  public PendingCallback(Parcel in) {
+    mBinder = in.readStrongBinder();
+  }
 
-    public IBinder getIBinder() {
-        return mBinder;
-    }
+  public IBinder getIBinder() {
+    return mBinder;
+  }
 
-    @Override
-    public int describeContents() {
-        return 0;
-    }
+  @Override
+  public int describeContents() {
+    return 0;
+  }
 
-    @Override
-    public void writeToParcel(Parcel parcel, int flags) {
-        parcel.writeStrongBinder(mBinder);
-    }
+  @Override
+  public void writeToParcel(Parcel parcel, int flags) {
+    parcel.writeStrongBinder(mBinder);
+  }
 }

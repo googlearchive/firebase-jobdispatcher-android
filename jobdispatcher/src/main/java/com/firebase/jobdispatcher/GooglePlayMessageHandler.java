@@ -96,7 +96,7 @@ class GooglePlayMessageHandler extends Handler {
 
         GooglePlayMessengerCallback messengerCallback =
                 new GooglePlayMessengerCallback(replyTo, tag);
-        JobInvocation jobInvocation = googlePlayReceiver.prepareJob(data, messengerCallback);
+        JobInvocation jobInvocation = googlePlayReceiver.prepareJob(messengerCallback, data);
         googlePlayReceiver.getExecutionDelegator().executeJob(jobInvocation);
     }
 

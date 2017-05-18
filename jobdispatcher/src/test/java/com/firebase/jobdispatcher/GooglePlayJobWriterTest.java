@@ -152,6 +152,22 @@ public class GooglePlayJobWriterTest {
     }
 
     @Test
+    public void testWriteToBundle_requiresIdle() {
+        assertTrue("requiresIdle", mWriter.writeToBundle(
+            initializeDefaultBuilder().setConstraints(Constraint.DEVICE_IDLE).build(),
+            new Bundle()).getBoolean("requiresIdle"));
+
+        for (Integer constraint : Arrays.asList(
+            Constraint.ON_ANY_NETWORK,
+            Constraint.ON_UNMETERED_NETWORK)) {
+
+            assertFalse("requiresIdle", mWriter.writeToBundle(
+                initializeDefaultBuilder().setConstraints(constraint).build(),
+                new Bundle()).getBoolean("requiresIdle"));
+        }
+    }
+
+    @Test
     public void testWriteToBundle_retryPolicy() {
         assertEquals("retry_policy",
             GooglePlayJobWriter.LEGACY_RETRY_POLICY_EXPONENTIAL,

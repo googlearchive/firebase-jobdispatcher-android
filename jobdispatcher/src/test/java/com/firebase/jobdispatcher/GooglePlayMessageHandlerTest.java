@@ -86,7 +86,7 @@ public class GooglePlayMessageHandlerTest {
         doThrow(new SecurityException()).when(appOpsManager)
                 .checkPackage(message.sendingUid, GooglePlayDriver.BACKEND_PACKAGE);
         handler.handleMessage(message);
-        verify(receiverMock, never()).prepareJob(eq(data), any(GooglePlayMessengerCallback.class));
+        verify(receiverMock, never()).prepareJob(any(GooglePlayMessengerCallback.class), eq(data));
     }
 
     @Test
@@ -97,7 +97,7 @@ public class GooglePlayMessageHandlerTest {
 
         handler.handleMessage(message);
         verify(receiverMock, never())
-                .prepareJob(any(Bundle.class), any(GooglePlayMessengerCallback.class));
+                .prepareJob(any(GooglePlayMessengerCallback.class), any(Bundle.class));
     }
 
     @Test
@@ -112,7 +112,7 @@ public class GooglePlayMessageHandlerTest {
                 .setTag("tag")
                 .setService(TestJobService.class.getName())
                 .setTrigger(Trigger.NOW).build();
-        when(receiverMock.prepareJob(eq(data), any(GooglePlayMessengerCallback.class)))
+        when(receiverMock.prepareJob(any(GooglePlayMessengerCallback.class), eq(data)))
                 .thenReturn(jobInvocation);
 
         handler.handleMessage(message);

@@ -43,8 +43,15 @@ public final class Constraint {
      */
     public static final int DEVICE_CHARGING = 1 << 2;
 
+    /**
+     * Only run the job when the device is idle. This is ignored for devices that don't expose the
+     * concept of an idle state.
+     */
+    public static final int DEVICE_IDLE = 1 << 3;
+
     @VisibleForTesting
-    static final int[] ALL_CONSTRAINTS = {ON_ANY_NETWORK, ON_UNMETERED_NETWORK, DEVICE_CHARGING};
+    static final int[] ALL_CONSTRAINTS = {
+      ON_ANY_NETWORK, ON_UNMETERED_NETWORK, DEVICE_CHARGING, DEVICE_IDLE};
 
     /** Constraint shouldn't ever be instantiated. */
     private Constraint() {}
@@ -56,6 +63,7 @@ public final class Constraint {
         ON_ANY_NETWORK,
         ON_UNMETERED_NETWORK,
         DEVICE_CHARGING,
+        DEVICE_IDLE,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface JobConstraint {}

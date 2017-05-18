@@ -28,6 +28,7 @@ import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.support.v4.util.SimpleArrayMap;
 import android.util.Log;
+import android.util.Pair;
 import com.firebase.jobdispatcher.JobService.JobResult;
 
 /**
@@ -156,16 +157,16 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
         }
 
         // get the callback first. If we don't have this we can't talk back to the backend.
-        JobCallback callback = callbackExtractor.extractCallback(intentExtras);
-        if (callback == null) {
+        Pair<JobCallback, Bundle> extraction = callbackExtractor.extractCallback(intentExtras);
+        if (extraction == null) {
             Log.i(TAG, "no callback found");
             return null;
         }
-        return prepareJob(intentExtras, callback);
+        return prepareJob(extraction.first, extraction.second);
     }
 
     @Nullable
-    JobInvocation prepareJob(Bundle bundle, JobCallback callback) {
+    JobInvocation prepareJob(JobCallback callback, Bundle bundle) {
         JobInvocation job = prefixedCoder.decodeIntentBundle(bundle);
         if (job == null) {
             Log.e(TAG, "unable to decode job");

@@ -72,7 +72,7 @@ public class GooglePlayReceiverTest {
 
     @Test
     public void prepareJob_messenger() {
-        JobInvocation jobInvocation = receiver.prepareJob(new Bundle(), callbackMock);
+        JobInvocation jobInvocation = receiver.prepareJob(callbackMock, new Bundle());
         assertNull(jobInvocation);
         verify(callbackMock).jobFinished(JobService.RESULT_FAIL_NORETRY);
     }

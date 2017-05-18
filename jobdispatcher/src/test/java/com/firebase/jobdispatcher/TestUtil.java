@@ -24,10 +24,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.Job.Builder;
-import com.google.android.gms.gcm.INetworkTaskCallback;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -163,7 +161,9 @@ public class TestUtil {
         assertNotNull("output", output);
 
         assertEquals("isRecurring()", input.isRecurring(), output.isRecurring());
-        assertEquals("shouldReplaceCurrent()", input.shouldReplaceCurrent(), output.shouldReplaceCurrent());
+        assertEquals("shouldReplaceCurrent()",
+            input.shouldReplaceCurrent(),
+            output.shouldReplaceCurrent());
         assertEquals("getLifetime()", input.getLifetime(), output.getLifetime());
         assertEquals("getTag()", input.getTag(), output.getTag());
         assertEquals("getService()", input.getService(), output.getService());
@@ -222,16 +222,6 @@ public class TestUtil {
     @NonNull
     public static Builder getBuilderWithNoopValidator() {
         return new Builder(new ValidationEnforcer(new NoopJobValidator()));
-    }
-
-    /**
-     * Callback for testing.
-     */
-    public static final class NopCallback extends INetworkTaskCallback.Stub {
-        @Override
-        public void taskFinished(int result) throws RemoteException {
-            // nop
-        }
     }
 
     private static class JobInvocationBuilder implements

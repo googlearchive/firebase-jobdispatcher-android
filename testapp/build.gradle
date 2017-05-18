@@ -23,19 +23,12 @@ android {
     dataBinding {
         enabled = true
     }
-
-    productFlavors {
-        noDep
-        withGcmDep
-    }
 }
 
 dependencies {
-    noDepCompile project(path: ':jobdispatcher', configuration: 'noDepRelease')
-    withGcmDepCompile project(path: ':jobdispatcher', configuration: 'withGcmDepRelease')
-
     testCompile 'junit:junit:4.12'
 
+    compile project(path: ':jobdispatcher')
     compile "com.android.support:appcompat-v7:${project.ext.supportLibraryVersion}"
     compile "com.android.support:support-v4:${project.ext.supportLibraryVersion}"
     compile "com.android.support:recyclerview-v7:${project.ext.supportLibraryVersion}"

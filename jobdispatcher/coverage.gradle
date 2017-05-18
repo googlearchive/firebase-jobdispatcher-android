@@ -21,16 +21,16 @@ android {
 // ignore these when generating coverage
 def ignoredPrefixes = ['R$', 'R.class', 'BuildConfig.class']
 
-task coverage(type: JacocoReport, dependsOn: ["testNoDepDebugUnitTest"]) {
+task coverage(type: JacocoReport, dependsOn: ["testDebugUnitTest"]) {
     group = "Reports"
     description = "Generate a coverage report"
 
     classDirectories = fileTree(
-        dir: "${project.buildDir}/intermediates/classes/noDep/debug/com/firebase/",
+        dir: "${project.buildDir}/intermediates/classes/debug/com/firebase/",
         exclude: { d -> ignoredPrefixes.any { p -> d.file.name.startsWith(p) } }
     )
     sourceDirectories = files(["src/main/java/com/firebase/"])
-    executionData = files("${project.buildDir}/jacoco/testNoDepDebugUnitTest.exec")
+    executionData = files("${project.buildDir}/jacoco/testDebugUnitTest.exec")
 
     reports {
         xml.enabled = true
