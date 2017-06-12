@@ -23,9 +23,12 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import android.os.Binder;
 import android.os.Bundle;
+import android.os.Parcel;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.Job.Builder;
+import com.google.android.gms.gcm.PendingCallback;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -222,6 +225,52 @@ public class TestUtil {
     @NonNull
     public static Builder getBuilderWithNoopValidator() {
         return new Builder(new ValidationEnforcer(new NoopJobValidator()));
+    }
+
+    public static class TransactionArguments {
+        public final int code;
+        public final Parcel data;
+        public final int flags;
+
+        public TransactionArguments(int code, Parcel data, int flags) {
+            this.code = code;
+            this.data = data;
+            this.flags = flags;
+        }
+    }
+
+    public static class InspectableBinder extends Binder {
+        private final List<TransactionArguments> transactionArguments = new LinkedList<>();
+
+        public InspectableBinder() {}
+
+        @Override
+        protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
+            transactionArguments.add(new TransactionArguments(code, copyParcel(data), flags));
+            return true;
+        }
+
+        public PendingCallback toPendingCallback() {
+            Parcel container = Parcel.obtain();
+            try {
+                container.writeStrongBinder(this);
+                container.setDataPosition(0);
+                return new PendingCallback(container);
+            } finally {
+                container.recycle();
+            }
+        }
+
+        private Parcel copyParcel(Parcel data) {
+            Parcel clone = Parcel.obtain();
+            clone.appendFrom(data, 0, data.dataSize());
+            clone.setDataPosition(0);
+            return clone;
+        }
+
+        public List<TransactionArguments> getArguments() {
+            return Collections.unmodifiableList(transactionArguments);
+        }
     }
 
     private static class JobInvocationBuilder implements

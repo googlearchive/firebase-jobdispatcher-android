@@ -20,13 +20,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Pair;
-import com.google.android.gms.gcm.PendingCallback;
+import com.firebase.jobdispatcher.TestUtil.InspectableBinder;
+import com.firebase.jobdispatcher.TestUtil.TransactionArguments;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -76,20 +76,9 @@ public final class GooglePlayCallbackExtractorTest {
 
     @Test
     public void testExtractCallback_goodParcelable() {
-        Object[] results = new Object[4];
-        Binder binder = new Binder() {
-          @Override
-          protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
-            results[0] = code;
-            results[1] = copyParcel(data);
-            results[2] = copyParcel(reply);
-            results[3] = flags;
-            return true;
-          }
-        };
-
+        InspectableBinder binder = new InspectableBinder();
         Bundle validBundle = new Bundle();
-        validBundle.putParcelable("callback", getPendingCallback(binder));
+        validBundle.putParcelable("callback", binder.toPendingCallback());
 
         Pair<JobCallback, Bundle> extraction = extractCallback(validBundle);
         assertNotNull(extraction);
@@ -98,23 +87,16 @@ public final class GooglePlayCallbackExtractorTest {
         extraction.first.jobFinished(JobService.RESULT_SUCCESS);
 
         // Check our homemade Binder is doing the right things:
+        TransactionArguments args = binder.getArguments().get(0);
         // Should have set the transaction code:
-        assertEquals("transaction code", IBinder.FIRST_CALL_TRANSACTION + 1, (int) results[0]);
-        Parcel data = (Parcel) results[1];
+        assertEquals("transaction code", IBinder.FIRST_CALL_TRANSACTION + 1, args.code);
 
         // strong mode bit
-        data.readInt();
+        args.data.readInt();
         // interface token
-        assertEquals("com.google.android.gms.gcm.INetworkTaskCallback", data.readString());
+        assertEquals("com.google.android.gms.gcm.INetworkTaskCallback", args.data.readString());
         // result
-        assertEquals("result", JobService.RESULT_SUCCESS, data.readInt());
-    }
-
-    private Parcel copyParcel(Parcel data) {
-        Parcel clone = Parcel.obtain();
-        clone.appendFrom(data, 0, data.dataSize());
-        clone.setDataPosition(0);
-        return clone;
+        assertEquals("result", JobService.RESULT_SUCCESS, args.data.readInt());
     }
 
     @Test
@@ -123,23 +105,12 @@ public final class GooglePlayCallbackExtractorTest {
         validBundle.putString("foo", "bar");
         validBundle.putInt("bar", 3);
         validBundle.putParcelable("parcelable", new Bundle());
-        validBundle.putParcelable("callback", getPendingCallback(new Binder() {}));
+        validBundle.putParcelable("callback", new InspectableBinder().toPendingCallback());
 
         Pair<JobCallback, Bundle> extraction = extractCallback(validBundle);
         assertNotNull(extraction);
         assertEquals("should have stripped the 'callback' entry from the extracted bundle",
                 3, extraction.second.keySet().size());
-    }
-
-    private PendingCallback getPendingCallback(IBinder binder) {
-        Parcel container = Parcel.obtain();
-        try {
-            container.writeStrongBinder(binder);
-            container.setDataPosition(0);
-            return new PendingCallback(container);
-        } finally {
-            container.recycle();
-        }
     }
 
     private Pair<JobCallback, Bundle> extractCallback(Bundle bundle) {

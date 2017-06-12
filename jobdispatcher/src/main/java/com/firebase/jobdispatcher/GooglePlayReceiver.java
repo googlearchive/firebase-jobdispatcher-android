@@ -71,6 +71,11 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
     private ExecutionDelegator executionDelegator;
 
     /**
+     * The most recent startId passed to onStartCommand. Guarded by {@link #lock}.
+     */
+    private int latestStartId;
+
+    /**
      * Endpoint (String) -> Tag (String) -> JobCallback
      */
     private SimpleArrayMap<String, SimpleArrayMap<String, JobCallback>> callbacks =
@@ -106,8 +111,9 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
             return START_NOT_STICKY;
         } finally {
             synchronized (this) {
+                latestStartId = startId;
                 if (callbacks.isEmpty()) {
-                    stopSelf(startId);
+                    stopSelf(latestStartId);
                 }
             }
         }
@@ -173,7 +179,7 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
             sendResultSafely(callback, JobService.RESULT_FAIL_NORETRY);
             return null;
         }
-        synchronized (this) {
+        synchronized (lock) {
             SimpleArrayMap<String, JobCallback> map = callbacks.get(job.getService());
             if (map == null) {
                 map = new SimpleArrayMap<>(1);
@@ -187,22 +193,31 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
     }
 
     @Override
-    public synchronized void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
-        SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
-        if (map == null) {
-            return;
-        }
+    public void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
+        synchronized (lock) {
+            try {
+                SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
+                if (map == null) {
+                    return;
+                }
 
-        JobCallback callback = map.remove(js.getTag());
-        if (callback != null) {
-            if (Log.isLoggable(TAG, Log.VERBOSE)) {
-                Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
+                JobCallback callback = map.remove(js.getTag());
+                if (callback != null) {
+                    if (Log.isLoggable(TAG, Log.VERBOSE)) {
+                        Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
+                    }
+                    sendResultSafely(callback, result);
+                }
+
+                if (map.isEmpty()) {
+                    callbacks.remove(js.getService());
+                }
+            } finally {
+                if (callbacks.isEmpty()) {
+                    // Safe to call stopSelf, even if we're being bound to
+                    stopSelf(latestStartId);
+                }
             }
-            sendResultSafely(callback, result);
-        }
-
-        if (map.isEmpty()) {
-            callbacks.remove(js.getService());
         }
     }
 
