@@ -31,7 +31,7 @@ android {
 
 dependencies {
     testCompile 'junit:junit:4.12'
-    testCompile 'org.robolectric:robolectric:3.1.2'
+    testCompile 'org.robolectric:robolectric:3.3.2'
     testCompile 'org.mockito:mockito-core:2.2.5'
     compile "com.android.support:support-v4:${project.ext.supportLibraryVersion}"
 }
@@ -75,67 +75,81 @@ publishing {
     }
 
     publications {
-        "dispatcherLibrary"(MavenPublication) {
-            artifactId "firebase-jobdispatcher"
-            groupId project.ext.group
-            version project.ext.version
+        // The initial FJD releases had two artifacts; one for users that
+        // already had a dependency on the gcm client library and one for users
+        // that didn't. There's no longer a need for these two variants, but we
+        // continue to produce the -with-gcm-dep version (identical to the
+        // standard artifact) to prevent breaking clients.
+        //
+        // TODO(ciarandowney): add a deprecation notice pointing users to the
+        //                     regular version
+        [
+          standardArtifact: "firebase-jobdispatcher",
+          legacyArtifact: "firebase-jobdispatcher-with-gcm-dep",
+        ].each { key, value ->
+            "dispatcherLibrary${key.capitalize()}"(MavenPublication) {
+                artifactId value
+                groupId project.ext.group
+                version project.ext.version
 
-            // Add the AAR artifact
-            artifact("${buildDir}/outputs/aar/jobdispatcher-release.aar") {
-                // wrap in a closure because this task isn't defined 'till
-                // the android plugin finishes
-                builtBy { tasks["bundleRelease"] }
-            }
-            // Add the sources and javadoc JARs
-            artifact sourcesJar
-            artifact javadocsJar
-
-            // Define the POM file programatically
-            pom.withXml {
-                def n = asNode()
-
-                n.appendNode("description", artifactDesc)
-                n.appendNode("inceptionYear", 2016)
-
-                def licensesNode = n.appendNode("licenses")
-                def licenseNode = licensesNode.appendNode("license")
-                licenseNode.appendNode("name", project.ext.licenseName)
-                licenseNode.appendNode("url", project.ext.licenseUrl)
-                licenseNode.appendNode("distribution", project.ext.licenseDist)
-
-                def developersNode = n.appendNode("developers")
-                def devNode = developersNode.appendNode("developer")
-                devNode.appendNode("id", "firebase")
-                devNode.appendNode("name", "Firebase")
-                devNode.appendNode("email", "support@firebase.com")
-                devNode.appendNode("url", "https://firebase.com/")
-                devNode.appendNode("organization", "Firebase")
-                devNode.appendNode("organizationUrl", "https://firebase.com/")
-                def rolesNode = devNode.appendNode("roles")
-                rolesNode.appendNode("role", "architect")
-                rolesNode.appendNode("role", "developer")
-
-                def scmNode = n.appendNode("scm")
-                scmNode.appendNode("url", project.ext.scmUrl)
-                scmNode.appendNode("connection", project.ext.scmConnection)
-                scmNode.appendNode("developerConnection", project.ext.scmDevConnection)
-
-                def depsNode = n.getAt("dependencies")[0]
-                if (depsNode == null) {
-                    depsNode = n.appendNode("dependencies")
+                // Add the AAR artifact
+                artifact("${buildDir}/outputs/aar/jobdispatcher-release.aar") {
+                    // wrap in a closure because this task isn't defined 'till
+                    // the android plugin finishes
+                    builtBy { tasks["bundleRelease"] }
                 }
+                // Add the sources and javadoc JARs
+                artifact sourcesJar
+                artifact javadocsJar
 
-                def addDep = {
-                    def dependencyNode = depsNode.appendNode('dependency')
-                    dependencyNode.appendNode('groupId', it.group)
-                    dependencyNode.appendNode('artifactId', it.name)
-                    dependencyNode.appendNode('version', it.version)
+                // Define the POM file programatically
+                pom.withXml {
+                    def n = asNode()
+
+                    n.appendNode("description", artifactDesc)
+                    n.appendNode("inceptionYear", 2016)
+
+                    def licensesNode = n.appendNode("licenses")
+                    def licenseNode = licensesNode.appendNode("license")
+                    licenseNode.appendNode("name", project.ext.licenseName)
+                    licenseNode.appendNode("url", project.ext.licenseUrl)
+                    licenseNode.appendNode("distribution", project.ext.licenseDist)
+
+                    def developersNode = n.appendNode("developers")
+                    def devNode = developersNode.appendNode("developer")
+                    devNode.appendNode("id", "firebase")
+                    devNode.appendNode("name", "Firebase")
+                    devNode.appendNode("email", "support@firebase.com")
+                    devNode.appendNode("url", "https://firebase.com/")
+                    devNode.appendNode("organization", "Firebase")
+                    devNode.appendNode("organizationUrl", "https://firebase.com/")
+                    def rolesNode = devNode.appendNode("roles")
+                    rolesNode.appendNode("role", "architect")
+                    rolesNode.appendNode("role", "developer")
+
+                    def scmNode = n.appendNode("scm")
+                    scmNode.appendNode("url", project.ext.scmUrl)
+                    scmNode.appendNode("connection", project.ext.scmConnection)
+                    scmNode.appendNode("developerConnection", project.ext.scmDevConnection)
+
+                    def depsNode = n.getAt("dependencies")[0]
+                    if (depsNode == null) {
+                        depsNode = n.appendNode("dependencies")
+                    }
+
+                    def addDep = {
+                        def dependencyNode = depsNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                        dependencyNode.appendNode('type', 'aar')
+                    }
+
+                    // add deps that everyone has
+                    configurations.compile.allDependencies.each addDep
+                    // add config specific deps
+                    configurations["releaseCompile"].allDependencies.each addDep
                 }
-
-                // add deps that everyone has
-                configurations.compile.allDependencies.each addDep
-                // add config specific deps
-                configurations["releaseCompile"].allDependencies.each addDep
             }
         }
     }
@@ -146,7 +160,9 @@ afterEvaluate {
         user = findProperty("BINTRAY_USER") ?: System.getenv("BINTRAY_USER")
         key = findProperty("BINTRAY_KEY") ?: System.getenv("BINTRAY_KEY")
 
-        publications = ["dispatcherNoDepLibrary", "dispatcherWithGcmDepLibrary"]
+        publications = [
+            "dispatcherLibraryStandardArtifact",
+            "dispatcherLibraryLegacyArtifact"]
 
         pkg {
             userOrg = "firebase"

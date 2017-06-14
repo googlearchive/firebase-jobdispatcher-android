@@ -23,7 +23,8 @@ public class ExtendedShadowParcel extends ShadowParcel {
     // Map each IBinder to an integer, and use the super's int-writing capability to fake Binder
     // read/writes.
     private final AtomicInteger nextBinderId = new AtomicInteger(1);
-    private final Map<Integer, IBinder> binderMap = Collections.synchronizedMap(new HashMap<>());
+    private final Map<Integer, IBinder> binderMap =
+            Collections.synchronizedMap(new HashMap<Integer, IBinder>());
 
     @Implementation
     public void writeStrongBinder(IBinder binder) {

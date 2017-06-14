@@ -93,7 +93,7 @@ public final class FirebaseJobDispatcher {
 
     /**
      * Attempts to schedule the provided Job.
-     * <p/>
+     * <p>
      * Returns one of the SCHEDULE_RESULT_ constants.
      */
     @ScheduleResult
@@ -107,7 +107,7 @@ public final class FirebaseJobDispatcher {
 
     /**
      * Attempts to cancel the Job that matches the provided tag and endpoint.
-     * <p/>
+     * <p>
      * Returns one of the CANCEL_RESULT_ constants.
      */
     @CancelResult
@@ -121,7 +121,7 @@ public final class FirebaseJobDispatcher {
 
     /**
      * Attempts to cancel all Jobs registered for this package.
-     * <p/>
+     * <p>
      * Returns one of the CANCEL_RESULT_ constants.
      */
     @CancelResult
