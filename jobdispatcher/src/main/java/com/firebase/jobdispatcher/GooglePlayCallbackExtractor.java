@@ -17,6 +17,7 @@
 package com.firebase.jobdispatcher;
 
 import android.annotation.SuppressLint;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
@@ -89,8 +90,9 @@ import java.util.ArrayList;
 
         try {
             int length = serialized.readInt();
-            if (length == 0) {
-                // Empty Bundle
+            if (length <= 0) {
+              // Empty Bundle
+                Log.w(TAG, ERROR_NULL_CALLBACK);
                 return null;
             }
 
@@ -103,7 +105,11 @@ import java.util.ArrayList;
 
             int numEntries = serialized.readInt();
             for (int i = 0; i < numEntries; i++) {
-                String entryKey = serialized.readString();
+                String entryKey = readKey(serialized);
+                if (entryKey == null) {
+                  continue;
+                }
+
                 if (!(callback == null && BUNDLE_KEY_CALLBACK.equals(entryKey))) {
                     // If it's not the 'callback' key, we can just read it using the standard
                     // mechanisms because we're not afraid of rogue BadParcelableExceptions.
@@ -166,5 +172,29 @@ import java.util.ArrayList;
         data.writeToParcel(serialized, 0);
         serialized.setDataPosition(0);
         return serialized;
+    }
+
+    /**
+     * Reads the next key (String) from the provided {@code serialized} Parcel.
+     *
+     * <p>Naively using {@link Parcel#readString()} fails on versions of Android older than L,
+     * whereas {@link Parcel#readValue(ClassLoader)} works on older versions but fails on anything L
+     * or newer.
+     */
+    private String readKey(Parcel serialized) {
+        // Newer platforms require readString()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return serialized.readString();
+        }
+
+        // Older platforms require readValue
+        Object entryKeyObj = serialized.readValue(null /* Use the system ClassLoader */);
+        if (!(entryKeyObj instanceof String)) {
+            // Should never happen (Bundle keys are always Strings)
+            Log.w(TAG, ERROR_INVALID_CALLBACK);
+            return null;
+        }
+
+        return (String) entryKeyObj;
     }
 }
