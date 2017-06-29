@@ -8,39 +8,29 @@ sudo: required
 
 env:
     matrix:
-        - ANDROID_TARGET=android-15 ANDROID_ABI=armeabi-v7a
         - ANDROID_TARGET=android-16 ANDROID_ABI=armeabi-v7a
         - ANDROID_TARGET=android-17 ANDROID_ABI=armeabi-v7a
         - ANDROID_TARGET=android-18 ANDROID_ABI=armeabi-v7a
         - ANDROID_TARGET=android-19 ANDROID_ABI=armeabi-v7a
-        - ANDROID_TARGET=android-20 ANDROID_ABI=armeabi-v7a
         - ANDROID_TARGET=android-21 ANDROID_ABI=armeabi-v7a
-        - ANDROID_TARGET=android-22 ANDROID_ABI=armeabi-v7a
-        - ANDROID_TARGET=android-23 ANDROID_ABI=armeabi-v7a
-        - ANDROID_TARGET=android-24 ANDROID_ABI=armeabi-v7a
     global:
         - ADB_INSTALL_TIMEOUT=10 # Default is 2 minutes, bump to 10
 
 android:
     components:
+        - tools
+        - platform-tools
         - android-25
         - build-tools-25.0.0
-        - platform-tools
-        - tools
 
         - extra-android-m2repository
         - extra-google-m2repository
 
-        - sys-img-armeabi-v7a-android-15
         - sys-img-armeabi-v7a-android-16
         - sys-img-armeabi-v7a-android-17
         - sys-img-armeabi-v7a-android-18
         - sys-img-armeabi-v7a-android-19
-        - sys-img-armeabi-v7a-android-20
         - sys-img-armeabi-v7a-android-21
-        - sys-img-armeabi-v7a-android-22
-        - sys-img-armeabi-v7a-android-23
-        - sys-img-armeabi-v7a-android-24
 
 # "avoid uploading the cache after every build"
 before_cache:
@@ -67,4 +57,4 @@ script:
     # Simulate hitting the menu button
     - adb shell input keyevent 82 &
     # Build the library + run unit tests, run device tests, build the test app
-    - ./gradlew jobdispatcher:build jobdispatcher:connectedCheck testapp:assemble
+    - ./gradlew jobdispatcher:build testapp:assemble
