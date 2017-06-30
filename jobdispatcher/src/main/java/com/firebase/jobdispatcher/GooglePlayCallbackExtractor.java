@@ -17,7 +17,6 @@
 package com.firebase.jobdispatcher;
 
 import android.annotation.SuppressLint;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
@@ -48,6 +47,9 @@ import java.util.ArrayList;
     private static final int BUNDLE_MAGIC = 0x4C444E42;
     /** A magic number that indicates the following value is a Parcelable. */
     private static final int VAL_PARCELABLE = 4;
+
+    // GuardedBy("GooglePlayCallbackExtractor.class")
+    private static Boolean shouldReadKeysAsStringsCached = null;
 
     public Pair<JobCallback, Bundle> extractCallback(@Nullable Bundle data) {
         if (data == null) {
@@ -167,7 +169,7 @@ import java.util.ArrayList;
         }
     }
 
-    private Parcel toParcel(Bundle data) {
+    private static Parcel toParcel(Bundle data) {
         Parcel serialized = Parcel.obtain();
         data.writeToParcel(serialized, 0);
         serialized.setDataPosition(0);
@@ -182,8 +184,7 @@ import java.util.ArrayList;
      * or newer.
      */
     private String readKey(Parcel serialized) {
-        // Newer platforms require readString()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (shouldReadKeysAsStrings()) {
             return serialized.readString();
         }
 
@@ -196,5 +197,51 @@ import java.util.ArrayList;
         }
 
         return (String) entryKeyObj;
+    }
+
+    /**
+     * Checks whether {@link Parcel#readString()} or {@link Parcel#readValue()} should be used to
+     * access Bundle keys from a serialized Parcel. Commit {@link
+     * https://android.googlesource.com/platform/frameworks/base/+/9c3e74f
+     * I57bda9eb79ceaaa9c1b94ad49d9e462b52102149} (which only officially landed in Lollipop) changed
+     * from using writeValue to writeString for Bundle keys. Some OEMs have pulled this change into
+     * their KitKat fork, so we can't trust the SDK version check. Instead, we'll write a dummy
+     * Bundle to a Parcel and figure it out using that.
+     *
+     * The check is cached because the result can't change during runtime.
+     */
+    private static synchronized boolean shouldReadKeysAsStrings() {
+        // We're pretty sure that readString() should always be used on L+, but if we shortcircuit
+        // this check then we have no evidence that this code is functioning correctly on KitKat
+        // devices that have the corresponding writeString() change.
+        if (shouldReadKeysAsStringsCached == null) {
+            final String expectedKey = "key";
+            Bundle testBundle = new Bundle();
+            testBundle.putString(expectedKey, "value");
+            Parcel testParcel = toParcel(testBundle);
+            try {
+                // length
+                checkCondition(testParcel.readInt() > 0);
+                // magic
+                checkCondition(testParcel.readInt() == BUNDLE_MAGIC);
+                // num entries
+                checkCondition(testParcel.readInt() == 1);
+
+                shouldReadKeysAsStringsCached = expectedKey.equals(testParcel.readString());
+            } catch (RuntimeException e) {
+                shouldReadKeysAsStringsCached = Boolean.FALSE;
+            } finally {
+                testParcel.recycle();
+            }
+        }
+
+        return shouldReadKeysAsStringsCached;
+    }
+
+    /** Throws an {@code IllegalStateException} if {@code condition} is false. */
+    private static void checkCondition(boolean condition) {
+        if (!condition) {
+            throw new IllegalStateException();
+        }
     }
 }
