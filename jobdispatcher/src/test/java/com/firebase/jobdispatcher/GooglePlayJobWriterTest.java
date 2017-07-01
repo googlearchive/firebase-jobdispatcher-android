@@ -124,6 +124,18 @@ public class GooglePlayJobWriterTest {
     }
 
     @Test
+    public void testWriteToBundle_unmeteredConstraintShouldTakePrecendence() {
+        Bundle b = mWriter.writeToBundle(
+            initializeDefaultBuilder()
+                .setConstraints(Constraint.ON_ANY_NETWORK, Constraint.ON_UNMETERED_NETWORK)
+                .build(),
+            new Bundle());
+
+        assertEquals("expected ON_UNMETERED_NETWORK to take precendence over ON_ANY_NETWORK",
+            GooglePlayJobWriter.LEGACY_NETWORK_UNMETERED, b.getInt("requiredNetwork"));
+    }
+
+    @Test
     public void testWriteToBundle_requiresCharging() {
         assertTrue("requiresCharging", mWriter.writeToBundle(
             initializeDefaultBuilder().setConstraints(Constraint.DEVICE_CHARGING).build(),
@@ -136,6 +148,22 @@ public class GooglePlayJobWriterTest {
             assertFalse("requiresCharging", mWriter.writeToBundle(
                 initializeDefaultBuilder().setConstraints(constraint).build(),
                 new Bundle()).getBoolean("requiresCharging"));
+        }
+    }
+
+    @Test
+    public void testWriteToBundle_requiresIdle() {
+        assertTrue("requiresIdle", mWriter.writeToBundle(
+            initializeDefaultBuilder().setConstraints(Constraint.DEVICE_IDLE).build(),
+            new Bundle()).getBoolean("requiresIdle"));
+
+        for (Integer constraint : Arrays.asList(
+            Constraint.ON_ANY_NETWORK,
+            Constraint.ON_UNMETERED_NETWORK)) {
+
+            assertFalse("requiresIdle", mWriter.writeToBundle(
+                initializeDefaultBuilder().setConstraints(constraint).build(),
+                new Bundle()).getBoolean("requiresIdle"));
         }
     }
 

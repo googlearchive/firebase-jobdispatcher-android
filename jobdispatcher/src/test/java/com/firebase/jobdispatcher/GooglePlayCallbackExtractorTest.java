@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
@@ -23,8 +24,9 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
-import com.firebase.jobdispatcher.TestUtil.NopCallback;
-import com.google.android.gms.gcm.PendingCallback;
+import android.util.Pair;
+import com.firebase.jobdispatcher.TestUtil.InspectableBinder;
+import com.firebase.jobdispatcher.TestUtil.TransactionArguments;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,7 +36,12 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(
+    constants = BuildConfig.class,
+    manifest = Config.NONE,
+    sdk = 23,
+    shadows = {ExtendedShadowParcel.class}
+)
 public final class GooglePlayCallbackExtractorTest {
     @Mock
     private IBinder mBinder;
@@ -56,7 +63,7 @@ public final class GooglePlayCallbackExtractorTest {
     @Test
     public void testExtractCallback_nullParcelable() {
         Bundle emptyBundle = new Bundle();
-        assertNull(mExtractor.extractCallback(emptyBundle));
+        assertNull(extractCallback(emptyBundle));
     }
 
     @Test
@@ -64,24 +71,53 @@ public final class GooglePlayCallbackExtractorTest {
         Bundle misconfiguredBundle = new Bundle();
         misconfiguredBundle.putParcelable("callback", new BadParcelable(1));
 
-        assertNull(mExtractor.extractCallback(misconfiguredBundle));
+        assertNull(extractCallback(misconfiguredBundle));
     }
 
     @Test
     public void testExtractCallback_goodParcelable() {
-        Parcel container = Parcel.obtain();
-        container.writeStrongBinder(new NopCallback());
-        PendingCallback pcb = new PendingCallback(container);
-
+        InspectableBinder binder = new InspectableBinder();
         Bundle validBundle = new Bundle();
-        validBundle.putParcelable("callback", pcb);
+        validBundle.putParcelable("callback", binder.toPendingCallback());
 
-        assertNotNull(mExtractor.extractCallback(validBundle));
+        Pair<JobCallback, Bundle> extraction = extractCallback(validBundle);
+        assertNotNull(extraction);
+        assertEquals("should have stripped the 'callback' entry from the extracted bundle",
+                0, extraction.second.keySet().size());
+        extraction.first.jobFinished(JobService.RESULT_SUCCESS);
 
-        container.recycle();
+        // Check our homemade Binder is doing the right things:
+        TransactionArguments args = binder.getArguments().get(0);
+        // Should have set the transaction code:
+        assertEquals("transaction code", IBinder.FIRST_CALL_TRANSACTION + 1, args.code);
+
+        // strong mode bit
+        args.data.readInt();
+        // interface token
+        assertEquals("com.google.android.gms.gcm.INetworkTaskCallback", args.data.readString());
+        // result
+        assertEquals("result", JobService.RESULT_SUCCESS, args.data.readInt());
     }
 
-    private final static class BadParcelable implements Parcelable {
+    @Test
+    public void testExtractCallback_extraMapValues() {
+        Bundle validBundle = new Bundle();
+        validBundle.putString("foo", "bar");
+        validBundle.putInt("bar", 3);
+        validBundle.putParcelable("parcelable", new Bundle());
+        validBundle.putParcelable("callback", new InspectableBinder().toPendingCallback());
+
+        Pair<JobCallback, Bundle> extraction = extractCallback(validBundle);
+        assertNotNull(extraction);
+        assertEquals("should have stripped the 'callback' entry from the extracted bundle",
+                3, extraction.second.keySet().size());
+    }
+
+    private Pair<JobCallback, Bundle> extractCallback(Bundle bundle) {
+        return mExtractor.extractCallback(bundle);
+    }
+
+    private static final class BadParcelable implements Parcelable {
         public static final Parcelable.Creator<BadParcelable> CREATOR
             = new Parcelable.Creator<BadParcelable>() {
                 @Override

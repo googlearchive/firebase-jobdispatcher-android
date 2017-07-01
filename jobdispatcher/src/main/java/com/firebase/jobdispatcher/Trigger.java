@@ -16,10 +16,9 @@
 
 package com.firebase.jobdispatcher;
 
-
 /**
  * Generally, a Trigger is an object that can answer the question, "is this job ready to run?"
- * <p/>
+ * <p>
  * More specifically, a Trigger is an opaque, abstract class used to root the type hierarchy.
  */
 public final class Trigger {
@@ -27,7 +26,7 @@ public final class Trigger {
     /**
      * Immediate is a Trigger that's immediately available. The Job will be run as soon as the
      * runtime constraints are satisfied.
-     * <p/>
+     * <p>
      * It is invalid to schedule an Immediate with a recurring Job.
      */
     public final static JobTrigger.ImmediateTrigger NOW = new JobTrigger.ImmediateTrigger();

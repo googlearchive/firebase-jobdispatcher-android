@@ -18,17 +18,26 @@ package com.firebase.jobdispatcher;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNull;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import android.app.Service;
 import android.content.Intent;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Messenger;
 import com.firebase.jobdispatcher.GooglePlayReceiverTest.ShadowMessenger;
+import com.firebase.jobdispatcher.TestUtil.InspectableBinder;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
@@ -63,16 +72,19 @@ public class GooglePlayReceiverTest {
     IBinder binderMock;
     @Mock
     JobCallback callbackMock;
+    @Mock
+    ExecutionDelegator executionDelegatorMock;
 
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-        receiver = new GooglePlayReceiver();
+        receiver = spy(new GooglePlayReceiver());
+        when(receiver.getExecutionDelegator()).thenReturn(executionDelegatorMock);
     }
 
     @Test
     public void prepareJob_messenger() {
-        JobInvocation jobInvocation = receiver.prepareJob(new Bundle(), callbackMock);
+        JobInvocation jobInvocation = receiver.prepareJob(callbackMock, new Bundle());
         assertNull(jobInvocation);
         verify(callbackMock).jobFinished(JobService.RESULT_FAIL_NORETRY);
     }
@@ -105,5 +117,71 @@ public class GooglePlayReceiverTest {
         Intent intent = new Intent(GooglePlayReceiver.ACTION_EXECUTE);
         IBinder binder = receiver.onBind(intent);
         assertNull(binder);
+    }
+
+    @Test
+    public void onStartCommand_nullIntent() {
+        assertResultWasStartNotSticky(receiver.onStartCommand(null, 0, 101));
+        verify(receiver).stopSelf(101);
+    }
+
+    @Test
+    public void onStartCommand_initAction() {
+        Intent initIntent = new Intent("com.google.android.gms.gcm.SERVICE_ACTION_INITIALIZE");
+        assertResultWasStartNotSticky(receiver.onStartCommand(initIntent, 0, 101));
+        verify(receiver).stopSelf(101);
+    }
+
+    @Test
+    public void onStartCommand_unknownAction() {
+        Intent unknownIntent = new Intent("com.example.foo.bar");
+        assertResultWasStartNotSticky(receiver.onStartCommand(unknownIntent, 0, 101));
+        assertResultWasStartNotSticky(receiver.onStartCommand(unknownIntent, 0, 102));
+        assertResultWasStartNotSticky(receiver.onStartCommand(unknownIntent, 0, 103));
+
+        InOrder inOrder = inOrder(receiver);
+        inOrder.verify(receiver).stopSelf(101);
+        inOrder.verify(receiver).stopSelf(102);
+        inOrder.verify(receiver).stopSelf(103);
+    }
+
+    @Test
+    public void onStartCommand_executeActionWithEmptyExtras() {
+        Intent execIntent = new Intent("com.google.android.gms.gcm.ACTION_TASK_READY");
+        assertResultWasStartNotSticky(receiver.onStartCommand(execIntent, 0, 101));
+        verify(receiver).stopSelf(101);
+    }
+
+    @Test
+    public void onStartCommand_executeAction() {
+        JobInvocation job = new JobInvocation.Builder()
+            .setTag("tag")
+            .setService("com.example.foo.FooService")
+            .setTrigger(Trigger.NOW)
+            .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+            .setLifetime(Lifetime.UNTIL_NEXT_BOOT)
+            .setConstraints(new int[]{Constraint.DEVICE_IDLE})
+            .build();
+
+        Intent execIntent = new Intent("com.google.android.gms.gcm.ACTION_TASK_READY")
+            .putExtra("extras", new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true)
+                .encode(job, new Bundle()))
+            .putExtra("callback", new InspectableBinder().toPendingCallback());
+
+        when(executionDelegatorMock.executeJob(any(JobInvocation.class))).thenReturn(true);
+
+        assertResultWasStartNotSticky(receiver.onStartCommand(execIntent, 0, 101));
+
+        verify(receiver, never()).stopSelf(anyInt());
+        verify(executionDelegatorMock).executeJob(any(JobInvocation.class));
+
+        receiver.onJobFinished(job, JobService.RESULT_SUCCESS);
+
+        verify(receiver).stopSelf(101);
+    }
+
+    private void assertResultWasStartNotSticky(int result) {
+        assertEquals(
+            "Result for onStartCommand wasn't START_NOT_STICKY", Service.START_NOT_STICKY, result);
     }
 }

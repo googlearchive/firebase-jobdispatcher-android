@@ -32,8 +32,9 @@ public final class Constraint {
     public static final int ON_UNMETERED_NETWORK = 1;
 
     /**
-     * Only run the job when a network connection is available.
-     * If both this and ON_UNMETERED_NETWORK is provided, ON_ANY_NETWORK will take precedence.
+     * Only run the job when a network connection is available. If both this and
+     * {@link #ON_UNMETERED_NETWORK} is provided, {@link #ON_UNMETERED_NETWORK} will take
+     * precedence.
      */
     public static final int ON_ANY_NETWORK = 1 << 1;
 
@@ -42,8 +43,15 @@ public final class Constraint {
      */
     public static final int DEVICE_CHARGING = 1 << 2;
 
+    /**
+     * Only run the job when the device is idle. This is ignored for devices that don't expose the
+     * concept of an idle state.
+     */
+    public static final int DEVICE_IDLE = 1 << 3;
+
     @VisibleForTesting
-    static final int[] ALL_CONSTRAINTS = {ON_ANY_NETWORK, ON_UNMETERED_NETWORK, DEVICE_CHARGING};
+    static final int[] ALL_CONSTRAINTS = {
+      ON_ANY_NETWORK, ON_UNMETERED_NETWORK, DEVICE_CHARGING, DEVICE_IDLE};
 
     /** Constraint shouldn't ever be instantiated. */
     private Constraint() {}
@@ -55,6 +63,7 @@ public final class Constraint {
         ON_ANY_NETWORK,
         ON_UNMETERED_NETWORK,
         DEVICE_CHARGING,
+        DEVICE_IDLE,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface JobConstraint {}

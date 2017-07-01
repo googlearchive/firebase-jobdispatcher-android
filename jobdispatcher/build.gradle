@@ -13,9 +13,10 @@ android {
         targetSdkVersion project.ext.compileSdk
         versionCode 1
         versionName project.ext.version
+        testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
     }
 
-    defaultPublishConfig "noDepRelease"
+    defaultPublishConfig "release"
     publishNonDefault true
 
     buildTypes {
@@ -28,34 +29,32 @@ android {
         }
     }
 
-    productFlavors {
-        withGcmDep
-        noDep
+    sourceSets {
+        // A set of testing helpers that are shared across test types
+        testLib     { java.srcDir("src/main") }
+        test        { java.srcDir("src/testLib") } // Robolectric tests
+        androidTest { java.srcDir("src/testLib") } // Android (e2e) tests
     }
 }
 
 dependencies {
-    testCompile 'junit:junit:4.12'
-    testCompile 'org.robolectric:robolectric:3.1.2'
-    testCompile 'org.mockito:mockito-core:2.2.5'
+    // The main library only depends on the Android support lib
     compile "com.android.support:support-v4:${project.ext.supportLibraryVersion}"
-    // In a perfect world we'd have these dependencies totally handled by the
-    // Android plugin using a combination of "provided" (compile-time only) and
-    // "package" (runtime only) rules:
-    //
-    // noDepCompile project(":gcm_defs")
-    // withGcmDepProvided project(":gcm_defs")
-    //
-    // Unfortunately this doesn't work. We can't import the same project with
-    // different visibility settings because the Android plugin reuses the
-    // same identifier when it creates the necessary backing rules, so we get a
-    // dupe rule error.
-    //
-    // So, instead we mark the gcm_defs as provided (compile-time only) and
-    // manually copy the required classes into the noDep flavor (below).
-    provided project(':gcm_defs')
-    // the withGcmDep version has an explicit dependency on the GCM library.
-    withGcmDepCompile "com.google.android.gms:play-services-gcm:10.0.1"
+
+    def junit = 'junit:junit:4.12'
+    def robolectric = 'org.robolectric:robolectric:3.3.2'
+
+    // The common test library uses JUnit
+    testLibCompile junit
+
+    // The unit tests are written using JUnit, Robolectric, and Mockito
+    testCompile junit
+    testCompile robolectric
+    testCompile 'org.mockito:mockito-core:2.2.5'
+
+    // The Android (e2e) tests are written using JUnit and the test support lib
+    androidTestCompile junit
+    androidTestCompile 'com.android.support.test:runner:0.5'
 }
 
 task javadocs(type: Javadoc) {
@@ -84,22 +83,8 @@ task aar(dependsOn: "assembleRelease") {
 }
 
 // Artifact descriptions (surfaced in JCenter / Maven)
-def noDepDesc = "The Firebase JobDispatcher is a library that provides a common" +
+def artifactDesc = "The Firebase JobDispatcher is a library that provides a common" +
     " interface to scheduling engines on Android."
-def withGcmDepDesc = noDepDesc + " This version should be used by anyone with a" +
-    " dependency on the legacy GCM library (com.google.android.gms:play-services-gcm)."
-
-// Maps flavors to descriptions + artifacts
-def flavorsToPublicationsMap = [
-    noDep: [
-        description: noDepDesc,
-        artifactId: "firebase-jobdispatcher",
-    ],
-    withGcmDep: [
-        description: withGcmDepDesc,
-        artifactId: "firebase-jobdispatcher-with-gcm-dep",
-    ],
-]
 
 publishing {
     repositories {
@@ -111,18 +96,28 @@ publishing {
     }
 
     publications {
-        // Create a new MavenPublication for each of the flavors (noDep, withGcmDep)
-        android.productFlavors.each { flavor ->
-            "dispatcher${flavor.name.capitalize()}Library"(MavenPublication) {
-                artifactId flavorsToPublicationsMap[flavor.name].artifactId
+        // The initial FJD releases had two artifacts; one for users that
+        // already had a dependency on the gcm client library and one for users
+        // that didn't. There's no longer a need for these two variants, but we
+        // continue to produce the -with-gcm-dep version (identical to the
+        // standard artifact) to prevent breaking clients.
+        //
+        // TODO(ciarandowney): add a deprecation notice pointing users to the
+        //                     regular version
+        [
+          standardArtifact: "firebase-jobdispatcher",
+          legacyArtifact: "firebase-jobdispatcher-with-gcm-dep",
+        ].each { key, value ->
+            "dispatcherLibrary${key.capitalize()}"(MavenPublication) {
+                artifactId value
                 groupId project.ext.group
                 version project.ext.version
 
                 // Add the AAR artifact
-                artifact("${buildDir}/outputs/aar/jobdispatcher-${flavor.name}-release.aar") {
+                artifact("${buildDir}/outputs/aar/jobdispatcher-release.aar") {
                     // wrap in a closure because this task isn't defined 'till
                     // the android plugin finishes
-                    builtBy { tasks["bundle${flavor.name.capitalize()}Release"] }
+                    builtBy { tasks["bundleRelease"] }
                 }
                 // Add the sources and javadoc JARs
                 artifact sourcesJar
@@ -132,7 +127,7 @@ publishing {
                 pom.withXml {
                     def n = asNode()
 
-                    n.appendNode("description", flavorsToPublicationsMap[flavor.name].description)
+                    n.appendNode("description", artifactDesc)
                     n.appendNode("inceptionYear", 2016)
 
                     def licensesNode = n.appendNode("licenses")
@@ -168,76 +163,27 @@ publishing {
                         dependencyNode.appendNode('groupId', it.group)
                         dependencyNode.appendNode('artifactId', it.name)
                         dependencyNode.appendNode('version', it.version)
+                        dependencyNode.appendNode('type', 'aar')
                     }
 
                     // add deps that everyone has
                     configurations.compile.allDependencies.each addDep
                     // add config specific deps
-                    configurations["${flavor.name}Compile"].allDependencies.each addDep
+                    configurations["releaseCompile"].allDependencies.each addDep
                 }
             }
         }
     }
 }
 
-// Merges required classes into the resulting AAR (UberJAR style). Without
-// this, the classes from gcm_defs wouldn't be packed into the AAR. We also
-// need to make sure that the withGcmDeps flavor doesn't include the GCM
-// parcelables.
 afterEvaluate {
-    android.productFlavors.each { flavor ->
-        android.buildTypes.each { bt ->
-            def artifactName = "gcm_defs-release"
-            def jarDestDir = "${buildDir}/intermediates/libs/${flavor.name}/${bt.name}/libs"
-            def unpackedDestDir = "${buildDir}/unpacked/${artifactName}"
-
-            def copyLibs = task("copy${flavor.name.capitalize()}${bt.name.capitalize()}Libs",
-                                 type: Copy) {
-                description "Copies gcm_defs aar into the build dir"
-
-                from configurations.provided
-                include "${artifactName}.aar"
-                into jarDestDir
-            }
-
-            def unzipClasses = task("unzip${flavor.name.capitalize()}${bt.name.capitalize()}Libs",
-                                     type: Copy, dependsOn: copyLibs) {
-                description "Unzips the copied gcm_defs aar contents"
-
-                from zipTree("${jarDestDir}/${artifactName}.aar")
-                into unpackedDestDir
-            }
-
-            def syncClasses = task("sync${flavor.name.capitalize()}${bt.name.capitalize()}Libs",
-                                    type: Copy, dependsOn: unzipClasses) {
-                description "Merges the copied gcm_defs classes with the aar classes"
-
-                from(zipTree("${unpackedDestDir}/classes.jar")) {
-                    exclude "**/BuildConfig.class"
-
-                    if (flavor.name == "withGcmDep") {
-                        // Parcelable included unobfuscated in the GCM lib
-                        exclude "**/com/google/android/gms/gcm/PendingCallback*.class"
-
-                        // AIDL-derived IBinder that's obfuscated in the GCM
-                        // lib, so we don't have to (and shouldn't) strip our
-                        // copy because it doesn't conflict.
-                        // exclude "**/com/google/android/gms/gcm/INetworkTaskCallback*.class"
-                    }
-                }
-                into "${buildDir}/intermediates/classes/${flavor.name}/${bt.name}"
-            }
-
-            def jarTask = tasks["process${flavor.name.capitalize()}${bt.name.capitalize()}JavaRes"]
-            jarTask.dependsOn syncClasses
-        }
-    }
-
     bintray {
         user = findProperty("BINTRAY_USER") ?: System.getenv("BINTRAY_USER")
         key = findProperty("BINTRAY_KEY") ?: System.getenv("BINTRAY_KEY")
 
-        publications = ["dispatcherNoDepLibrary", "dispatcherWithGcmDepLibrary"]
+        publications = [
+            "dispatcherLibraryStandardArtifact",
+            "dispatcherLibraryLegacyArtifact"]
 
         pkg {
             userOrg = "firebase"

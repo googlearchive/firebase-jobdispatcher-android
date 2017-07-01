@@ -35,7 +35,7 @@ import java.util.Locale;
 
 /**
  * Validates Jobs according to some safe standards.
- * <p/>
+ * <p>
  * Custom JobValidators should typically extend from this.
  */
 public class DefaultJobValidator implements JobValidator {
@@ -139,7 +139,7 @@ public class DefaultJobValidator implements JobValidator {
     /**
      * Attempts to validate the provided Trigger. If valid, null is returned. Otherwise a list of
      * errors will be returned.
-     * <p/>
+     * <p>
      * Note that a Trigger that passes validation here is not necessarily valid in all permutations
      * of a JobParameters. For example, an Immediate is never valid for a recurring job.
      * @param trigger

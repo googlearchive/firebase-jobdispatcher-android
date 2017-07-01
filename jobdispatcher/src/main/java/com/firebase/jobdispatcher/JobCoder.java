@@ -24,6 +24,7 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
+
 /**
  * JobCoder is a tool to encode and decode JobSpecs from Bundles.
  */
