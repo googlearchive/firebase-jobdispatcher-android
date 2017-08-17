@@ -255,12 +255,12 @@ public class TestUtil {
     @NonNull
     static Bundle encodeRecurringContentUriJob(ContentUriTrigger trigger, JobCoder coder) {
         Job job = getBuilderWithNoopValidator()
-            .setTag(TAG)
-            .setTrigger(trigger)
-            .setService(TestJobService.class)
-            .setReplaceCurrent(true)
-            .setRecurring(true)
-            .build();
+                .setTag(TAG)
+                .setTrigger(trigger)
+                .setService(TestJobService.class)
+                .setReplaceCurrent(true)
+                .setRecurring(true)
+                .build();
         return coder.encode(job, new Bundle());
     }
 

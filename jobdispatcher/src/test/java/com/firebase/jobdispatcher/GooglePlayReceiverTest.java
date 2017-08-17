@@ -193,6 +193,28 @@ public class GooglePlayReceiverTest {
     }
 
     @Test
+    public void prepareJob() {
+        Intent intent = new Intent();
+
+        JobCoder jobCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+        Bundle encode = encodeContentUriJob(getContentUriTrigger(), jobCoder);
+        intent.putExtra(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
+
+        Parcel container = Parcel.obtain();
+        container.writeStrongBinder(new Binder());
+        PendingCallback pcb = new PendingCallback(container);
+        intent.putExtra("callback", pcb);
+
+        ArrayList<Uri> uris = new ArrayList<>();
+        uris.add(ContactsContract.AUTHORITY_URI);
+        uris.add(Media.EXTERNAL_CONTENT_URI);
+        intent.putParcelableArrayListExtra(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, uris);
+
+        JobInvocation jobInvocation = receiver.prepareJob(intent);
+        assertEquals(jobInvocation.getTriggerReason().getTriggeredContentUris(), uris);
+    }
+
+    @Test
     public void prepareJob_messenger() {
         JobInvocation jobInvocation = receiver.prepareJob(callbackMock, new Bundle());
         assertNull(jobInvocation);

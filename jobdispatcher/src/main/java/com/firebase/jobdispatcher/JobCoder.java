@@ -175,7 +175,8 @@ import org.json.JSONObject;
             data.putInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_WINDOW_END,
                 t.getWindowEnd());
         } else if (trigger instanceof JobTrigger.ContentUriTrigger) {
-            data.putInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_TYPE,
+            data.putInt(
+                prefix + BundleProtocol.PACKED_PARAM_TRIGGER_TYPE,
                 BundleProtocol.TRIGGER_TYPE_CONTENT_URI);
             ContentUriTrigger uriTrigger = (ContentUriTrigger) trigger;
             String jsonTrigger = convertObservedUrisToJsonString(uriTrigger.getUris());
@@ -228,7 +229,7 @@ import org.json.JSONObject;
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
-      return contentUris.toString();
+        return contentUris.toString();
     }
 
     @NonNull
