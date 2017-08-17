@@ -79,4 +79,8 @@ public interface JobParameters {
      * Whether the Job should replace a pre-existing Job with the same tag.
      */
     boolean shouldReplaceCurrent();
+
+    /** @return A {@link TriggerReason} that - if non null - describes why the job was triggered. */
+    @Nullable
+    TriggerReason getTriggerReason();
 }

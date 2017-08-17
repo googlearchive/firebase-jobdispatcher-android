@@ -16,6 +16,8 @@
 
 package com.firebase.jobdispatcher;
 
+import java.util.List;
+
 /**
  * Contains all supported triggers.
  */
@@ -52,4 +54,17 @@ public class JobTrigger {
             return mWindowEnd;
         }
     }
+
+    /** A trigger that will be triggered on content update for any of provided uris. */
+    public static final class ContentUriTrigger extends JobTrigger {
+        private final List<ObservedUri> uris;
+
+        /* package */ ContentUriTrigger(List<ObservedUri> uris) {
+            this.uris = uris;
+        }
+
+        public List<ObservedUri> getUris() {
+            return uris;
+        }
+  }
 }

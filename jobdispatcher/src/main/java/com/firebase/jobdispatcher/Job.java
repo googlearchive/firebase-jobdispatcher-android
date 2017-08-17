@@ -83,6 +83,12 @@ public final class Job implements JobParameters {
         return mReplaceCurrent;
     }
 
+    @Nullable
+    @Override
+    public TriggerReason getTriggerReason() {
+        return null;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -337,6 +343,12 @@ public final class Job implements JobParameters {
         @Override
         public boolean shouldReplaceCurrent() {
             return mReplaceCurrent;
+        }
+
+        @Nullable
+        @Override
+        public TriggerReason getTriggerReason() {
+            return null;
         }
     }
 }

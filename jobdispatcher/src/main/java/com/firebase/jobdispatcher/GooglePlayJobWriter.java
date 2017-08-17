@@ -16,9 +16,11 @@
 
 package com.firebase.jobdispatcher;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.IntDef;
 import android.support.annotation.VisibleForTesting;
+import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
 import com.firebase.jobdispatcher.RetryStrategy.RetryPolicy;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -84,6 +86,22 @@ import java.lang.annotation.RetentionPolicy;
         b.putLong(REQUEST_PARAM_TRIGGER_WINDOW_END, 30);
     }
 
+    private void writeContentUriTriggerToBundle(Bundle data, ContentUriTrigger uriTrigger) {
+        data.putInt(BundleProtocol.PACKED_PARAM_TRIGGER_TYPE,
+            BundleProtocol.TRIGGER_TYPE_CONTENT_URI);
+
+        int size = uriTrigger.getUris().size();
+        int[] flagsArray = new int[size];
+        Uri[] uriArray = new Uri[size];
+        for (int i = 0; i < size; i++) {
+            ObservedUri uri = uriTrigger.getUris().get(i);
+            flagsArray[i] = uri.getFlags();
+            uriArray[i] = uri.getUri();
+        }
+        data.putIntArray(BundleProtocol.PACKED_PARAM_CONTENT_URI_FLAGS_ARRAY, flagsArray);
+        data.putParcelableArray(BundleProtocol.PACKED_PARAM_CONTENT_URI_ARRAY, uriArray);
+    }
+
     public Bundle writeToBundle(JobParameters job, Bundle b) {
         b.putString(REQUEST_PARAM_TAG, job.getTag());
         b.putBoolean(REQUEST_PARAM_UPDATE_CURRENT, job.shouldReplaceCurrent());
@@ -139,6 +157,8 @@ import java.lang.annotation.RetentionPolicy;
             writeImmediateTriggerToBundle(b);
         } else if (trigger instanceof JobTrigger.ExecutionWindowTrigger) {
             writeExecutionWindowTriggerToBundle(job, b, (JobTrigger.ExecutionWindowTrigger) trigger);
+        } else if (trigger instanceof JobTrigger.ContentUriTrigger) {
+            writeContentUriTriggerToBundle(b, (JobTrigger.ContentUriTrigger) trigger);
         } else {
             throw new IllegalArgumentException("Unknown trigger: " + trigger.getClass());
         }

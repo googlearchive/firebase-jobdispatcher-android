@@ -16,6 +16,8 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.TestUtil.encodeContentUriJob;
+import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNull;
 import static org.mockito.Mockito.any;
@@ -28,12 +30,19 @@ import static org.mockito.Mockito.when;
 
 import android.app.Service;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Binder;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Messenger;
+import android.os.Parcel;
+import android.provider.ContactsContract;
+import android.provider.MediaStore.Images.Media;
 import com.firebase.jobdispatcher.GooglePlayReceiverTest.ShadowMessenger;
 import com.firebase.jobdispatcher.TestUtil.InspectableBinder;
+import com.google.android.gms.gcm.PendingCallback;
+import java.util.ArrayList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -83,10 +92,49 @@ public class GooglePlayReceiverTest {
     }
 
     @Test
+    public void prepareJob() {
+        Intent intent = new Intent();
+
+        JobCoder jobCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+        Bundle encode = encodeContentUriJob(getContentUriTrigger(), jobCoder);
+        intent.putExtra(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
+
+        Parcel container = Parcel.obtain();
+        container.writeStrongBinder(new Binder());
+        PendingCallback pcb = new PendingCallback(container);
+        intent.putExtra("callback", pcb);
+
+        ArrayList<Uri> uris = new ArrayList<>();
+        uris.add(ContactsContract.AUTHORITY_URI);
+        uris.add(Media.EXTERNAL_CONTENT_URI);
+        intent.putParcelableArrayListExtra(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, uris);
+
+        JobInvocation jobInvocation = receiver.prepareJob(intent);
+        assertEquals(jobInvocation.getTriggerReason().getTriggeredContentUris(), uris);
+    }
+
+    @Test
     public void prepareJob_messenger() {
         JobInvocation jobInvocation = receiver.prepareJob(callbackMock, new Bundle());
         assertNull(jobInvocation);
         verify(callbackMock).jobFinished(JobService.RESULT_FAIL_NORETRY);
+    }
+
+    @Test
+    public void prepareJob_messenger_noExtras() {
+        Bundle bundle = new Bundle();
+
+        JobCoder jobCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+        Bundle encode = encodeContentUriJob(getContentUriTrigger(), jobCoder);
+        bundle.putBundle(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
+
+        ArrayList<Uri> uris = new ArrayList<>();
+        uris.add(ContactsContract.AUTHORITY_URI);
+        uris.add(Media.EXTERNAL_CONTENT_URI);
+        bundle.putParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, uris);
+
+        JobInvocation jobInvocation = receiver.prepareJob(callbackMock, bundle);
+        assertEquals(jobInvocation.getTriggerReason().getTriggeredContentUris(), uris);
     }
 
     @Test

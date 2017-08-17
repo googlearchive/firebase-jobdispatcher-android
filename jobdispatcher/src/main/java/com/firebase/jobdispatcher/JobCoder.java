@@ -20,10 +20,18 @@ import static com.firebase.jobdispatcher.Constraint.compact;
 import static com.firebase.jobdispatcher.Constraint.uncompact;
 import static com.firebase.jobdispatcher.ExecutionDelegator.TAG;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * JobCoder is a tool to encode and decode JobSpecs from Bundles.
@@ -31,6 +39,9 @@ import android.util.Log;
 /* package */ final class JobCoder {
     private final boolean includeExtras;
     private final String prefix;
+
+    private static final String JSON_URI_FLAGS = "uri_flags";
+    private static final String JSON_URIS = "uris";
 
     JobCoder(String prefix, boolean includeExtras) {
         this.includeExtras = includeExtras;
@@ -80,6 +91,11 @@ import android.util.Log;
 
         JobInvocation.Builder builder = decode(taskExtras);
 
+        List<Uri> triggeredContentUris =
+                bundle.getParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS);
+        if (triggeredContentUris != null) {
+            builder.setTriggerReason(new TriggerReason(triggeredContentUris));
+        }
         return builder.build();
     }
 
@@ -132,6 +148,11 @@ import android.util.Log;
                     data.getInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_WINDOW_START),
                     data.getInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_WINDOW_END));
 
+            case BundleProtocol.TRIGGER_TYPE_CONTENT_URI:
+                String uris = data.getString(prefix + BundleProtocol.PACKED_PARAM_OBSERVED_URI);
+                List<ObservedUri> observedUris = convertJsonToObservedUris(uris);
+                return Trigger.contentUriTrigger(Collections.unmodifiableList(observedUris));
+
             default:
                 if (Log.isLoggable(TAG, Log.DEBUG)) {
                     Log.d(TAG, "Unsupported trigger.");
@@ -153,6 +174,12 @@ import android.util.Log;
                 t.getWindowStart());
             data.putInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_WINDOW_END,
                 t.getWindowEnd());
+        } else if (trigger instanceof JobTrigger.ContentUriTrigger) {
+            data.putInt(prefix + BundleProtocol.PACKED_PARAM_TRIGGER_TYPE,
+                BundleProtocol.TRIGGER_TYPE_CONTENT_URI);
+            ContentUriTrigger uriTrigger = (ContentUriTrigger) trigger;
+            String jsonTrigger = convertObservedUrisToJsonString(uriTrigger.getUris());
+            data.putString(prefix + BundleProtocol.PACKED_PARAM_OBSERVED_URI, jsonTrigger);
         } else {
             throw new IllegalArgumentException("Unsupported trigger.");
         }
@@ -184,5 +211,43 @@ import android.util.Log;
             retryStrategy.getInitialBackoff());
         data.putInt(prefix + BundleProtocol.PACKED_PARAM_RETRY_STRATEGY_MAXIMUM_BACKOFF_SECONDS,
             retryStrategy.getMaximumBackoff());
+    }
+
+    @NonNull
+    private String convertObservedUrisToJsonString(@NonNull List<ObservedUri> uris) {
+        JSONObject contentUris = new JSONObject();
+        JSONArray jsonFlags = new JSONArray();
+        JSONArray jsonUris = new JSONArray();
+        for (ObservedUri uri : uris) {
+            jsonFlags.put(uri.getFlags());
+            jsonUris.put(uri.getUri());
+        }
+        try {
+            contentUris.put(JSON_URI_FLAGS, jsonFlags);
+            contentUris.put(JSON_URIS, jsonUris);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+      return contentUris.toString();
+    }
+
+    @NonNull
+    private List<ObservedUri> convertJsonToObservedUris(@NonNull String contentUrisJson) {
+        List<ObservedUri> uris = new ArrayList<>();
+        try {
+            JSONObject json = new JSONObject(contentUrisJson);
+            JSONArray jsonFlags = json.getJSONArray(JSON_URI_FLAGS);
+            JSONArray jsonUris = json.getJSONArray(JSON_URIS);
+            int length = jsonFlags.length();
+
+            for (int i = 0; i < length; i++) {
+                int flags = jsonFlags.getInt(i);
+                String uri = jsonUris.getString(i);
+                uris.add(new ObservedUri(Uri.parse(uri), flags));
+            }
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        return uris;
     }
 }

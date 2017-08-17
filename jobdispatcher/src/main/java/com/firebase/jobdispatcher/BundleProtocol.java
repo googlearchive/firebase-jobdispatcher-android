@@ -32,12 +32,17 @@ final class BundleProtocol {
     static final String PACKED_PARAM_TRIGGER_WINDOW_START = "window_start";
     static final int TRIGGER_TYPE_EXECUTION_WINDOW = 1;
     static final int TRIGGER_TYPE_IMMEDIATE = 2;
+    static final int TRIGGER_TYPE_CONTENT_URI = 3;
     static final String PACKED_PARAM_RETRY_STRATEGY_INITIAL_BACKOFF_SECONDS =
         "initial_backoff_seconds";
     static final String PACKED_PARAM_RETRY_STRATEGY_MAXIMUM_BACKOFF_SECONDS =
         "maximum_backoff_seconds";
     static final String PACKED_PARAM_RETRY_STRATEGY_POLICY = "retry_policy";
     static final String PACKED_PARAM_REPLACE_CURRENT = "replace_current";
+    static final String PACKED_PARAM_CONTENT_URI_FLAGS_ARRAY = "content_uri_flags_array";
+    static final String PACKED_PARAM_CONTENT_URI_ARRAY = "content_uri_array";
+    static final String PACKED_PARAM_TRIGGERED_URIS = "triggered_uris";
+    static final String PACKED_PARAM_OBSERVED_URI = "observed_uris";
 
     BundleProtocol() {
     }
