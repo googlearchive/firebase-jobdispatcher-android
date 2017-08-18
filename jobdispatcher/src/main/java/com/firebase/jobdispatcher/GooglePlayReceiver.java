@@ -29,7 +29,9 @@ import android.support.annotation.VisibleForTesting;
 import android.support.v4.util.SimpleArrayMap;
 import android.util.Log;
 import android.util.Pair;
+import com.firebase.jobdispatcher.Job.Builder;
 import com.firebase.jobdispatcher.JobService.JobResult;
+import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
 
 /**
  * Handles incoming execute requests from the GooglePlay driver and forwards them to your Service.
@@ -56,22 +58,35 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
     private static final JobCoder prefixedCoder =
         new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
 
-    private final Object lock = new Object();
     private final GooglePlayCallbackExtractor callbackExtractor = new GooglePlayCallbackExtractor();
 
     /**
-     * The single Messenger that's returned from valid onBind requests. Guarded by {@link #lock}.
+     * The single Messenger that's returned from valid onBind requests. Guarded by intrinsic lock.
      */
     @VisibleForTesting
     Messenger serviceMessenger;
 
     /**
-     * The ExecutionDelegator used to communicate with client JobServices. Guarded by {@link #lock}.
+     * Driver for rescheduling jobs. Guarded by intrinsic lock.
+     */
+    @VisibleForTesting
+    Driver driver;
+
+    /**
+     * Guarded by intrinsic lock.
+     */
+    @VisibleForTesting
+    ValidationEnforcer validationEnforcer;
+
+    /**
+     * The ExecutionDelegator used to communicate with client JobServices.
+     * Guarded by intrinsic lock.
      */
     private ExecutionDelegator executionDelegator;
 
     /**
-     * The most recent startId passed to onStartCommand. Guarded by {@link #lock}.
+     * The most recent startId passed to onStartCommand.
+     * Guarded by intrinsic lock.
      */
     private int latestStartId;
 
@@ -132,25 +147,35 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
         return getServiceMessenger().getBinder();
     }
 
-    private Messenger getServiceMessenger() {
-        synchronized (lock) {
-            if (serviceMessenger == null) {
-                serviceMessenger =
-                    new Messenger(new GooglePlayMessageHandler(Looper.getMainLooper(), this));
-            }
-
-            return serviceMessenger;
+    private synchronized Messenger getServiceMessenger() {
+        if (serviceMessenger == null) {
+            serviceMessenger =
+                new Messenger(new GooglePlayMessageHandler(Looper.getMainLooper(), this));
         }
+        return serviceMessenger;
     }
 
-    /* package */ ExecutionDelegator getExecutionDelegator() {
-        synchronized (lock) {
-            if (executionDelegator == null) {
-                executionDelegator = new ExecutionDelegator(this, this);
-            }
-
-            return executionDelegator;
+    /* package */ synchronized ExecutionDelegator getExecutionDelegator() {
+        if (executionDelegator == null) {
+            executionDelegator = new ExecutionDelegator(this, this);
         }
+        return executionDelegator;
+    }
+
+    @NonNull
+    private synchronized Driver getGooglePlayDriver() {
+        if (driver == null) {
+            driver = new GooglePlayDriver(getApplicationContext());
+        }
+        return driver;
+    }
+
+    @NonNull
+    private synchronized ValidationEnforcer getValidationEnforcer() {
+        if (validationEnforcer == null) {
+            validationEnforcer = new ValidationEnforcer(getGooglePlayDriver().getValidator());
+        }
+        return validationEnforcer;
     }
 
     @Nullable
@@ -172,53 +197,75 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
     }
 
     @Nullable
-    JobInvocation prepareJob(JobCallback callback, Bundle bundle) {
+    synchronized JobInvocation prepareJob(JobCallback callback, Bundle bundle) {
         JobInvocation job = prefixedCoder.decodeIntentBundle(bundle);
         if (job == null) {
             Log.e(TAG, "unable to decode job");
             sendResultSafely(callback, JobService.RESULT_FAIL_NORETRY);
             return null;
         }
-        synchronized (lock) {
-            SimpleArrayMap<String, JobCallback> map = callbacks.get(job.getService());
-            if (map == null) {
-                map = new SimpleArrayMap<>(1);
-                callbacks.put(job.getService(), map);
-            }
-
-            map.put(job.getTag(), callback);
+        SimpleArrayMap<String, JobCallback> map = callbacks.get(job.getService());
+        if (map == null) {
+            map = new SimpleArrayMap<>(1);
+            callbacks.put(job.getService(), map);
         }
+
+        map.put(job.getTag(), callback);
 
         return job;
     }
 
     @Override
-    public void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
-        synchronized (lock) {
-            try {
-                SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
-                if (map == null) {
-                    return;
-                }
+    public synchronized void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
+        try {
+            SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
+            if (map == null) {
+                return;
+            }
+            JobCallback callback = map.remove(js.getTag());
+            if (callback == null) {
+                return;
+            }
+            if (map.isEmpty()) {
+                callbacks.remove(js.getService());
+            }
 
-                JobCallback callback = map.remove(js.getTag());
-                if (callback != null) {
-                    if (Log.isLoggable(TAG, Log.VERBOSE)) {
-                        Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
-                    }
-                    sendResultSafely(callback, result);
+            if (needsToBeRescheduled(js, result)) {
+                reschedule(js);
+            } else {
+                if (Log.isLoggable(TAG, Log.VERBOSE)) {
+                    Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
                 }
-
-                if (map.isEmpty()) {
-                    callbacks.remove(js.getService());
-                }
-            } finally {
-                if (callbacks.isEmpty()) {
-                    // Safe to call stopSelf, even if we're being bound to
-                    stopSelf(latestStartId);
-                }
+                sendResultSafely(callback, result);
+            }
+        } finally {
+            if (callbacks.isEmpty()) {
+                // Safe to call stopSelf, even if we're being bound to
+                stopSelf(latestStartId);
             }
         }
+    }
+
+    private void reschedule(JobInvocation jobInvocation) {
+        Job job = new Builder(getValidationEnforcer(), jobInvocation)
+            .setReplaceCurrent(true)
+            .build();
+
+        getGooglePlayDriver().schedule(job);
+    }
+
+    /**
+     * Recurring content URI triggered jobs need to be rescheduled when execution is finished.
+     *
+     * <p>GooglePlay does not support recurring content URI triggered jobs.
+     *
+     * <p>{@link JobService#RESULT_FAIL_RETRY} needs to be sent or current triggered URIs will be
+     * lost.
+     */
+    private static boolean needsToBeRescheduled(JobParameters job, int result) {
+        return job.isRecurring()
+            && job.getTrigger() instanceof ContentUriTrigger
+            && result != JobService.RESULT_FAIL_RETRY;
     }
 
     static JobCoder getJobCoder() {

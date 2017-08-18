@@ -45,6 +45,8 @@ import java.util.Set;
  * Provides common utilities helpful for testing.
  */
 public class TestUtil {
+
+    private static final String TAG = "TAG";
     private static final String[] TAG_COMBINATIONS = {"tag", "foobar", "fooooooo", "bz", "100"};
 
     private static final int[] LIFETIME_COMBINATIONS = {
@@ -242,11 +244,23 @@ public class TestUtil {
     @NonNull
     static Bundle encodeContentUriJob(ContentUriTrigger trigger, JobCoder coder) {
         Job job = getBuilderWithNoopValidator()
-                .setTag("TAG")
+                .setTag(TAG)
                 .setTrigger(trigger)
                 .setService(TestJobService.class)
                 .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
                 .build();
+        return coder.encode(job, new Bundle());
+    }
+
+    @NonNull
+    static Bundle encodeRecurringContentUriJob(ContentUriTrigger trigger, JobCoder coder) {
+        Job job = getBuilderWithNoopValidator()
+            .setTag(TAG)
+            .setTrigger(trigger)
+            .setService(TestJobService.class)
+            .setReplaceCurrent(true)
+            .setRecurring(true)
+            .build();
         return coder.encode(job, new Bundle());
     }
 
