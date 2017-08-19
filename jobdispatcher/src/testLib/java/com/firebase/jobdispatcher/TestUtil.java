@@ -26,8 +26,12 @@ import static org.junit.Assert.fail;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.Parcel;
+import android.provider.ContactsContract;
+import android.provider.MediaStore.Images.Media;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.Job.Builder;
+import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
+import com.firebase.jobdispatcher.ObservedUri.Flags;
 import com.google.android.gms.gcm.PendingCallback;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -41,6 +45,8 @@ import java.util.Set;
  * Provides common utilities helpful for testing.
  */
 public class TestUtil {
+
+    private static final String TAG = "TAG";
     private static final String[] TAG_COMBINATIONS = {"tag", "foobar", "fooooooo", "bz", "100"};
 
     private static final int[] LIFETIME_COMBINATIONS = {
@@ -51,7 +57,11 @@ public class TestUtil {
         Trigger.executionWindow(0, 30),
         Trigger.executionWindow(300, 600),
         Trigger.executionWindow(86400, 86400 * 2),
-        Trigger.NOW
+        Trigger.NOW,
+        Trigger.contentUriTrigger(
+            Arrays.asList(new ObservedUri(ContactsContract.AUTHORITY_URI, 0))),
+        Trigger.contentUriTrigger(Arrays.asList(new ObservedUri(ContactsContract.AUTHORITY_URI, 0),
+            new ObservedUri(ContactsContract.AUTHORITY_URI, Flags.FLAG_NOTIFY_FOR_DESCENDANTS)))
     };
 
     @SuppressWarnings("unchecked")
@@ -217,6 +227,10 @@ public class TestUtil {
                 ((JobTrigger.ExecutionWindowTrigger) outTrigger).getWindowEnd());
         } else if (inTrigger == Trigger.NOW) {
             assertEquals(inTrigger, outTrigger);
+        } else if (inTrigger instanceof JobTrigger.ContentUriTrigger) {
+            assertEquals("Collection of URIs",
+                ((ContentUriTrigger) inTrigger).getUris(),
+                ((ContentUriTrigger) outTrigger).getUris());
         } else {
             fail("Unknown Trigger class: " + inTrigger.getClass());
         }
@@ -225,6 +239,36 @@ public class TestUtil {
     @NonNull
     public static Builder getBuilderWithNoopValidator() {
         return new Builder(new ValidationEnforcer(new NoopJobValidator()));
+    }
+
+    @NonNull
+    static Bundle encodeContentUriJob(ContentUriTrigger trigger, JobCoder coder) {
+        Job job = getBuilderWithNoopValidator()
+                .setTag(TAG)
+                .setTrigger(trigger)
+                .setService(TestJobService.class)
+                .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+                .build();
+        return coder.encode(job, new Bundle());
+    }
+
+    @NonNull
+    static Bundle encodeRecurringContentUriJob(ContentUriTrigger trigger, JobCoder coder) {
+        Job job = getBuilderWithNoopValidator()
+            .setTag(TAG)
+            .setTrigger(trigger)
+            .setService(TestJobService.class)
+            .setReplaceCurrent(true)
+            .setRecurring(true)
+            .build();
+        return coder.encode(job, new Bundle());
+    }
+
+    static ContentUriTrigger getContentUriTrigger() {
+        ObservedUri contactUri = new ObservedUri(
+            ContactsContract.AUTHORITY_URI, Flags.FLAG_NOTIFY_FOR_DESCENDANTS);
+        ObservedUri imageUri = new ObservedUri(Media.EXTERNAL_CONTENT_URI, 0);
+        return Trigger.contentUriTrigger(Arrays.asList(contactUri, imageUri));
     }
 
     public static class TransactionArguments {

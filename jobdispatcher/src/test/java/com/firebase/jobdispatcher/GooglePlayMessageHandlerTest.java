@@ -34,6 +34,7 @@ import com.firebase.jobdispatcher.JobInvocation.Builder;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
@@ -118,6 +119,25 @@ public class GooglePlayMessageHandlerTest {
         handler.handleMessage(message);
 
         verify(executionDelegatorMock).executeJob(jobInvocation);
+    }
+
+    @Test
+    public void handleMessage_stopExecution() throws Exception {
+        Message message = Message.obtain();
+        message.what = GooglePlayMessageHandler.MSG_STOP_EXEC;
+        JobCoder jobCoder = GooglePlayReceiver.getJobCoder();
+        Bundle data = TestUtil.encodeContentUriJob(TestUtil.getContentUriTrigger(), jobCoder);
+        JobInvocation jobInvocation = jobCoder.decode(data).build();
+        message.setData(data);
+        message.replyTo = messengerMock;
+
+        handler.handleMessage(message);
+
+        final ArgumentCaptor<JobInvocation> captor = ArgumentCaptor.forClass(JobInvocation.class);
+
+        verify(executionDelegatorMock).stopJob(captor.capture());
+
+        TestUtil.assertJobsEqual(jobInvocation, captor.getValue());
     }
 
     @Test

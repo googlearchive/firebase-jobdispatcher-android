@@ -16,6 +16,9 @@
 
 package com.firebase.jobdispatcher;
 
+import android.support.annotation.NonNull;
+import java.util.List;
+
 /**
  * Generally, a Trigger is an object that can answer the question, "is this job ready to run?"
  * <p>
@@ -52,5 +55,19 @@ public final class Trigger {
         }
 
         return new JobTrigger.ExecutionWindowTrigger(windowStart, windowEnd);
+    }
+
+    /**
+     * Creates a new ContentUriTrigger based on the provided list of {@link ObservedUri}.
+     *
+     * @param uris The list of URIs to observe. The trigger will be available if a piece of content,
+     *     corresponding to any of provided URIs, is updated.
+     * @throws IllegalArgumentException if provided list of URIs is null or empty.
+     */
+    public static JobTrigger.ContentUriTrigger contentUriTrigger(@NonNull List<ObservedUri> uris) {
+        if (uris == null || uris.isEmpty()) {
+            throw new IllegalArgumentException("Uris must not be null or empty.");
+        }
+        return new JobTrigger.ContentUriTrigger(uris);
     }
 }

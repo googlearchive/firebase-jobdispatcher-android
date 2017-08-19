@@ -37,7 +37,7 @@ public final class Job implements JobParameters {
     private Bundle mExtras;
 
     private Job(Builder builder) {
-        mService = builder.mServiceClass != null ? builder.mServiceClass.getName() : null;
+        mService = builder.mServiceClassName;
         mExtras = builder.mExtras;
         mTag = builder.mTag;
         mTrigger = builder.mTrigger;
@@ -81,6 +81,12 @@ public final class Job implements JobParameters {
     @Override
     public boolean shouldReplaceCurrent() {
         return mReplaceCurrent;
+    }
+
+    @Nullable
+    @Override
+    public TriggerReason getTriggerReason() {
+        return null;
     }
 
     /**
@@ -133,7 +139,7 @@ public final class Job implements JobParameters {
     public final static class Builder implements JobParameters {
         private final ValidationEnforcer mValidator;
 
-        private Class<? extends JobService> mServiceClass;
+        private String mServiceClassName;
         private Bundle mExtras;
         private String mTag;
         private JobTrigger mTrigger = Trigger.NOW;
@@ -146,6 +152,19 @@ public final class Job implements JobParameters {
 
         Builder(ValidationEnforcer validator) {
             mValidator = validator;
+        }
+
+        Builder(ValidationEnforcer validator, JobParameters job) {
+            mValidator = validator;
+
+            mTag = job.getTag();
+            mServiceClassName = job.getService();
+            mTrigger = job.getTrigger();
+            mRecurring = job.isRecurring();
+            mLifetime = job.getLifetime();
+            mConstraints = job.getConstraints();
+            mExtras = job.getExtras();
+            mRetryStrategy = job.getRetryStrategy();
         }
 
         /**
@@ -194,14 +213,25 @@ public final class Job implements JobParameters {
         @NonNull
         @Override
         public String getService() {
-            return mServiceClass.getName();
+            return mServiceClassName;
         }
 
         /**
          * Sets the backing JobService class for the Job. See {@link #getService()}.
          */
         public Builder setService(Class<? extends JobService> serviceClass) {
-            mServiceClass = serviceClass;
+            mServiceClassName = serviceClass == null ? null : serviceClass.getName();
+
+            return this;
+        }
+
+        /**
+         * Sets the backing JobService class name for the Job. See {@link #getService()}.
+         *
+         * <p>Should not be exposed, for internal use only.
+         */
+        Builder setServiceName(String serviceClassName) {
+            mServiceClassName = serviceClassName;
 
             return this;
         }
@@ -337,6 +367,12 @@ public final class Job implements JobParameters {
         @Override
         public boolean shouldReplaceCurrent() {
             return mReplaceCurrent;
+        }
+
+        @Nullable
+        @Override
+        public TriggerReason getTriggerReason() {
+            return null;
         }
     }
 }

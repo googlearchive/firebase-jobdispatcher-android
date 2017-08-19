@@ -22,6 +22,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.provider.ContactsContract;
+import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
+import com.firebase.jobdispatcher.ObservedUri.Flags;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +98,12 @@ public class DefaultJobValidatorTest {
 
         testCases.put(Trigger.NOW, null);
         testCases.put(Trigger.executionWindow(0, 100), null);
+        ContentUriTrigger contentUriTrigger =
+                Trigger.contentUriTrigger(
+                    Arrays.asList(
+                        new ObservedUri(
+                            ContactsContract.AUTHORITY_URI, Flags.FLAG_NOTIFY_FOR_DESCENDANTS)));
+        testCases.put(contentUriTrigger, null);
 
         for (Entry<JobTrigger, String> testCase : testCases.entrySet()) {
             List<String> validationErrors = mValidator.validate(testCase.getKey());

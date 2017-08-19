@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -150,7 +151,7 @@ public class ExecutionDelegatorTest {
     public void onStop_mock() throws InterruptedException {
         JobInvocation job = new JobInvocation.Builder()
                 .setTag("TAG")
-                .setTrigger(Trigger.NOW)
+                .setTrigger(getContentUriTrigger())
                 .setService(TestJobService.class.getName())
                 .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
                 .build();

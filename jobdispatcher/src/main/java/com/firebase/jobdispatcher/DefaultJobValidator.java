@@ -149,7 +149,8 @@ public class DefaultJobValidator implements JobValidator {
     @CallSuper
     public List<String> validate(JobTrigger trigger) {
         if (trigger != Trigger.NOW
-                && !(trigger instanceof JobTrigger.ExecutionWindowTrigger)) {
+                && !(trigger instanceof JobTrigger.ExecutionWindowTrigger)
+                && !(trigger instanceof JobTrigger.ContentUriTrigger)) {
             return getMutableSingletonList("Unknown trigger provided");
         }
 

@@ -16,11 +16,19 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.TestUtil.encodeContentUriJob;
+import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.ContactsContract;
+import android.provider.MediaStore.Images.Media;
 import com.firebase.jobdispatcher.Job.Builder;
+import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
+import java.util.ArrayList;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -92,5 +100,59 @@ public class JobCoderTest {
             mCoder.decode(mCoder.encode(
                 setValidBuilderDefaults(mBuilder).setRetryStrategy(null).build(),
                 new Bundle())));
+    }
+
+    @Test
+    public void encode_contentUriTrigger() {
+        Bundle encode = TestUtil.encodeContentUriJob(TestUtil.getContentUriTrigger(), mCoder);
+        int triggerType = encode.getInt(PREFIX + BundleProtocol.PACKED_PARAM_TRIGGER_TYPE);
+        assertEquals("Trigger type", BundleProtocol.TRIGGER_TYPE_CONTENT_URI, triggerType);
+
+        String json = encode.getString(PREFIX + BundleProtocol.PACKED_PARAM_OBSERVED_URI);
+        String expectedJson = "{\"uri_flags\":[1,0],\"uris\":[\"content:\\/\\/com.android.contacts"
+                + "\",\"content:\\/\\/media\\/external\\/images\\/media\"]}";
+        assertEquals("Json trigger", expectedJson, json);
+    }
+
+    @Test
+    public void decode_contentUriTrigger() {
+        ContentUriTrigger contentUriTrigger = TestUtil.getContentUriTrigger();
+        Bundle bundle = TestUtil.encodeContentUriJob(contentUriTrigger, mCoder);
+        JobInvocation decode = mCoder.decode(bundle).build();
+        ContentUriTrigger trigger = (ContentUriTrigger) decode.getTrigger();
+        assertEquals(contentUriTrigger.getUris(), trigger.getUris());
+    }
+
+    @Test
+    public void decode_addBundleAsExtras() {
+        ContentUriTrigger contentUriTrigger = TestUtil.getContentUriTrigger();
+        Bundle bundle = TestUtil.encodeContentUriJob(contentUriTrigger, mCoder);
+        bundle.putString("test_key", "test_value");
+        JobInvocation decode = mCoder.decode(bundle).build();
+        assertEquals("test_value", decode.getExtras().getString("test_key"));
+    }
+
+    @Test
+    public void decodeIntentBundle() {
+        Bundle bundle = new Bundle();
+
+        ContentUriTrigger uriTrigger = getContentUriTrigger();
+        Bundle encode = encodeContentUriJob(uriTrigger, mCoder);
+        bundle.putBundle(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
+
+        ArrayList<Uri> uris = new ArrayList<>();
+        uris.add(ContactsContract.AUTHORITY_URI);
+        uris.add(Media.EXTERNAL_CONTENT_URI);
+        bundle.putParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, uris);
+
+        JobInvocation jobInvocation = mCoder.decodeIntentBundle(bundle);
+
+        assertEquals(uris, jobInvocation.getTriggerReason().getTriggeredContentUris());
+        assertEquals("TAG", jobInvocation.getTag());
+        assertEquals(uriTrigger.getUris(), ((ContentUriTrigger) jobInvocation.getTrigger())
+                .getUris());
+        assertEquals(TestJobService.class.getName(), jobInvocation.getService());
+        assertEquals(RetryStrategy.DEFAULT_EXPONENTIAL.getPolicy(),
+                jobInvocation.getRetryStrategy().getPolicy());
     }
 }

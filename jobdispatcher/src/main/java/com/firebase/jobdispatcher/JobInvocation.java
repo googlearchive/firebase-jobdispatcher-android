@@ -49,6 +49,8 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
 
     private final boolean mReplaceCurrent;
 
+    private final TriggerReason mTriggerReason;
+
     private JobInvocation(Builder builder) {
         mTag = builder.mTag;
         mService = builder.mService;
@@ -59,6 +61,7 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
         mConstraints = builder.mConstraints;
         mExtras = builder.mExtras;
         mReplaceCurrent = builder.mReplaceCurrent;
+        mTriggerReason = builder.mTriggerReason;
     }
 
     @NonNull
@@ -112,6 +115,11 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
         return mReplaceCurrent;
     }
 
+    @Override
+    public TriggerReason getTriggerReason() {
+        return mTriggerReason;
+    }
+
     static final class Builder {
 
         @NonNull
@@ -137,6 +145,8 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
         private RetryStrategy mRetryStrategy;
 
         private boolean mReplaceCurrent;
+
+        private TriggerReason mTriggerReason;
 
         JobInvocation build() {
             if (mTag == null || mService == null || mTrigger == null) {
@@ -189,6 +199,11 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
 
         public Builder setReplaceCurrent(boolean mReplaceCurrent) {
             this.mReplaceCurrent = mReplaceCurrent;
+            return this;
+        }
+
+        public Builder setTriggerReason(TriggerReason triggerReason) {
+            this.mTriggerReason = triggerReason;
             return this;
         }
     }

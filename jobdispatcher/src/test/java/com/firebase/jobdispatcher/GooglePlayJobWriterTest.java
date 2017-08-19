@@ -20,8 +20,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import com.firebase.jobdispatcher.Job.Builder;
+import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
+import com.firebase.jobdispatcher.ObservedUri.Flags;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -232,6 +236,23 @@ public class GooglePlayJobWriterTest {
 
         assertEquals("period", t.getWindowEnd(), b.getLong("period"));
         assertEquals("period_flex", t.getWindowEnd() - t.getWindowStart(), b.getLong("period_flex"));
+    }
+
+    @Test
+    public void testWriteToBundle_contentUriTrigger() {
+        ObservedUri observedUri = new ObservedUri(ContactsContract.AUTHORITY_URI,
+            Flags.FLAG_NOTIFY_FOR_DESCENDANTS);
+        ContentUriTrigger contentUriTrigger = Trigger.contentUriTrigger(Arrays.asList(observedUri));
+        Bundle bundle = mWriter.writeToBundle(
+            initializeDefaultBuilder().setTrigger(contentUriTrigger).build(), new Bundle());
+        Uri[] uris =
+            (Uri[]) bundle.getParcelableArray(BundleProtocol.PACKED_PARAM_CONTENT_URI_ARRAY);
+        int[] flags = bundle.getIntArray(BundleProtocol.PACKED_PARAM_CONTENT_URI_FLAGS_ARRAY);
+        assertTrue("Array size", uris.length == flags.length && flags.length == 1);
+        assertEquals(BundleProtocol.PACKED_PARAM_CONTENT_URI_ARRAY,
+            ContactsContract.AUTHORITY_URI, uris[0]);
+        assertEquals(BundleProtocol.PACKED_PARAM_CONTENT_URI_FLAGS_ARRAY,
+            Flags.FLAG_NOTIFY_FOR_DESCENDANTS, flags[0]);
     }
 
     @Test
