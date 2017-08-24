@@ -33,37 +33,41 @@ import org.junit.runner.RunWith;
  */
 @RunWith(AndroidJUnit4.class)
 public final class EndToEndTest {
-    private Context appContext;
-    private FirebaseJobDispatcher dispatcher;
+  private Context appContext;
+  private FirebaseJobDispatcher dispatcher;
 
-    @Before public void setUp() {
-        appContext = InstrumentationRegistry.getTargetContext();
-        dispatcher = new FirebaseJobDispatcher(new GooglePlayDriver(appContext));
-        TestJobService.reset();
-    }
+  @Before
+  public void setUp() {
+    appContext = InstrumentationRegistry.getTargetContext();
+    dispatcher = new FirebaseJobDispatcher(new GooglePlayDriver(appContext));
+    TestJobService.reset();
+  }
 
-    @Test public void basicImmediateJob() throws InterruptedException {
-        final CountDownLatch latch = new CountDownLatch(1);
-        TestJobService.setProxy(new TestJobService.JobServiceProxy() {
-            @Override
-            public boolean onStartJob(JobParameters params) {
-                latch.countDown();
-                return false;
-            }
+  @Test
+  public void basicImmediateJob() throws InterruptedException {
+    final CountDownLatch latch = new CountDownLatch(1);
+    TestJobService.setProxy(
+        new TestJobService.JobServiceProxy() {
+          @Override
+          public boolean onStartJob(JobParameters params) {
+            latch.countDown();
+            return false;
+          }
 
-            @Override
-            public boolean onStopJob(JobParameters params) {
-                return false;
-            }
+          @Override
+          public boolean onStopJob(JobParameters params) {
+            return false;
+          }
         });
 
-        dispatcher.mustSchedule(
-                dispatcher.newJobBuilder()
-                        .setService(TestJobService.class)
-                        .setTrigger(Trigger.NOW)
-                        .setTag("basic-immediate-job")
-                        .build());
+    dispatcher.mustSchedule(
+        dispatcher
+            .newJobBuilder()
+            .setService(TestJobService.class)
+            .setTrigger(Trigger.NOW)
+            .setTag("basic-immediate-job")
+            .build());
 
-        assertTrue("Latch wasn't counted down as expected", latch.await(120, TimeUnit.SECONDS));
-    }
+    assertTrue("Latch wasn't counted down as expected", latch.await(120, TimeUnit.SECONDS));
+  }
 }

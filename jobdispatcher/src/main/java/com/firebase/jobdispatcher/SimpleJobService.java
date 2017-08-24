@@ -23,68 +23,67 @@ import android.support.v4.util.SimpleArrayMap;
 /**
  * SimpleJobService provides a simple way of doing background work in a JobService.
  *
- * Users should override onRunJob and return one of the {@link JobResult} ints.
+ * <p>Users should override onRunJob and return one of the {@link JobResult} ints.
  */
 public abstract class SimpleJobService extends JobService {
-    private final SimpleArrayMap<JobParameters, AsyncJobTask> runningJobs =
-        new SimpleArrayMap<>();
+  private final SimpleArrayMap<JobParameters, AsyncJobTask> runningJobs = new SimpleArrayMap<>();
 
-    @CallSuper
+  @CallSuper
+  @Override
+  public boolean onStartJob(JobParameters job) {
+    AsyncJobTask async = new AsyncJobTask(this, job);
+
+    synchronized (runningJobs) {
+      runningJobs.put(job, async);
+    }
+
+    async.execute();
+
+    return true; // more work to do
+  }
+
+  @CallSuper
+  @Override
+  public boolean onStopJob(JobParameters job) {
+    synchronized (runningJobs) {
+      AsyncJobTask async = runningJobs.remove(job);
+      if (async != null) {
+        async.cancel(true);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private void onJobFinished(JobParameters jobParameters, boolean b) {
+    synchronized (runningJobs) {
+      runningJobs.remove(jobParameters);
+    }
+
+    jobFinished(jobParameters, b);
+  }
+
+  @JobResult
+  public abstract int onRunJob(JobParameters job);
+
+  private static class AsyncJobTask extends AsyncTask<Void, Void, Integer> {
+    private final SimpleJobService jobService;
+    private final JobParameters jobParameters;
+
+    private AsyncJobTask(SimpleJobService jobService, JobParameters jobParameters) {
+      this.jobService = jobService;
+      this.jobParameters = jobParameters;
+    }
+
     @Override
-    public boolean onStartJob(JobParameters job) {
-        AsyncJobTask async = new AsyncJobTask(this, job);
-
-        synchronized (runningJobs) {
-            runningJobs.put(job, async);
-        }
-
-        async.execute();
-
-        return true; // more work to do
+    protected Integer doInBackground(Void... params) {
+      return jobService.onRunJob(jobParameters);
     }
 
-    @CallSuper
     @Override
-    public boolean onStopJob(JobParameters job) {
-        synchronized (runningJobs) {
-            AsyncJobTask async = runningJobs.remove(job);
-            if (async != null) {
-                async.cancel(true);
-                return true;
-            }
-        }
-
-        return false;
+    protected void onPostExecute(Integer integer) {
+      jobService.onJobFinished(jobParameters, integer == JobService.RESULT_FAIL_RETRY);
     }
-
-    private void onJobFinished(JobParameters jobParameters, boolean b) {
-        synchronized (runningJobs) {
-            runningJobs.remove(jobParameters);
-        }
-
-        jobFinished(jobParameters, b);
-    }
-
-    @JobResult
-    public abstract int onRunJob(JobParameters job);
-
-    private static class AsyncJobTask extends AsyncTask<Void, Void, Integer> {
-        private final SimpleJobService jobService;
-        private final JobParameters jobParameters;
-
-        private AsyncJobTask(SimpleJobService jobService, JobParameters jobParameters) {
-            this.jobService = jobService;
-            this.jobParameters = jobParameters;
-        }
-
-        @Override
-        protected Integer doInBackground(Void... params) {
-            return jobService.onRunJob(jobParameters);
-        }
-
-        @Override
-        protected void onPostExecute(Integer integer) {
-            jobService.onJobFinished(jobParameters, integer == JobService.RESULT_FAIL_RETRY);
-        }
-    }
+  }
 }

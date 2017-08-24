@@ -25,58 +25,56 @@ import android.os.Message;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
-/**
- * ServiceConnection for job execution.
- */
+/** ServiceConnection for job execution. */
 @VisibleForTesting
 class JobServiceConnection implements ServiceConnection {
 
-    private final JobInvocation jobInvocation;
-    // Should be sent only once. Can't be reused.
-    private final Message jobFinishedMessage;
-    private boolean wasMessageUsed = false;
+  private final JobInvocation jobInvocation;
+  // Should be sent only once. Can't be reused.
+  private final Message jobFinishedMessage;
+  private boolean wasMessageUsed = false;
 
-    //Guarded by "this". Can be updated from main and binder threads.
-    private JobService.LocalBinder binder;
+  // Guarded by "this". Can be updated from main and binder threads.
+  private JobService.LocalBinder binder;
 
-    JobServiceConnection(JobInvocation jobInvocation, Message jobFinishedMessage) {
-        this.jobFinishedMessage = jobFinishedMessage;
-        this.jobInvocation = jobInvocation;
-        this.jobFinishedMessage.obj = this.jobInvocation;
+  JobServiceConnection(JobInvocation jobInvocation, Message jobFinishedMessage) {
+    this.jobFinishedMessage = jobFinishedMessage;
+    this.jobInvocation = jobInvocation;
+    this.jobFinishedMessage.obj = this.jobInvocation;
+  }
+
+  @Override
+  public synchronized void onServiceConnected(ComponentName name, IBinder service) {
+    if (!(service instanceof JobService.LocalBinder)) {
+      Log.w(TAG, "Unknown service connected");
+      return;
+    }
+    if (wasMessageUsed) {
+      Log.w(TAG, "onServiceConnected Duplicate calls. Ignored.");
+      return;
+    } else {
+      wasMessageUsed = true;
     }
 
-    @Override
-    public synchronized void onServiceConnected(ComponentName name, IBinder service) {
-        if (!(service instanceof JobService.LocalBinder)) {
-            Log.w(TAG, "Unknown service connected");
-            return;
-        }
-        if (wasMessageUsed) {
-            Log.w(TAG, "onServiceConnected Duplicate calls. Ignored.");
-            return;
-        } else {
-            wasMessageUsed = true;
-        }
+    binder = (JobService.LocalBinder) service;
 
-        binder = (JobService.LocalBinder) service;
+    JobService jobService = binder.getService();
 
-        JobService jobService = binder.getService();
+    jobService.start(jobInvocation, jobFinishedMessage);
+  }
 
-        jobService.start(jobInvocation, jobFinishedMessage);
+  @Override
+  public synchronized void onServiceDisconnected(ComponentName name) {
+    binder = null;
+  }
+
+  synchronized boolean isBound() {
+    return binder != null;
+  }
+
+  synchronized void onStop() {
+    if (isBound()) {
+      binder.getService().stop(jobInvocation);
     }
-
-    @Override
-    public synchronized void onServiceDisconnected(ComponentName name) {
-        binder = null;
-    }
-
-    synchronized boolean isBound() {
-        return binder != null;
-    }
-
-    synchronized void onStop() {
-        if (isBound()) {
-            binder.getService().stop(jobInvocation);
-        }
-    }
+  }
 }

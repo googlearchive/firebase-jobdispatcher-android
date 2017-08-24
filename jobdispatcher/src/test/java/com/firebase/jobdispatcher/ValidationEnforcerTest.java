@@ -35,153 +35,146 @@ import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+/** Tests for the {@link ValidationEnforcer} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class ValidationEnforcerTest {
-    private static final List<String> ERROR_LIST = Collections.singletonList("error: foo");
+  private static final List<String> ERROR_LIST = Collections.singletonList("error: foo");
 
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
+  @Rule public ExpectedException expectedException = ExpectedException.none();
 
-    @Mock
-    private JobValidator mValidator;
+  @Mock private JobValidator mValidator;
 
-    @Mock
-    private JobParameters mMockJobParameters;
+  @Mock private JobParameters mMockJobParameters;
 
-    @Mock
-    private JobTrigger mMockTrigger;
+  @Mock private JobTrigger mMockTrigger;
 
-    private ValidationEnforcer mEnforcer;
-    private RetryStrategy mRetryStrategy = RetryStrategy.DEFAULT_EXPONENTIAL;
+  private ValidationEnforcer mEnforcer;
+  private final RetryStrategy mRetryStrategy = RetryStrategy.DEFAULT_EXPONENTIAL;
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.initMocks(this);
 
-        mEnforcer = new ValidationEnforcer(mValidator);
+    mEnforcer = new ValidationEnforcer(mValidator);
+  }
+
+  @Test
+  public void testValidate_retryStrategy() throws Exception {
+    mEnforcer.validate(mRetryStrategy);
+    verify(mValidator).validate(mRetryStrategy);
+  }
+
+  @Test
+  public void testValidate_jobSpec() throws Exception {
+    mEnforcer.validate(mMockJobParameters);
+    verify(mValidator).validate(mMockJobParameters);
+  }
+
+  @Test
+  public void testValidate_trigger() throws Exception {
+    mEnforcer.validate(mMockTrigger);
+    verify(mValidator).validate(mMockTrigger);
+  }
+
+  @Test
+  public void testIsValid_retryStrategy_invalid() throws Exception {
+    when(mValidator.validate(mRetryStrategy)).thenReturn(Collections.singletonList("error: foo"));
+
+    assertFalse("isValid", mEnforcer.isValid(mRetryStrategy));
+  }
+
+  @Test
+  public void testIsValid_retryStrategy_valid() throws Exception {
+    when(mValidator.validate(mRetryStrategy)).thenReturn(null);
+
+    assertTrue("isValid", mEnforcer.isValid(mRetryStrategy));
+  }
+
+  @Test
+  public void testIsValid_trigger_invalid() throws Exception {
+    when(mValidator.validate(mMockTrigger)).thenReturn(Collections.singletonList("error: foo"));
+
+    assertFalse("isValid", mEnforcer.isValid(mMockTrigger));
+  }
+
+  @Test
+  public void testIsValid_trigger_valid() throws Exception {
+    when(mValidator.validate(mMockTrigger)).thenReturn(null);
+
+    assertTrue("isValid", mEnforcer.isValid(mMockTrigger));
+  }
+
+  @Test
+  public void testIsValid_jobSpec_invalid() throws Exception {
+    when(mValidator.validate(mMockJobParameters)).thenReturn(ERROR_LIST);
+
+    assertFalse("isValid", mEnforcer.isValid(mMockJobParameters));
+  }
+
+  @Test
+  public void testIsValid_jobSpec_valid() throws Exception {
+    when(mValidator.validate(mMockJobParameters)).thenReturn(null);
+
+    assertTrue("isValid", mEnforcer.isValid(mMockJobParameters));
+  }
+
+  @Test
+  public void testEnsureValid_retryStrategy_valid() throws Exception {
+    when(mValidator.validate(mRetryStrategy)).thenReturn(null);
+
+    mEnforcer.ensureValid(mRetryStrategy);
+  }
+
+  @Test
+  public void testEnsureValid_trigger_valid() throws Exception {
+    when(mValidator.validate(mMockTrigger)).thenReturn(null);
+
+    mEnforcer.ensureValid(mMockTrigger);
+  }
+
+  @Test
+  public void testEnsureValid_jobSpec_valid() throws Exception {
+    when(mValidator.validate(mMockJobParameters)).thenReturn(null);
+
+    mEnforcer.ensureValid(mMockJobParameters);
+  }
+
+  @Test
+  public void testEnsureValid_retryStrategy_invalid() throws Exception {
+    when(mValidator.validate(mRetryStrategy)).thenReturn(ERROR_LIST);
+    expectedException.expect(ValidationEnforcer.ValidationException.class);
+
+    mEnforcer.ensureValid(mRetryStrategy);
+  }
+
+  @Test
+  public void testEnsureValid_trigger_invalid() throws Exception {
+    when(mValidator.validate(mMockTrigger)).thenReturn(ERROR_LIST);
+    expectedException.expect(ValidationEnforcer.ValidationException.class);
+
+    mEnforcer.ensureValid(mMockTrigger);
+  }
+
+  @Test
+  public void testEnsureValid_jobSpec_invalid() throws Exception {
+    when(mValidator.validate(mMockJobParameters)).thenReturn(ERROR_LIST);
+    expectedException.expect(ValidationEnforcer.ValidationException.class);
+
+    mEnforcer.ensureValid(mMockJobParameters);
+  }
+
+  @Test
+  public void testValidationMessages() throws Exception {
+    when(mValidator.validate(mMockJobParameters)).thenReturn(ERROR_LIST);
+
+    try {
+      mEnforcer.ensureValid(mMockJobParameters);
+
+      fail("Expected ensureValid to fail");
+    } catch (ValidationEnforcer.ValidationException ve) {
+      assertEquals(
+          "Expected ValidationException to have 1 error message", 1, ve.getErrors().size());
     }
-
-    @Test
-    public void testValidate_retryStrategy() throws Exception {
-        mEnforcer.validate(mRetryStrategy);
-        verify(mValidator).validate(mRetryStrategy);
-    }
-
-    @Test
-    public void testValidate_jobSpec() throws Exception {
-        mEnforcer.validate(mMockJobParameters);
-        verify(mValidator).validate(mMockJobParameters);
-    }
-
-    @Test
-    public void testValidate_trigger() throws Exception {
-        mEnforcer.validate(mMockTrigger);
-        verify(mValidator).validate(mMockTrigger);
-    }
-
-    @Test
-    public void testIsValid_retryStrategy_invalid() throws Exception {
-        when(mValidator.validate(mRetryStrategy))
-            .thenReturn(Collections.singletonList("error: foo"));
-
-        assertFalse("isValid", mEnforcer.isValid(mRetryStrategy));
-    }
-
-    @Test
-    public void testIsValid_retryStrategy_valid() throws Exception {
-        when(mValidator.validate(mRetryStrategy)).thenReturn(null);
-
-        assertTrue("isValid", mEnforcer.isValid(mRetryStrategy));
-
-    }
-
-    @Test
-    public void testIsValid_trigger_invalid() throws Exception {
-        when(mValidator.validate(mMockTrigger))
-            .thenReturn(Collections.singletonList("error: foo"));
-
-        assertFalse("isValid", mEnforcer.isValid(mMockTrigger));
-    }
-
-    @Test
-    public void testIsValid_trigger_valid() throws Exception {
-        when(mValidator.validate(mMockTrigger)).thenReturn(null);
-
-        assertTrue("isValid", mEnforcer.isValid(mMockTrigger));
-    }
-
-    @Test
-    public void testIsValid_jobSpec_invalid() throws Exception {
-        when(mValidator.validate(mMockJobParameters)).thenReturn(ERROR_LIST);
-
-        assertFalse("isValid", mEnforcer.isValid(mMockJobParameters));
-    }
-
-    @Test
-    public void testIsValid_jobSpec_valid() throws Exception {
-        when(mValidator.validate(mMockJobParameters)).thenReturn(null);
-
-        assertTrue("isValid", mEnforcer.isValid(mMockJobParameters));
-    }
-
-    @Test
-    public void testEnsureValid_retryStrategy_valid() throws Exception {
-        when(mValidator.validate(mRetryStrategy)).thenReturn(null);
-
-        mEnforcer.ensureValid(mRetryStrategy);
-    }
-
-    @Test
-    public void testEnsureValid_trigger_valid() throws Exception {
-        when(mValidator.validate(mMockTrigger)).thenReturn(null);
-
-        mEnforcer.ensureValid(mMockTrigger);
-    }
-
-    @Test
-    public void testEnsureValid_jobSpec_valid() throws Exception {
-        when(mValidator.validate(mMockJobParameters)).thenReturn(null);
-
-        mEnforcer.ensureValid(mMockJobParameters);
-    }
-
-    @Test
-    public void testEnsureValid_retryStrategy_invalid() throws Exception {
-        expectedException.expect(ValidationEnforcer.ValidationException.class);
-
-        when(mValidator.validate(mRetryStrategy)).thenReturn(ERROR_LIST);
-        mEnforcer.ensureValid(mRetryStrategy);
-    }
-
-    @Test
-    public void testEnsureValid_trigger_invalid() throws Exception {
-        expectedException.expect(ValidationEnforcer.ValidationException.class);
-
-        when(mValidator.validate(mMockTrigger)).thenReturn(ERROR_LIST);
-        mEnforcer.ensureValid(mMockTrigger);
-    }
-
-    @Test
-    public void testEnsureValid_jobSpec_invalid() throws Exception {
-        expectedException.expect(ValidationEnforcer.ValidationException.class);
-
-        when(mValidator.validate(mMockJobParameters)).thenReturn(ERROR_LIST);
-        mEnforcer.ensureValid(mMockJobParameters);
-    }
-
-    @Test
-    public void testValidationMessages() throws Exception {
-        when(mValidator.validate(mMockJobParameters)).thenReturn(ERROR_LIST);
-
-        try {
-            mEnforcer.ensureValid(mMockJobParameters);
-
-            fail("Expected ensureValid to fail");
-        } catch (ValidationEnforcer.ValidationException ve) {
-            assertEquals("Expected ValidationException to have 1 error message",
-                1,
-                ve.getErrors().size());
-        }
-    }
+  }
 }

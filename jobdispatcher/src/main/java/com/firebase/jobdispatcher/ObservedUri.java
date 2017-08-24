@@ -25,59 +25,59 @@ import java.lang.annotation.RetentionPolicy;
 /** Represents a single observed URI and any associated flags. */
 public final class ObservedUri {
 
-    private final Uri uri;
+  private final Uri uri;
 
-    private final int flags;
+  private final int flags;
 
-    /** Flag enforcement. */
-    @IntDef(flag = true, value = Flags.FLAG_NOTIFY_FOR_DESCENDANTS)
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface Flags {
-
-        /**
-         * Triggers if any descendants of the given URI change. Corresponds to the {@code
-         * notifyForDescendants} of {@link android.content.ContentResolver#registerContentObserver}.
-         */
-        int FLAG_NOTIFY_FOR_DESCENDANTS = 1 << 0;
-    }
+  /** Flag enforcement. */
+  @IntDef(flag = true, value = Flags.FLAG_NOTIFY_FOR_DESCENDANTS)
+  @Retention(RetentionPolicy.SOURCE)
+  public @interface Flags {
 
     /**
-     * Create a new ObservedUri.
-     *
-     * @param uri The URI to observe.
-     * @param flags Any {@link Flags} associated with the URI.
+     * Triggers if any descendants of the given URI change. Corresponds to the {@code
+     * notifyForDescendants} of {@link android.content.ContentResolver#registerContentObserver}.
      */
-    public ObservedUri(@NonNull Uri uri, @Flags int flags) {
-        if (uri == null) {
-            throw new IllegalArgumentException("URI must not be null.");
-        }
-        this.uri = uri;
-        this.flags = flags;
+    int FLAG_NOTIFY_FOR_DESCENDANTS = 1 << 0;
+  }
+
+  /**
+   * Create a new ObservedUri.
+   *
+   * @param uri The URI to observe.
+   * @param flags Any {@link Flags} associated with the URI.
+   */
+  public ObservedUri(@NonNull Uri uri, @Flags int flags) {
+    if (uri == null) {
+      throw new IllegalArgumentException("URI must not be null.");
+    }
+    this.uri = uri;
+    this.flags = flags;
+  }
+
+  public Uri getUri() {
+    return uri;
+  }
+
+  public int getFlags() {
+    return flags;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof ObservedUri)) {
+      return false;
     }
 
-    public Uri getUri() {
-        return uri;
-    }
+    ObservedUri otherUri = (ObservedUri) o;
+    return flags == otherUri.flags && uri.equals(otherUri.uri);
+  }
 
-    public int getFlags() {
-        return flags;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof ObservedUri)) {
-            return false;
-        }
-
-        ObservedUri otherUri = (ObservedUri) o;
-        return flags == otherUri.flags && uri.equals(otherUri.uri);
-    }
-
-    @Override
-    public int hashCode() {
-        return uri.hashCode() ^ flags;
-    }
+  @Override
+  public int hashCode() {
+    return uri.hashCode() ^ flags;
+  }
 }

@@ -27,103 +27,104 @@ import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.JobValidator;
 import java.util.Iterator;
 
+/** A singleton dependency container. */
 public final class CentralContainer {
-    private static JobStore sStore;
+  private static JobStore sStore;
 
-    private static boolean sInitialized = false;
-    private final static Object sLock = new Object();
-    private static FirebaseJobDispatcher sDispatcher;
+  private static boolean sInitialized = false;
+  private static final Object sLock = new Object();
+  private static FirebaseJobDispatcher sDispatcher;
 
-    public static void init(Context ctx) {
+  public static void init(Context ctx) {
+    if (!sInitialized) {
+      synchronized (sLock) {
         if (!sInitialized) {
-            synchronized (sLock) {
-                if (!sInitialized) {
-                    initLocked(ctx);
-                }
-            }
+          initLocked(ctx);
         }
+      }
+    }
+  }
+
+  private static void initLocked(Context ctx) {
+    sStore = new JobStore();
+    sDispatcher = new FirebaseJobDispatcher(new GooglePlayDriver(ctx));
+
+    sInitialized = true;
+  }
+
+  public static JobStore getStore(Context ctx) {
+    init(ctx);
+
+    return sStore;
+  }
+
+  public static FirebaseJobDispatcher getDispatcher(Context ctx) {
+    init(ctx);
+
+    return sDispatcher;
+  }
+
+  private static class TrackingBackend implements Driver {
+    private final Driver mDriver;
+    private final JobStore mStore;
+
+    public TrackingBackend(Driver backend, JobStore store) {
+      mDriver = backend;
+      mStore = store;
     }
 
-    private static void initLocked(Context ctx) {
-        sStore = new JobStore();
-        sDispatcher = new FirebaseJobDispatcher(new GooglePlayDriver(ctx));
+    @Override
+    public int schedule(@NonNull Job job) {
+      Log.i("TrackingBackend", "beginning schedule loop");
 
-        sInitialized = true;
+      synchronized (mStore) {
+        final Iterator<JobHistory> it = mStore.iterator();
+        while (it.hasNext()) {
+          JobParameters j = it.next().job;
+
+          if (j.getTag().equals(job.getTag()) && j.getService().equals(job.getService())) {
+            it.remove();
+          }
+        }
+
+        mStore.add(new JobHistory(job));
+      }
+
+      Log.i("TrackingBackend", "ending schedule loop");
+
+      return mDriver.schedule(job);
     }
 
-    public static JobStore getStore(Context ctx) {
-        init(ctx);
+    @Override
+    public int cancel(@NonNull String tag) {
+      synchronized (mStore) {
+        final Iterator<JobHistory> it = mStore.iterator();
+        while (it.hasNext()) {
+          JobParameters j = it.next().job;
+          if (tag == null || tag.equals(j.getTag())) {
+            it.remove();
+            break;
+          }
+        }
 
-        return sStore;
+        return mDriver.cancel(tag);
+      }
     }
 
-    public static FirebaseJobDispatcher getDispatcher(Context ctx) {
-        init(ctx);
-
-        return sDispatcher;
+    @Override
+    public int cancelAll() {
+      return mDriver.cancelAll();
     }
 
-    private static class TrackingBackend implements Driver {
-        private final Driver mDriver;
-        private final JobStore mStore;
-
-        public TrackingBackend(Driver backend, JobStore store) {
-            mDriver = backend;
-            mStore = store;
-        }
-
-        @Override
-        public int schedule(@NonNull Job job) {
-            Log.i("TrackingBackend", "beginning schedule loop");
-
-            synchronized (mStore) {
-                final Iterator<JobHistory> it = mStore.iterator();
-                while (it.hasNext()) {
-                    JobParameters j = it.next().job;
-
-                    if (j.getTag().equals(job.getTag()) && j.getService().equals(job.getService())) {
-                        it.remove();
-                    }
-                }
-
-                mStore.add(new JobHistory(job));
-            }
-
-            Log.i("TrackingBackend", "ending schedule loop");
-
-            return mDriver.schedule(job);
-        }
-
-        @Override
-        public int cancel(@NonNull String tag) {
-            synchronized (mStore) {
-                final Iterator<JobHistory> it = mStore.iterator();
-                while (it.hasNext()) {
-                    JobParameters j = it.next().job;
-                    if (tag == null || tag.equals(j.getTag())) {
-                        it.remove();
-                        break;
-                    }
-                }
-
-                return mDriver.cancel(tag);
-            }
-        }
-
-        @Override
-        public int cancelAll() {
-            return mDriver.cancelAll();
-        }
-
-        @NonNull
-        @Override
-        public JobValidator getValidator() {
-            return mDriver.getValidator();
-        }
-
-        @Override
-        public boolean isAvailable() {
-            return mDriver.isAvailable();
-        }
+    @NonNull
+    @Override
+    public JobValidator getValidator() {
+      return mDriver.getValidator();
     }
+
+    @Override
+    public boolean isAvailable() {
+      return mDriver.isAvailable();
+    }
+  }
 }

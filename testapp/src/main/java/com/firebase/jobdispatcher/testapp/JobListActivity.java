@@ -22,25 +22,23 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.ListView;
 
-/**
- * An activity representing a list of Jobs.
- */
+/** An activity representing a list of Jobs. */
 public class JobListActivity extends AppCompatActivity {
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_job_list);
+    setContentView(R.layout.activity_job_list);
 
-        final ListView view = (ListView) findViewById(R.id.job_list);
-        if (view != null) {
-            view.setAdapter(
-                new JobStoreAdapter(this, CentralContainer.getStore(getApplicationContext())));
-        }
+    final ListView view = (ListView) findViewById(R.id.job_list);
+    if (view != null) {
+      view.setAdapter(
+          new JobStoreAdapter(this, CentralContainer.getStore(getApplicationContext())));
     }
+  }
 
-    public void onAddButtonClicked(View v) {
-        startActivity(new Intent(this, JobFormActivity.class));
-    }
+  public void onAddButtonClicked(View v) {
+    startActivity(new Intent(this, JobFormActivity.class));
+  }
 }

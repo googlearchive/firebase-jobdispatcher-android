@@ -39,167 +39,168 @@ import org.mockito.stubbing.Answer;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+/** Tests for the {@link FirebaseJobDispatcher} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class FirebaseJobDispatcherTest {
 
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
+  @Rule public ExpectedException expectedException = ExpectedException.none();
 
-    @Mock
-    private Driver mDriver;
+  @Mock private Driver mDriver;
 
-    @Mock
-    private JobValidator mValidator;
+  @Mock private JobValidator mValidator;
 
-    private FirebaseJobDispatcher mDispatcher;
+  private FirebaseJobDispatcher mDispatcher;
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.initMocks(this);
 
-        when(mDriver.getValidator()).thenReturn(mValidator);
+    when(mDriver.getValidator()).thenReturn(mValidator);
 
-        mDispatcher = new FirebaseJobDispatcher(mDriver);
-        setDriverAvailability(true);
+    mDispatcher = new FirebaseJobDispatcher(mDriver);
+    setDriverAvailability(true);
+  }
+
+  @Test
+  public void testSchedule_passThrough() throws Exception {
+    final int[] possibleResults = {
+      FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS,
+      FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE,
+      FirebaseJobDispatcher.SCHEDULE_RESULT_BAD_SERVICE,
+      FirebaseJobDispatcher.SCHEDULE_RESULT_UNKNOWN_ERROR,
+      FirebaseJobDispatcher.SCHEDULE_RESULT_UNSUPPORTED_TRIGGER
+    };
+
+    for (int result : possibleResults) {
+      when(mDriver.schedule(null)).thenReturn(result);
+      assertEquals(result, mDispatcher.schedule(null));
     }
 
-    @Test
-    public void testSchedule_passThrough() throws Exception {
-        final int[] possibleResults = {
-            FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS,
-            FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE,
-            FirebaseJobDispatcher.SCHEDULE_RESULT_BAD_SERVICE,
-            FirebaseJobDispatcher.SCHEDULE_RESULT_UNKNOWN_ERROR,
-            FirebaseJobDispatcher.SCHEDULE_RESULT_UNSUPPORTED_TRIGGER};
+    verify(mDriver, times(possibleResults.length)).schedule(null);
+  }
 
-        for (int result : possibleResults) {
-            when(mDriver.schedule(null)).thenReturn(result);
-            assertEquals(result, mDispatcher.schedule(null));
-        }
+  @Test
+  public void testSchedule_unavailable() throws Exception {
+    setDriverAvailability(false);
+    assertEquals(
+        FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE, mDispatcher.schedule(null));
+    verify(mDriver, never()).schedule(null);
+  }
 
-        verify(mDriver, times(possibleResults.length)).schedule(null);
-    }
+  @Test
+  public void testCancelJob() throws Exception {
+    final String tag = "foo";
 
-    @Test
-    public void testSchedule_unavailable() throws Exception {
-        setDriverAvailability(false);
-        assertEquals(
-            FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE,
-            mDispatcher.schedule(null));
-        verify(mDriver, never()).schedule(null);
-    }
+    // simulate success
+    when(mDriver.cancel(tag)).thenReturn(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS);
 
-    @Test
-    public void testCancelJob() throws Exception {
-        final String tag = "foo";
+    assertEquals(
+        "Expected dispatcher to pass the result of Driver#cancel(String, Class) through",
+        FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS,
+        mDispatcher.cancel(tag));
 
-        // simulate success
-        when(mDriver.cancel(tag))
-            .thenReturn(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS);
+    // verify the driver was indeed called
+    verify(mDriver).cancel(tag);
+  }
 
-        assertEquals(
-            "Expected dispatcher to pass the result of Driver#cancel(String, Class) through",
-            FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS,
-            mDispatcher.cancel(tag));
+  @Test
+  public void testCancelJob_unavailable() throws Exception {
+    setDriverAvailability(false); // driver is unavailable
 
-        // verify the driver was indeed called
-        verify(mDriver).cancel(tag);
-    }
+    assertEquals(
+        FirebaseJobDispatcher.CANCEL_RESULT_NO_DRIVER_AVAILABLE, mDispatcher.cancel("foo"));
 
-    @Test
-    public void testCancelJob_unavailable() throws Exception {
-        setDriverAvailability(false); // driver is unavailable
+    // verify the driver was never even consulted
+    verify(mDriver, never()).cancel("foo");
+  }
 
-        assertEquals(
-            FirebaseJobDispatcher.CANCEL_RESULT_NO_DRIVER_AVAILABLE,
-            mDispatcher.cancel("foo"));
+  @Test
+  public void testCancelAllJobs() throws Exception {
+    when(mDriver.cancelAll()).thenReturn(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS);
 
-        // verify the driver was never even consulted
-        verify(mDriver, never()).cancel("foo");
-    }
+    assertEquals(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS, mDispatcher.cancelAll());
+    verify(mDriver).cancelAll();
+  }
 
-    @Test
-    public void testCancelAllJobs() throws Exception {
-        when(mDriver.cancelAll()).thenReturn(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS);
+  @Test
+  public void testCancelAllJobs_unavailable() throws Exception {
+    setDriverAvailability(false); // driver is unavailable
 
-        assertEquals(FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS, mDispatcher.cancelAll());
-        verify(mDriver).cancelAll();
-    }
+    assertEquals(FirebaseJobDispatcher.CANCEL_RESULT_NO_DRIVER_AVAILABLE, mDispatcher.cancelAll());
 
-    @Test
-    public void testCancelAllJobs_unavailable() throws Exception {
-        setDriverAvailability(false); // driver is unavailable
+    verify(mDriver, never()).cancelAll();
+  }
 
-        assertEquals(
-            FirebaseJobDispatcher.CANCEL_RESULT_NO_DRIVER_AVAILABLE,
-            mDispatcher.cancelAll());
+  @Test
+  public void testMustSchedule_success() throws Exception {
+    when(mDriver.schedule(null)).thenReturn(FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS);
 
-        verify(mDriver, never()).cancelAll();
-    }
+    /* assert no exception is thrown */
+    mDispatcher.mustSchedule(null);
+  }
 
-    @Test
-    public void testMustSchedule_success() throws Exception {
-        when(mDriver.schedule(null)).thenReturn(FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS);
+  @Test
+  public void testMustSchedule_unavailable() throws Exception {
+    setDriverAvailability(false); // driver is unavailable
+    expectedException.expect(FirebaseJobDispatcher.ScheduleFailedException.class);
 
-        /* assert no exception is thrown */
+    mDispatcher.mustSchedule(null);
+  }
+
+  @Test
+  public void testMustSchedule_failure() throws Exception {
+    final int[] possibleErrors = {
+      FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE,
+      FirebaseJobDispatcher.SCHEDULE_RESULT_BAD_SERVICE,
+      FirebaseJobDispatcher.SCHEDULE_RESULT_UNKNOWN_ERROR,
+      FirebaseJobDispatcher.SCHEDULE_RESULT_UNSUPPORTED_TRIGGER
+    };
+
+    for (int scheduleError : possibleErrors) {
+      when(mDriver.schedule(null)).thenReturn(scheduleError);
+
+      try {
         mDispatcher.mustSchedule(null);
+
+        fail("Expected mustSchedule() with error code " + scheduleError + " to fail");
+      } catch (ScheduleFailedException expected) {
+        /* expected */
+      }
     }
 
-    @Test
-    public void testMustSchedule_unavailable() throws Exception {
-        setDriverAvailability(false); // driver is unavailable
-        expectedException.expect(FirebaseJobDispatcher.ScheduleFailedException.class);
+    verify(mDriver, times(possibleErrors.length)).schedule(null);
+  }
 
-        mDispatcher.mustSchedule(null);
-    }
-
-    @Test
-    public void testMustSchedule_failure() throws Exception {
-        final int[] possibleErrors = {
-            FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE,
-            FirebaseJobDispatcher.SCHEDULE_RESULT_BAD_SERVICE,
-            FirebaseJobDispatcher.SCHEDULE_RESULT_UNKNOWN_ERROR,
-            FirebaseJobDispatcher.SCHEDULE_RESULT_UNSUPPORTED_TRIGGER};
-
-        for (int scheduleError : possibleErrors) {
-            when(mDriver.schedule(null)).thenReturn(scheduleError);
-
-            try {
-                mDispatcher.mustSchedule(null);
-
-                fail("Expected mustSchedule() with error code " + scheduleError + " to fail");
-            } catch (ScheduleFailedException expected) { /* expected */ }
-        }
-
-        verify(mDriver, times(possibleErrors.length)).schedule(null);
-    }
-
-    @Test
-    public void testNewRetryStrategyBuilder() {
-        // custom validator that only approves strategies where initialbackoff == 30s
-        when(mValidator.validate(any(RetryStrategy.class))).thenAnswer(new Answer<List<String>>() {
-            @Override
-            public List<String> answer(InvocationOnMock invocation) throws Throwable {
+  @Test
+  public void testNewRetryStrategyBuilder() {
+    // custom validator that only approves strategies where initialbackoff == 30s
+    when(mValidator.validate(any(RetryStrategy.class)))
+        .thenAnswer(
+            new Answer<List<String>>() {
+              @Override
+              public List<String> answer(InvocationOnMock invocation) throws Throwable {
                 RetryStrategy rs = (RetryStrategy) invocation.getArguments()[0];
                 // only succeed if initialBackoff == 30s
                 return rs.getInitialBackoff() == 30 ? null : Arrays.asList("foo", "bar");
-            }
-        });
+              }
+            });
 
-        try {
-            mDispatcher.newRetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 0, 30);
-            fail("Expected initial backoff != 30s to fail using custom validator");
-        } catch (Exception unused) { /* unused */ }
-
-        try {
-            mDispatcher.newRetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 30, 30);
-        } catch (Exception unused) {
-            fail("Expected initial backoff == 30s not to fail using custom validator");
-        }
+    try {
+      mDispatcher.newRetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 0, 30);
+      fail("Expected initial backoff != 30s to fail using custom validator");
+    } catch (Exception unused) {
+      /* unused */
     }
 
-    public void setDriverAvailability(boolean driverAvailability) {
-        when(mDriver.isAvailable()).thenReturn(driverAvailability);
+    try {
+      mDispatcher.newRetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 30, 30);
+    } catch (Exception unused) {
+      fail("Expected initial backoff == 30s not to fail using custom validator");
     }
+  }
+
+  public void setDriverAvailability(boolean driverAvailability) {
+    when(mDriver.isAvailable()).thenReturn(driverAvailability);
+  }
 }

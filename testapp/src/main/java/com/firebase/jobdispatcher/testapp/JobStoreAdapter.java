@@ -27,9 +27,10 @@ import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.testapp.JobStore.OnChangeListener;
 import java.util.Locale;
 
+/** An adapter between a JobStore and the list view that displays its contents. */
 public class JobStoreAdapter extends ArrayAdapter<JobHistory> implements OnChangeListener {
   private final JobStore mStore;
-  private final static String CELL_FORMAT = "tag = %s, endpoint = %s";
+  private static final String CELL_FORMAT = "tag = %s, endpoint = %s";
 
   @Override
   public View getView(final int position, View convertView, ViewGroup parent) {
@@ -39,14 +40,15 @@ public class JobStoreAdapter extends ArrayAdapter<JobHistory> implements OnChang
     JobParameters job = getItem(position).job;
     view.setText(String.format(Locale.US, CELL_FORMAT, job.getTag(), job.getService()));
 
-    view.setOnClickListener(new OnClickListener() {
-      @Override
-      public void onClick(View v) {
-        Intent i = new Intent(ctx, JobDetailActivity.class);
-        i.putExtra("pos", position);
-        ctx.startActivity(i);
-      }
-    });
+    view.setOnClickListener(
+        new OnClickListener() {
+          @Override
+          public void onClick(View v) {
+            Intent i = new Intent(ctx, JobDetailActivity.class);
+            i.putExtra("pos", position);
+            ctx.startActivity(i);
+          }
+        });
 
     return view;
   }

@@ -26,41 +26,36 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+/** Tests for the {@link Constraint} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class ConstraintTest {
 
-    /**
-     * Just to get 100% coverage.
-     */
-    @Test
-    public void testPrivateConstructor() throws Exception {
-        TestUtil.assertHasSinglePrivateConstructor(Constraint.class);
+  /** Just to get 100% coverage. */
+  @Test
+  public void testPrivateConstructor() throws Exception {
+    TestUtil.assertHasSinglePrivateConstructor(Constraint.class);
+  }
+
+  @Test
+  public void testCompactAndUnCompact() {
+    for (List<Integer> combo : TestUtil.getAllConstraintCombinations()) {
+      int[] input = TestUtil.toIntArray(combo);
+      Arrays.sort(input);
+
+      int[] output = Constraint.uncompact(Constraint.compact(input));
+      Arrays.sort(output);
+
+      for (int i = 0; i < combo.size(); i++) {
+        assertEquals("Combination = " + TextUtils.join(", ", combo), input[i], output[i]);
+      }
+
+      assertEquals("Expected length of two arrays to be the same", input.length, output.length);
     }
+  }
 
-    @Test
-    public void testCompactAndUnCompact() {
-        for (List<Integer> combo : TestUtil.getAllConstraintCombinations()) {
-            int[] input = TestUtil.toIntArray(combo);
-            Arrays.sort(input);
-
-            int[] output = Constraint.uncompact(Constraint.compact(input));
-            Arrays.sort(output);
-
-            for (int i = 0; i < combo.size(); i++) {
-                assertEquals("Combination = " + TextUtils.join(", ", combo),
-                    input[i],
-                    output[i]);
-            }
-
-            assertEquals("Expected length of two arrays to be the same",
-                input.length,
-                output.length);
-        }
-    }
-
-    @Test
-    public void compactNull() {
-        assertEquals(0, Constraint.compact(null));
-    }
+  @Test
+  public void compactNull() {
+    assertEquals(0, Constraint.compact(null));
+  }
 }

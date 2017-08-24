@@ -21,14 +21,13 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+/** Tests for the {@link JobTrigger.ImmediateTrigger} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class ImmediateTriggerTest {
-    /**
-     * Code coverage.
-     */
-    @Test
-    public void testPrivateConstructor() throws Exception {
-        TestUtil.assertHasSinglePrivateConstructor(JobTrigger.ImmediateTrigger.class);
-    }
+  /** Code coverage. */
+  @Test
+  public void testPrivateConstructor() throws Exception {
+    TestUtil.assertHasSinglePrivateConstructor(JobTrigger.ImmediateTrigger.class);
+  }
 }

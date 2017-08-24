@@ -18,23 +18,23 @@ import org.robolectric.shadows.ShadowParcel;
  */
 @Implements(Parcel.class)
 public class ExtendedShadowParcel extends ShadowParcel {
-    @RealObject private Parcel realObject;
+  @RealObject private Parcel realObject;
 
-    // Map each IBinder to an integer, and use the super's int-writing capability to fake Binder
-    // read/writes.
-    private final AtomicInteger nextBinderId = new AtomicInteger(1);
-    private final Map<Integer, IBinder> binderMap =
-            Collections.synchronizedMap(new HashMap<Integer, IBinder>());
+  // Map each IBinder to an integer, and use the super's int-writing capability to fake Binder
+  // read/writes.
+  private final AtomicInteger nextBinderId = new AtomicInteger(1);
+  private final Map<Integer, IBinder> binderMap =
+      Collections.synchronizedMap(new HashMap<Integer, IBinder>());
 
-    @Implementation
-    public void writeStrongBinder(IBinder binder) {
-        int id = nextBinderId.getAndIncrement();
-        binderMap.put(id, binder);
-        realObject.writeInt(id);
-    }
+  @Implementation
+  public void writeStrongBinder(IBinder binder) {
+    int id = nextBinderId.getAndIncrement();
+    binderMap.put(id, binder);
+    realObject.writeInt(id);
+  }
 
-    @Implementation
-    public IBinder readStrongBinder() {
-        return binderMap.get(realObject.readInt());
-    }
+  @Implementation
+  public IBinder readStrongBinder() {
+    return binderMap.get(realObject.readInt());
+  }
 }

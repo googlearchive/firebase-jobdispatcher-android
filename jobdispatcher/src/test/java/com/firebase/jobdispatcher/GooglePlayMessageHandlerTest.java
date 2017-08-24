@@ -40,114 +40,109 @@ import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-/**
- * Tests {@link GooglePlayMessageHandler}.
- */
+/** Tests {@link GooglePlayMessageHandler}. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class GooglePlayMessageHandlerTest {
 
-    @Mock
-    Looper looper;
-    @Mock
-    GooglePlayReceiver receiverMock;
-    @Mock
-    Context context;
-    @Mock
-    AppOpsManager appOpsManager;
-    @Mock
-    Messenger messengerMock;
-    @Mock
-    ExecutionDelegator executionDelegatorMock;
+  @Mock Looper looper;
+  @Mock GooglePlayReceiver receiverMock;
+  @Mock Context context;
+  @Mock AppOpsManager appOpsManager;
+  @Mock Messenger messengerMock;
+  @Mock ExecutionDelegator executionDelegatorMock;
 
-    GooglePlayMessageHandler handler;
+  GooglePlayMessageHandler handler;
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-        handler = new GooglePlayMessageHandler(looper, receiverMock);
-        when(receiverMock.getExecutionDelegator()).thenReturn(executionDelegatorMock);
-        when(receiverMock.getApplicationContext()).thenReturn(context);
-        when(context.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(appOpsManager);
-    }
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.initMocks(this);
+    handler = new GooglePlayMessageHandler(looper, receiverMock);
+    when(receiverMock.getExecutionDelegator()).thenReturn(executionDelegatorMock);
+    when(receiverMock.getApplicationContext()).thenReturn(context);
+    when(context.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(appOpsManager);
+  }
 
-    @Test
-    public void handleMessage_nullNoException() throws Exception {
-        handler.handleMessage(null);
-    }
+  @Test
+  public void handleMessage_nullNoException() throws Exception {
+    handler.handleMessage(null);
+  }
 
-    @Test
-    public void handleMessage_ignoreIfSenderIsNotGcm() throws Exception {
-        Message message = Message.obtain();
-        message.what = GooglePlayMessageHandler.MSG_START_EXEC;
-        Bundle data = new Bundle();
-        data.putString(REQUEST_PARAM_TAG, "TAG");
-        message.setData(data);
-        message.replyTo = messengerMock;
-        doThrow(new SecurityException()).when(appOpsManager)
-                .checkPackage(message.sendingUid, GooglePlayDriver.BACKEND_PACKAGE);
-        handler.handleMessage(message);
-        verify(receiverMock, never()).prepareJob(any(GooglePlayMessengerCallback.class), eq(data));
-    }
+  @Test
+  public void handleMessage_ignoreIfSenderIsNotGcm() throws Exception {
+    Message message = Message.obtain();
+    message.what = GooglePlayMessageHandler.MSG_START_EXEC;
+    Bundle data = new Bundle();
+    data.putString(REQUEST_PARAM_TAG, "TAG");
+    message.setData(data);
+    message.replyTo = messengerMock;
+    doThrow(new SecurityException())
+        .when(appOpsManager)
+        .checkPackage(message.sendingUid, GooglePlayDriver.BACKEND_PACKAGE);
+    handler.handleMessage(message);
+    verify(receiverMock, never()).prepareJob(any(GooglePlayMessengerCallback.class), eq(data));
+  }
 
-    @Test
-    public void handleMessage_startExecution_noData() throws Exception {
-        Message message = Message.obtain();
-        message.what = GooglePlayMessageHandler.MSG_START_EXEC;
-        message.replyTo = messengerMock;
+  @Test
+  public void handleMessage_startExecution_noData() throws Exception {
+    Message message = Message.obtain();
+    message.what = GooglePlayMessageHandler.MSG_START_EXEC;
+    message.replyTo = messengerMock;
 
-        handler.handleMessage(message);
-        verify(receiverMock, never())
-                .prepareJob(any(GooglePlayMessengerCallback.class), any(Bundle.class));
-    }
+    handler.handleMessage(message);
+    verify(receiverMock, never())
+        .prepareJob(any(GooglePlayMessengerCallback.class), any(Bundle.class));
+  }
 
-    @Test
-    public void handleMessage_startExecution() throws Exception {
-        Message message = Message.obtain();
-        message.what = GooglePlayMessageHandler.MSG_START_EXEC;
-        Bundle data = new Bundle();
-        data.putString(REQUEST_PARAM_TAG, "TAG");
-        message.setData(data);
-        message.replyTo = messengerMock;
-        JobInvocation jobInvocation = new Builder()
-                .setTag("tag")
-                .setService(TestJobService.class.getName())
-                .setTrigger(Trigger.NOW).build();
-        when(receiverMock.prepareJob(any(GooglePlayMessengerCallback.class), eq(data)))
-                .thenReturn(jobInvocation);
+  @Test
+  public void handleMessage_startExecution() throws Exception {
+    Message message = Message.obtain();
+    message.what = GooglePlayMessageHandler.MSG_START_EXEC;
+    Bundle data = new Bundle();
+    data.putString(REQUEST_PARAM_TAG, "TAG");
+    message.setData(data);
+    message.replyTo = messengerMock;
+    JobInvocation jobInvocation =
+        new Builder()
+            .setTag("tag")
+            .setService(TestJobService.class.getName())
+            .setTrigger(Trigger.NOW)
+            .build();
+    when(receiverMock.prepareJob(any(GooglePlayMessengerCallback.class), eq(data)))
+        .thenReturn(jobInvocation);
 
-        handler.handleMessage(message);
+    handler.handleMessage(message);
 
-        verify(executionDelegatorMock).executeJob(jobInvocation);
-    }
+    verify(executionDelegatorMock).executeJob(jobInvocation);
+  }
 
-    @Test
-    public void handleMessage_stopExecution() throws Exception {
-        Message message = Message.obtain();
-        message.what = GooglePlayMessageHandler.MSG_STOP_EXEC;
-        JobCoder jobCoder = GooglePlayReceiver.getJobCoder();
-        Bundle data = TestUtil.encodeContentUriJob(TestUtil.getContentUriTrigger(), jobCoder);
-        JobInvocation jobInvocation = jobCoder.decode(data).build();
-        message.setData(data);
-        message.replyTo = messengerMock;
+  @Test
+  public void handleMessage_stopExecution() throws Exception {
+    Message message = Message.obtain();
+    message.what = GooglePlayMessageHandler.MSG_STOP_EXEC;
+    JobCoder jobCoder = GooglePlayReceiver.getJobCoder();
+    Bundle data = TestUtil.encodeContentUriJob(TestUtil.getContentUriTrigger(), jobCoder);
+    JobInvocation jobInvocation = jobCoder.decode(data).build();
+    message.setData(data);
+    message.replyTo = messengerMock;
 
-        handler.handleMessage(message);
+    handler.handleMessage(message);
 
-        final ArgumentCaptor<JobInvocation> captor = ArgumentCaptor.forClass(JobInvocation.class);
+    final ArgumentCaptor<JobInvocation> captor = ArgumentCaptor.forClass(JobInvocation.class);
 
-        verify(executionDelegatorMock).stopJob(captor.capture());
+    verify(executionDelegatorMock).stopJob(captor.capture());
 
-        TestUtil.assertJobsEqual(jobInvocation, captor.getValue());
-    }
+    TestUtil.assertJobsEqual(jobInvocation, captor.getValue());
+  }
 
-    @Test
-    public void handleMessage_stopExecution_invalidNoCrash() throws Exception {
-        Message message = Message.obtain();
-        message.what = GooglePlayMessageHandler.MSG_STOP_EXEC;
-        message.replyTo = messengerMock;
+  @Test
+  public void handleMessage_stopExecution_invalidNoCrash() throws Exception {
+    Message message = Message.obtain();
+    message.what = GooglePlayMessageHandler.MSG_STOP_EXEC;
+    message.replyTo = messengerMock;
 
-        handler.handleMessage(message);
+    handler.handleMessage(message);
 
-        verify(executionDelegatorMock, never()).stopJob(any(JobInvocation.class));
-    }
+    verify(executionDelegatorMock, never()).stopJob(any(JobInvocation.class));
+  }
 }

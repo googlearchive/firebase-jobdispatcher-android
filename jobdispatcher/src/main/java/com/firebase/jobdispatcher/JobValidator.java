@@ -24,26 +24,19 @@ import java.util.List;
  * components.
  */
 public interface JobValidator {
-    /**
-     * Returns a List of error messages, or null if the JobParameters is
-     * valid.
-     */
-    @Nullable
-    List<String> validate(JobParameters job);
+  /** Returns a List of error messages, or null if the JobParameters is valid. */
+  @Nullable
+  List<String> validate(JobParameters job);
 
-    /**
-     * Returns a List of error messages, or null if the Trigger is
-     * valid.
-     * @param trigger
-     */
-    @Nullable
-    List<String> validate(JobTrigger trigger);
+  /**
+   * Returns a List of error messages, or null if the Trigger is valid.
+   *
+   * @param trigger
+   */
+  @Nullable
+  List<String> validate(JobTrigger trigger);
 
-    /**
-     * Returns a List of error messages, or null if the RetryStrategy
-     * is valid.
-     */
-    @Nullable
-    List<String> validate(RetryStrategy retryStrategy);
-
+  /** Returns a List of error messages, or null if the RetryStrategy is valid. */
+  @Nullable
+  List<String> validate(RetryStrategy retryStrategy);
 }

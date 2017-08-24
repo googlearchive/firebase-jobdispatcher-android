@@ -33,20 +33,20 @@ import org.robolectric.annotation.Config;
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class ContentUriTriggerTest {
 
-    @Test(expected = IllegalArgumentException.class)
-    public void constrains_null() throws Exception {
-        Trigger.contentUriTrigger(null);
-    }
+  @Test(expected = IllegalArgumentException.class)
+  public void constrains_null() throws Exception {
+    Trigger.contentUriTrigger(null);
+  }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void constrains_emptyList() throws Exception {
-        Trigger.contentUriTrigger(Collections.<ObservedUri>emptyList());
-    }
+  @Test(expected = IllegalArgumentException.class)
+  public void constrains_emptyList() throws Exception {
+    Trigger.contentUriTrigger(Collections.<ObservedUri>emptyList());
+  }
 
-    @Test
-    public void constrains_valid() throws Exception {
-        List<ObservedUri> uris = Arrays.asList(new ObservedUri(ContactsContract.AUTHORITY_URI, 0));
-        ContentUriTrigger uriTrigger = Trigger.contentUriTrigger(uris);
-        assertEquals(uris, uriTrigger.getUris());
-    }
+  @Test
+  public void constrains_valid() throws Exception {
+    List<ObservedUri> uris = Arrays.asList(new ObservedUri(ContactsContract.AUTHORITY_URI, 0));
+    ContentUriTrigger uriTrigger = Trigger.contentUriTrigger(uris);
+    assertEquals(uris, uriTrigger.getUris());
+  }
 }

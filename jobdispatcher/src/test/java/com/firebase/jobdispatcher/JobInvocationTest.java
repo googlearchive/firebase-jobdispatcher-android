@@ -30,54 +30,58 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+/** Tests for the {@link JobInvocation} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobInvocationTest {
-    private Builder builder;
+  private Builder builder;
 
-    @Before
-    public void setUp() {
-        builder = new Builder()
-                .setTag("tag")
-                .setService(TestJobService.class.getName())
-                .setTrigger(Trigger.NOW);
-    }
+  @Before
+  public void setUp() {
+    builder =
+        new Builder()
+            .setTag("tag")
+            .setService(TestJobService.class.getName())
+            .setTrigger(Trigger.NOW);
+  }
 
-    @SuppressWarnings("ConstantConditions")
-    @Test
-    public void testShouldReplaceCurrent() throws Exception {
-        assertTrue("Expected shouldReplaceCurrent() to return value passed in constructor",
-            builder.setReplaceCurrent(true).build().shouldReplaceCurrent());
-        assertFalse("Expected shouldReplaceCurrent() to return value passed in constructor",
-            builder.setReplaceCurrent(false).build().shouldReplaceCurrent());
-    }
+  @SuppressWarnings("ConstantConditions")
+  @Test
+  public void testShouldReplaceCurrent() throws Exception {
+    assertTrue(
+        "Expected shouldReplaceCurrent() to return value passed in constructor",
+        builder.setReplaceCurrent(true).build().shouldReplaceCurrent());
+    assertFalse(
+        "Expected shouldReplaceCurrent() to return value passed in constructor",
+        builder.setReplaceCurrent(false).build().shouldReplaceCurrent());
+  }
 
-    @Test
-    public void extras() throws Exception {
-        assertNotNull(builder.build().getExtras());
+  @Test
+  public void extras() throws Exception {
+    assertNotNull(builder.build().getExtras());
 
-        Bundle bundle = new Bundle();
-        bundle.putLong("test", 1L);
-        Bundle extras = builder.addExtras(bundle).build().getExtras();
-        assertEquals(1, extras.size());
-        assertEquals(1L, extras.getLong("test"));
-    }
+    Bundle bundle = new Bundle();
+    bundle.putLong("test", 1L);
+    Bundle extras = builder.addExtras(bundle).build().getExtras();
+    assertEquals(1, extras.size());
+    assertEquals(1L, extras.getLong("test"));
+  }
 
-    @Test
-    public void contract_hashCode_equals() {
-        JobInvocation jobInvocation = builder.build();
-        assertEquals(jobInvocation, builder.build());
-        assertEquals(jobInvocation.hashCode(), builder.build().hashCode());
-        JobInvocation jobInvocationNew = builder.setTag("new").build();
-        assertNotEquals(jobInvocation, jobInvocationNew);
-        assertNotEquals(jobInvocation.hashCode(), jobInvocationNew.hashCode());
-    }
+  @Test
+  public void contract_hashCode_equals() {
+    JobInvocation jobInvocation = builder.build();
+    assertEquals(jobInvocation, builder.build());
+    assertEquals(jobInvocation.hashCode(), builder.build().hashCode());
+    JobInvocation jobInvocationNew = builder.setTag("new").build();
+    assertNotEquals(jobInvocation, jobInvocationNew);
+    assertNotEquals(jobInvocation.hashCode(), jobInvocationNew.hashCode());
+  }
 
-    @Test
-    public void contract_hashCode_equals_triggerShouldBeIgnored() {
-        JobInvocation jobInvocation = builder.build();
-        JobInvocation periodic = builder.setTrigger(Trigger.executionWindow(0, 1)).build();
-        assertEquals(jobInvocation, periodic);
-        assertEquals(jobInvocation.hashCode(), periodic.hashCode());
-    }
+  @Test
+  public void contract_hashCode_equals_triggerShouldBeIgnored() {
+    JobInvocation jobInvocation = builder.build();
+    JobInvocation periodic = builder.setTrigger(Trigger.executionWindow(0, 1)).build();
+    assertEquals(jobInvocation, periodic);
+    assertEquals(jobInvocation.hashCode(), periodic.hashCode());
+  }
 }
