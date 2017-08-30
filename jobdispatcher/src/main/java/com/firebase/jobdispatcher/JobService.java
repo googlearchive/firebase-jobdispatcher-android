@@ -186,14 +186,10 @@ public abstract class JobService extends Service {
   public final boolean onUnbind(Intent intent) {
     synchronized (runningJobs) {
       for (int i = runningJobs.size() - 1; i >= 0; i--) {
-        JobCallback callback = runningJobs.get(runningJobs.keyAt(i));
+        JobCallback callback = runningJobs.remove(runningJobs.keyAt(i));
         if (callback != null) {
-          callback.sendResult(
-              onStopJob((JobParameters) callback.message.obj)
-                  // returned true, would like to be rescheduled
-                  ? RESULT_FAIL_RETRY
-                  // returned false, but was interrupted so consider it a fail
-                  : RESULT_FAIL_NORETRY);
+          boolean shouldRetry = onStopJob((JobParameters) callback.message.obj);
+          callback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_FAIL_NORETRY);
         }
       }
     }

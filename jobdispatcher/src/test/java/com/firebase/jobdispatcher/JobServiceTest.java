@@ -19,8 +19,10 @@ package com.firebase.jobdispatcher;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -39,6 +41,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
@@ -311,6 +314,70 @@ public class JobServiceTest {
 
     verify(mock).sendMessage(message);
     assertEquals(JobService.RESULT_SUCCESS, message.arg1);
+  }
+
+  @Test
+  public void onUnbind_removesUsedCallbacks_withBackgroundWork() throws Exception {
+    verifyOnUnbindCausesResult(
+        new JobService() {
+          @Override
+          public boolean onStartJob(JobParameters job) {
+            return true; // More work to do in background
+          }
+
+          @Override
+          public boolean onStopJob(JobParameters job) {
+            return true; // Still doing background work
+          }
+        },
+        JobService.RESULT_FAIL_RETRY);
+  }
+
+  @Test
+  public void onUnbind_removesUsedCallbacks_noBackgroundWork() throws Exception {
+    verifyOnUnbindCausesResult(
+        new JobService() {
+          @Override
+          public boolean onStartJob(JobParameters job) {
+            return true; // more work to do in background
+          }
+
+          @Override
+          public boolean onStopJob(JobParameters job) {
+            return false; // Done with background work
+          }
+        },
+        JobService.RESULT_FAIL_NORETRY);
+  }
+
+  private static void verifyOnUnbindCausesResult(JobService service, int expectedResult)
+      throws Exception {
+    Handler mock = mock(Handler.class);
+    Message msg = new Message();
+    msg.setTarget(mock);
+
+    Job jobSpec =
+        TestUtil.getBuilderWithNoopValidator()
+            .setTag("tag")
+            .setService(service.getClass())
+            .setTrigger(Trigger.NOW)
+            .build();
+
+    // start the service
+    service.start(jobSpec, msg);
+    // shouldn't have sent a result message yet (still doing background work)
+    verify(mock, never()).sendMessage(msg);
+    // manually trigger the onUnbind hook
+    service.onUnbind(new Intent());
+
+    ArgumentCaptor<Message> msgCaptor = ArgumentCaptor.forClass(Message.class);
+    verify(mock).sendMessage(msgCaptor.capture());
+    assertEquals(expectedResult, msgCaptor.getValue().arg1);
+
+    // Calling jobFinished should not attempt to send a second message
+    reset(mock);
+    service.jobFinished(jobSpec, false);
+    verify(mock, never()).sendMessage(any(Message.class));
   }
 
   /** A simple JobService that just counts down the {@link #countDownLatch}. */
