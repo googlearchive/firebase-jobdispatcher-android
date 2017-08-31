@@ -21,13 +21,13 @@ import java.util.List;
 
 /** The class contains a summary of the events which caused the job to be executed. */
 public class TriggerReason {
-    private final List<Uri> mTriggeredContentUris;
+  private final List<Uri> mTriggeredContentUris;
 
-    TriggerReason(List<Uri> mTriggeredContentUris) {
-        this.mTriggeredContentUris = mTriggeredContentUris;
-    }
+  TriggerReason(List<Uri> mTriggeredContentUris) {
+    this.mTriggeredContentUris = mTriggeredContentUris;
+  }
 
-    public List<Uri> getTriggeredContentUris() {
-        return mTriggeredContentUris;
-    }
+  public List<Uri> getTriggeredContentUris() {
+    return mTriggeredContentUris;
+  }
 }

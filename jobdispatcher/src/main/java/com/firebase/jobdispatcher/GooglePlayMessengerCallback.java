@@ -25,37 +25,35 @@ import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.JobService.JobResult;
 
-/**
- * Wraps the GooglePlay messenger in a JobCallback-compatible interface.
- */
+/** Wraps the GooglePlay messenger in a JobCallback-compatible interface. */
 class GooglePlayMessengerCallback implements JobCallback {
 
-    private final Messenger messenger;
-    private final String tag;
+  private final Messenger messenger;
+  private final String tag;
 
-    GooglePlayMessengerCallback(Messenger messenger, String tag) {
-        this.messenger = messenger;
-        this.tag = tag;
+  GooglePlayMessengerCallback(Messenger messenger, String tag) {
+    this.messenger = messenger;
+    this.tag = tag;
+  }
+
+  @Override
+  public void jobFinished(@JobResult int status) {
+    try {
+      messenger.send(createResultMessage(status));
+    } catch (RemoteException e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public void jobFinished(@JobResult int status) {
-        try {
-            messenger.send(createResultMessage(status));
-        } catch (RemoteException e) {
-            throw new RuntimeException(e);
-        }
-    }
+  @NonNull
+  private Message createResultMessage(int result) {
+    final Message msg = Message.obtain();
+    msg.what = GooglePlayMessageHandler.MSG_RESULT;
+    msg.arg1 = result;
 
-    @NonNull
-    private Message createResultMessage(int result) {
-        final Message msg = Message.obtain();
-        msg.what = GooglePlayMessageHandler.MSG_RESULT;
-        msg.arg1 = result;
-
-        Bundle b = new Bundle();
-        b.putString(REQUEST_PARAM_TAG, tag);
-        msg.setData(b);
-        return msg;
-    }
+    Bundle b = new Bundle();
+    b.putString(REQUEST_PARAM_TAG, tag);
+    msg.setData(b);
+    return msg;
+  }
 }

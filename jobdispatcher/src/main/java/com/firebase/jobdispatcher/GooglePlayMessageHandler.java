@@ -31,84 +31,82 @@ import android.os.Messenger;
 import android.util.Log;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
 
-/**
- * A messenger for communication with GCM Network Scheduler.
- */
+/** A messenger for communication with GCM Network Scheduler. */
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class GooglePlayMessageHandler extends Handler {
 
-    static final int MSG_START_EXEC = 1;
-    static final int MSG_STOP_EXEC = 2;
-    static final int MSG_RESULT = 3;
-    private static final int MSG_INIT = 4;
-    private final GooglePlayReceiver googlePlayReceiver;
+  static final int MSG_START_EXEC = 1;
+  static final int MSG_STOP_EXEC = 2;
+  static final int MSG_RESULT = 3;
+  private static final int MSG_INIT = 4;
+  private final GooglePlayReceiver googlePlayReceiver;
 
-    public GooglePlayMessageHandler(Looper mainLooper, GooglePlayReceiver googlePlayReceiver) {
-        super(mainLooper);
-        this.googlePlayReceiver = googlePlayReceiver;
+  public GooglePlayMessageHandler(Looper mainLooper, GooglePlayReceiver googlePlayReceiver) {
+    super(mainLooper);
+    this.googlePlayReceiver = googlePlayReceiver;
+  }
+
+  @Override
+  public void handleMessage(Message message) {
+    if (message == null) {
+      return;
     }
 
-    @Override
-    public void handleMessage(Message message) {
-        if (message == null) {
-            return;
-        }
-
-        AppOpsManager appOpsManager = (AppOpsManager) googlePlayReceiver.getApplicationContext()
-                .getSystemService(Context.APP_OPS_SERVICE);
-        try {
-            appOpsManager.checkPackage(message.sendingUid, GooglePlayDriver.BACKEND_PACKAGE);
-        } catch (SecurityException e) {
-            Log.e(TAG, "Message was not sent from GCM.");
-            return;
-        }
-
-        switch (message.what) {
-            case MSG_START_EXEC:
-                handleStartMessage(message);
-                break;
-
-            case MSG_STOP_EXEC:
-                handleStopMessage(message);
-                break;
-
-            case MSG_INIT:
-                // Not implemented.
-                break;
-
-            default:
-                Log.e(TAG, "Unrecognized message received: " + message);
-                break;
-        }
+    AppOpsManager appOpsManager =
+        (AppOpsManager)
+            googlePlayReceiver.getApplicationContext().getSystemService(Context.APP_OPS_SERVICE);
+    try {
+      appOpsManager.checkPackage(message.sendingUid, GooglePlayDriver.BACKEND_PACKAGE);
+    } catch (SecurityException e) {
+      Log.e(TAG, "Message was not sent from GCM.");
+      return;
     }
 
-    private void handleStartMessage(Message message) {
-        final Bundle data = message.getData();
+    switch (message.what) {
+      case MSG_START_EXEC:
+        handleStartMessage(message);
+        break;
 
-        final Messenger replyTo = message.replyTo;
-        String tag = data.getString(REQUEST_PARAM_TAG);
-        if (replyTo == null || tag == null) {
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "Invalid start execution message.");
-            }
-            return;
-        }
+      case MSG_STOP_EXEC:
+        handleStopMessage(message);
+        break;
 
-        GooglePlayMessengerCallback messengerCallback =
-                new GooglePlayMessengerCallback(replyTo, tag);
-        JobInvocation jobInvocation = googlePlayReceiver.prepareJob(messengerCallback, data);
-        googlePlayReceiver.getExecutionDelegator().executeJob(jobInvocation);
+      case MSG_INIT:
+        // Not implemented.
+        break;
+
+      default:
+        Log.e(TAG, "Unrecognized message received: " + message);
+        break;
+    }
+  }
+
+  private void handleStartMessage(Message message) {
+    final Bundle data = message.getData();
+
+    final Messenger replyTo = message.replyTo;
+    String tag = data.getString(REQUEST_PARAM_TAG);
+    if (replyTo == null || tag == null) {
+      if (Log.isLoggable(TAG, Log.DEBUG)) {
+        Log.d(TAG, "Invalid start execution message.");
+      }
+      return;
     }
 
-    private void handleStopMessage(Message message) {
-        Builder builder = GooglePlayReceiver.getJobCoder().decode(message.getData());
-        if (builder == null) {
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "Invalid stop execution message.");
-            }
-            return;
-        }
-        JobInvocation job = builder.build();
-        googlePlayReceiver.getExecutionDelegator().stopJob(job);
+    GooglePlayMessengerCallback messengerCallback = new GooglePlayMessengerCallback(replyTo, tag);
+    JobInvocation jobInvocation = googlePlayReceiver.prepareJob(messengerCallback, data);
+    googlePlayReceiver.getExecutionDelegator().executeJob(jobInvocation);
+  }
+
+  private void handleStopMessage(Message message) {
+    Builder builder = GooglePlayReceiver.getJobCoder().decode(message.getData());
+    if (builder == null) {
+      if (Log.isLoggable(TAG, Log.DEBUG)) {
+        Log.d(TAG, "Invalid stop execution message.");
+      }
+      return;
     }
+    JobInvocation job = builder.build();
+    googlePlayReceiver.getExecutionDelegator().stopJob(job);
+  }
 }

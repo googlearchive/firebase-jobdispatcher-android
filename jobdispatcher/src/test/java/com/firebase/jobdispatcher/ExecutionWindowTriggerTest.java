@@ -25,52 +25,52 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+/** Tests for the {@link JobTrigger.ExecutionWindowTrigger} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class ExecutionWindowTriggerTest {
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
+  @Rule public ExpectedException expectedException = ExpectedException.none();
 
-    @Test
-    public void testNewInstance_withValidWindow() throws Exception {
-        JobTrigger.ExecutionWindowTrigger trigger = Trigger.executionWindow(0, 60);
+  @Test
+  public void testNewInstance_withValidWindow() throws Exception {
+    JobTrigger.ExecutionWindowTrigger trigger = Trigger.executionWindow(0, 60);
 
-        assertEquals(0, trigger.getWindowStart());
-        assertEquals(60, trigger.getWindowEnd());
-    }
+    assertEquals(0, trigger.getWindowStart());
+    assertEquals(60, trigger.getWindowEnd());
+  }
 
-    @Test
-    public void testNewInstance_withNegativeStart() throws Exception {
-        expectedException.expect(IllegalArgumentException.class);
+  @Test
+  public void testNewInstance_withNegativeStart() throws Exception {
+    expectedException.expect(IllegalArgumentException.class);
 
-        Trigger.executionWindow(-10, 60);
-    }
+    Trigger.executionWindow(-10, 60);
+  }
 
-    @Test
-    public void testNewInstance_withNegativeEnd() throws Exception {
-        expectedException.expect(IllegalArgumentException.class);
+  @Test
+  public void testNewInstance_withNegativeEnd() throws Exception {
+    expectedException.expect(IllegalArgumentException.class);
 
-        Trigger.executionWindow(0, -1);
-    }
+    Trigger.executionWindow(0, -1);
+  }
 
-    @Test
-    public void testNewInstance_withReversedValues() throws Exception {
-        expectedException.expect(IllegalArgumentException.class);
+  @Test
+  public void testNewInstance_withReversedValues() throws Exception {
+    expectedException.expect(IllegalArgumentException.class);
 
-        Trigger.executionWindow(60, 0);
-    }
+    Trigger.executionWindow(60, 0);
+  }
 
-    @Test
-    public void testNewInstance_withTooSmallWindow_now() throws Exception {
-        expectedException.expect(IllegalArgumentException.class);
+  @Test
+  public void testNewInstance_withTooSmallWindow_now() throws Exception {
+    expectedException.expect(IllegalArgumentException.class);
 
-        Trigger.executionWindow(60, 59);
-    }
+    Trigger.executionWindow(60, 59);
+  }
 
-    @Test
-    public void testNewInstance_withTooSmallWindow_inFuture() throws Exception {
-        expectedException.expect(IllegalArgumentException.class);
+  @Test
+  public void testNewInstance_withTooSmallWindow_inFuture() throws Exception {
+    expectedException.expect(IllegalArgumentException.class);
 
-        Trigger.executionWindow(200, 100);
-    }
+    Trigger.executionWindow(200, 100);
+  }
 }

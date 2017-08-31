@@ -22,25 +22,27 @@ import com.firebase.jobdispatcher.JobService.JobResult;
 import java.util.LinkedList;
 import java.util.List;
 
+/** JobHistory tracks the history of a Job. */
 public final class JobHistory {
-    public final JobParameters job;
-    private List<Result> results = new LinkedList<>();
+  public final JobParameters job;
+  private List<Result> results = new LinkedList<>();
 
-    public JobHistory(JobParameters job) {
-        this.job = job;
+  public JobHistory(JobParameters job) {
+    this.job = job;
+  }
+
+  public void recordResult(@JobResult int result) {
+    results.add(new Result(result, SystemClock.elapsedRealtime()));
+  }
+
+  /** Represents a job result. */
+  public static final class Result {
+    public final int result;
+    public final long elapsedTime;
+
+    public Result(int result, long elapsedTime) {
+      this.result = result;
+      this.elapsedTime = elapsedTime;
     }
-
-    public void recordResult(@JobResult int result) {
-        results.add(new Result(result, SystemClock.elapsedRealtime()));
-    }
-
-    public final static class Result {
-        public final int result;
-        public final long elapsedTime;
-
-        public Result(int result, long elapsedTime) {
-            this.result = result;
-            this.elapsedTime = elapsedTime;
-        }
-    }
+  }
 }

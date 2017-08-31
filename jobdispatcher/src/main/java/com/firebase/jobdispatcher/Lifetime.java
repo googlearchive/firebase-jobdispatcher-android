@@ -20,21 +20,15 @@ import android.support.annotation.IntDef;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-/**
- * Lifetime represents how long a Job should last.
- */
+/** Lifetime represents how long a Job should last. */
 public final class Lifetime {
-    /**
-     * The Job should be preserved until the next boot. This is the default.
-     */
-    public final static int UNTIL_NEXT_BOOT = 1;
+  /** The Job should be preserved until the next boot. This is the default. */
+  public static final int UNTIL_NEXT_BOOT = 1;
 
-    /**
-     * The Job should be preserved "forever."
-     */
-    public final static int FOREVER = 2;
+  /** The Job should be preserved "forever." */
+  public static final int FOREVER = 2;
 
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({FOREVER, UNTIL_NEXT_BOOT})
-    @interface LifetimeConstant {}
+  @Retention(RetentionPolicy.SOURCE)
+  @IntDef({FOREVER, UNTIL_NEXT_BOOT})
+  @interface LifetimeConstant {}
 }

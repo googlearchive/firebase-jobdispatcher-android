@@ -31,33 +31,30 @@ import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-/**
- * Tests {@link GooglePlayMessengerCallback}.
- */
+/** Tests {@link GooglePlayMessengerCallback}. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class GooglePlayMessengerCallbackTest {
 
-    @Mock
-    Messenger messengerMock;
-    GooglePlayMessengerCallback callback;
+  @Mock Messenger messengerMock;
+  GooglePlayMessengerCallback callback;
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-        callback = new GooglePlayMessengerCallback(messengerMock, "tag");
-    }
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.initMocks(this);
+    callback = new GooglePlayMessengerCallback(messengerMock, "tag");
+  }
 
-    @Test
-    public void jobFinished() throws Exception {
-        final ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+  @Test
+  public void jobFinished() throws Exception {
+    final ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
 
-        callback.jobFinished(JobService.RESULT_SUCCESS);
+    callback.jobFinished(JobService.RESULT_SUCCESS);
 
-        Mockito.verify(messengerMock).send(messageCaptor.capture());
-        Message message = messageCaptor.getValue();
-        assertEquals(message.what, GooglePlayMessageHandler.MSG_RESULT);
-        assertEquals(message.arg1, JobService.RESULT_SUCCESS);
-        assertEquals(message.getData().getString(REQUEST_PARAM_TAG), "tag");
-    }
+    Mockito.verify(messengerMock).send(messageCaptor.capture());
+    Message message = messageCaptor.getValue();
+    assertEquals(GooglePlayMessageHandler.MSG_RESULT, message.what);
+    assertEquals(JobService.RESULT_SUCCESS, message.arg1);
+    assertEquals("tag", message.getData().getString(REQUEST_PARAM_TAG));
+  }
 }

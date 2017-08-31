@@ -38,82 +38,82 @@ import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+/** Tests for the {@link DefaultJobValidator}. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class DefaultJobValidatorTest {
 
-    @Mock
-    private Context mMockContext;
+  @Mock private Context mMockContext;
 
-    private DefaultJobValidator mValidator;
+  private DefaultJobValidator mValidator;
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+  @Before
+  public void setUp() throws Exception {
+    MockitoAnnotations.initMocks(this);
 
-        mValidator = new DefaultJobValidator(mMockContext);
+    mValidator = new DefaultJobValidator(mMockContext);
+  }
+
+  @SuppressWarnings("WrongConstant")
+  @Test
+  public void testValidate_retryStrategy() throws Exception {
+    Map<RetryStrategy, List<String>> testCases = new HashMap<>();
+    testCases.put(
+        new RetryStrategy(0 /* bad policy */, 30, 3600),
+        singletonList("Unknown retry policy provided"));
+    testCases.put(
+        new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 15, 3600),
+        singletonList("Initial backoff must be at least 30s"));
+    testCases.put(
+        new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 15, 3600),
+        singletonList("Initial backoff must be at least 30s"));
+    testCases.put(
+        new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 30, 60),
+        singletonList("Maximum backoff must be greater than 300s (5 minutes)"));
+    testCases.put(
+        new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 30, 60),
+        singletonList("Maximum backoff must be greater than 300s (5 minutes)"));
+    testCases.put(
+        new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 301, 300),
+        singletonList("Maximum backoff must be greater than or equal to initial backoff"));
+    testCases.put(
+        new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 301, 300),
+        singletonList("Maximum backoff must be greater than or equal to initial backoff"));
+
+    for (Entry<RetryStrategy, List<String>> testCase : testCases.entrySet()) {
+      List<String> validationErrors = mValidator.validate(testCase.getKey());
+      assertNotNull("Expected validation errors, but got null", validationErrors);
+
+      for (String expected : testCase.getValue()) {
+        assertTrue(
+            "Expected validation errors to contain \"" + expected + "\"",
+            validationErrors.contains(expected));
+      }
     }
+  }
 
-    @SuppressWarnings("WrongConstant")
-    @Test
-    public void testValidate_retryStrategy() throws Exception {
-        Map<RetryStrategy, List<String>> testCases = new HashMap<>();
-        testCases.put(
-            new RetryStrategy(0 /* bad policy */, 30, 3600),
-            singletonList("Unknown retry policy provided"));
-        testCases.put(
-            new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 15, 3600),
-            singletonList("Initial backoff must be at least 30s"));
-        testCases.put(
-            new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 15, 3600),
-            singletonList("Initial backoff must be at least 30s"));
-        testCases.put(
-            new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 30, 60),
-            singletonList("Maximum backoff must be greater than 300s (5 minutes)"));
-        testCases.put(
-            new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 30, 60),
-            singletonList("Maximum backoff must be greater than 300s (5 minutes)"));
-        testCases.put(
-            new RetryStrategy(RetryStrategy.RETRY_POLICY_LINEAR, 301, 300),
-            singletonList("Maximum backoff must be greater than or equal to initial backoff"));
-        testCases.put(
-            new RetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 301, 300),
-            singletonList("Maximum backoff must be greater than or equal to initial backoff"));
+  @Test
+  public void testValidate_trigger() throws Exception {
+    Map<JobTrigger, String> testCases = new HashMap<>();
 
-        for (Entry<RetryStrategy, List<String>> testCase : testCases.entrySet()) {
-            List<String> validationErrors = mValidator.validate(testCase.getKey());
-            assertNotNull("Expected validation errors, but got null", validationErrors);
+    testCases.put(Trigger.NOW, null);
+    testCases.put(Trigger.executionWindow(0, 100), null);
+    ContentUriTrigger contentUriTrigger =
+        Trigger.contentUriTrigger(
+            Arrays.asList(
+                new ObservedUri(
+                    ContactsContract.AUTHORITY_URI, Flags.FLAG_NOTIFY_FOR_DESCENDANTS)));
+    testCases.put(contentUriTrigger, null);
 
-            for (String expected : testCase.getValue()) {
-                assertTrue(
-                    "Expected validation errors to contain \"" + expected + "\"",
-                    validationErrors.contains(expected));
-            }
-        }
+    for (Entry<JobTrigger, String> testCase : testCases.entrySet()) {
+      List<String> validationErrors = mValidator.validate(testCase.getKey());
+      if (testCase.getValue() == null) {
+        assertNull("Expected no validation errors for trigger", validationErrors);
+      } else {
+        assertTrue(
+            "Expected validation errors to contain \"" + testCase.getValue() + "\"",
+            validationErrors.contains(testCase.getValue()));
+      }
     }
-
-    @Test
-    public void testValidate_trigger() throws Exception {
-        Map<JobTrigger, String> testCases = new HashMap<>();
-
-        testCases.put(Trigger.NOW, null);
-        testCases.put(Trigger.executionWindow(0, 100), null);
-        ContentUriTrigger contentUriTrigger =
-                Trigger.contentUriTrigger(
-                    Arrays.asList(
-                        new ObservedUri(
-                            ContactsContract.AUTHORITY_URI, Flags.FLAG_NOTIFY_FOR_DESCENDANTS)));
-        testCases.put(contentUriTrigger, null);
-
-        for (Entry<JobTrigger, String> testCase : testCases.entrySet()) {
-            List<String> validationErrors = mValidator.validate(testCase.getKey());
-            if (testCase.getValue() == null) {
-                assertNull("Expected no validation errors for trigger", validationErrors);
-            } else {
-                assertTrue(
-                    "Expected validation errors to contain \"" + testCase.getValue() + "\"",
-                    validationErrors.contains(testCase.getValue()));
-            }
-        }
-    }
+  }
 }

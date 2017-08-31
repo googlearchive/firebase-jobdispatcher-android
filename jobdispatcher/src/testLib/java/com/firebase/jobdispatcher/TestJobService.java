@@ -19,53 +19,57 @@ package com.firebase.jobdispatcher;
 /** A very simple JobService that can be configured for individual tests. */
 public class TestJobService extends JobService {
 
-    public interface JobServiceProxy {
-        boolean onStartJob(JobParameters job);
+  /**
+   * A callback interface that allows consumers to swap out the underlying job implementation on the
+   * fly.
+   */
+  public interface JobServiceProxy {
+    boolean onStartJob(JobParameters job);
 
-        boolean onStopJob(JobParameters job);
-    }
+    boolean onStopJob(JobParameters job);
+  }
 
-    public static final JobServiceProxy NOOP_PROXY =
-        new JobServiceProxy() {
-            @Override
-            public boolean onStartJob(JobParameters job) {
-                return false;
-            }
-
-            @Override
-            public boolean onStopJob(JobParameters job) {
-                return false;
-            }
-        };
-
-    private static final Object lock = new Object();
-
-    // GuardedBy("lock")
-    private static JobServiceProxy currentProxy = NOOP_PROXY;
-
-    public static void setProxy(JobServiceProxy proxy) {
-        synchronized (lock) {
-            currentProxy = proxy;
+  public static final JobServiceProxy NOOP_PROXY =
+      new JobServiceProxy() {
+        @Override
+        public boolean onStartJob(JobParameters job) {
+          return false;
         }
-    }
 
-    public static void reset() {
-        synchronized (lock) {
-            currentProxy = NOOP_PROXY;
+        @Override
+        public boolean onStopJob(JobParameters job) {
+          return false;
         }
-    }
+      };
 
-    @Override
-    public boolean onStartJob(JobParameters job) {
-        synchronized (lock) {
-            return currentProxy.onStartJob(job);
-        }
-    }
+  private static final Object lock = new Object();
 
-    @Override
-    public boolean onStopJob(JobParameters job) {
-        synchronized (lock) {
-            return currentProxy.onStopJob(job);
-        }
+  // GuardedBy("lock")
+  private static JobServiceProxy currentProxy = NOOP_PROXY;
+
+  public static void setProxy(JobServiceProxy proxy) {
+    synchronized (lock) {
+      currentProxy = proxy;
     }
+  }
+
+  public static void reset() {
+    synchronized (lock) {
+      currentProxy = NOOP_PROXY;
+    }
+  }
+
+  @Override
+  public boolean onStartJob(JobParameters job) {
+    synchronized (lock) {
+      return currentProxy.onStartJob(job);
+    }
+  }
+
+  @Override
+  public boolean onStopJob(JobParameters job) {
+    synchronized (lock) {
+      return currentProxy.onStopJob(job);
+    }
+  }
 }

@@ -20,43 +20,37 @@ import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.FirebaseJobDispatcher.CancelResult;
 import com.firebase.jobdispatcher.FirebaseJobDispatcher.ScheduleResult;
 
-/**
- * Driver represents a component that understands how to schedule, validate, and execute jobs.
- */
+/** Driver represents a component that understands how to schedule, validate, and execute jobs. */
 public interface Driver {
 
-    /**
-     * Schedules the provided Job.
-     *
-     * @return one of the SCHEDULE_RESULT_ constants
-     */
-    @ScheduleResult
-    int schedule(@NonNull Job job);
+  /**
+   * Schedules the provided Job.
+   *
+   * @return one of the SCHEDULE_RESULT_ constants
+   */
+  @ScheduleResult
+  int schedule(@NonNull Job job);
 
-    /**
-     * Cancels the job with the provided tag and class.
-     *
-     * @return one of the CANCEL_RESULT_ constants.
-     */
-    @CancelResult
-    int cancel(@NonNull String tag);
+  /**
+   * Cancels the job with the provided tag and class.
+   *
+   * @return one of the CANCEL_RESULT_ constants.
+   */
+  @CancelResult
+  int cancel(@NonNull String tag);
 
-    /**
-     * Cancels all jobs registered with this Driver.
-     *
-     * @return one of the CANCEL_RESULT_ constants.
-     */
-    @CancelResult
-    int cancelAll();
+  /**
+   * Cancels all jobs registered with this Driver.
+   *
+   * @return one of the CANCEL_RESULT_ constants.
+   */
+  @CancelResult
+  int cancelAll();
 
-    /**
-     * Returns a JobValidator configured for this backend.
-     */
-    @NonNull
-    JobValidator getValidator();
+  /** Returns a JobValidator configured for this backend. */
+  @NonNull
+  JobValidator getValidator();
 
-    /**
-     * Indicates whether the backend is available.
-     */
-    boolean isAvailable();
+  /** Indicates whether the backend is available. */
+  boolean isAvailable();
 }

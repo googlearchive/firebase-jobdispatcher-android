@@ -44,181 +44,183 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
+/** Tests for the {@link ExecutionDelegator}. */
 @SuppressWarnings("WrongConstant")
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class ExecutionDelegatorTest {
 
-    private Context mMockContext;
-    private TestJobReceiver mReceiver;
-    private ExecutionDelegator mExecutionDelegator;
+  private Context mMockContext;
+  private TestJobReceiver mReceiver;
+  private ExecutionDelegator mExecutionDelegator;
 
-    @Before
-    public void setUp() {
-        mMockContext = spy(RuntimeEnvironment.application);
-        doReturn("com.example.foo").when(mMockContext).getPackageName();
+  @Before
+  public void setUp() {
+    mMockContext = spy(RuntimeEnvironment.application);
+    doReturn("com.example.foo").when(mMockContext).getPackageName();
 
-        mReceiver = new TestJobReceiver();
-        mExecutionDelegator = new ExecutionDelegator(mMockContext, mReceiver);
+    mReceiver = new TestJobReceiver();
+    mExecutionDelegator = new ExecutionDelegator(mMockContext, mReceiver);
+  }
+
+  @Test
+  public void testExecuteJob_sendsBroadcastWithJobAndMessage() throws Exception {
+    for (JobInvocation input : TestUtil.getJobInvocationCombinations()) {
+      verifyExecuteJob(input);
     }
+  }
 
-    @Test
-    public void testExecuteJob_sendsBroadcastWithJobAndMessage() throws Exception {
-        for (JobInvocation input : TestUtil.getJobInvocationCombinations()) {
-            verifyExecuteJob(input);
-        }
-    }
+  private void verifyExecuteJob(JobInvocation input) throws Exception {
+    reset(mMockContext);
+    mReceiver.lastResult = -1;
 
-    private void verifyExecuteJob(JobInvocation input) throws Exception {
-        reset(mMockContext);
-        mReceiver.lastResult = -1;
+    mReceiver.setLatch(new CountDownLatch(1));
 
-        mReceiver.setLatch(new CountDownLatch(1));
+    mExecutionDelegator.executeJob(input);
 
-        mExecutionDelegator.executeJob(input);
+    final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+    final ArgumentCaptor<ServiceConnection> connCaptor =
+        ArgumentCaptor.forClass(ServiceConnection.class);
+    verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
 
-        final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        final ArgumentCaptor<ServiceConnection> connCaptor =
-            ArgumentCaptor.forClass(ServiceConnection.class);
-        verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+    final Intent result = intentCaptor.getValue();
+    // verify the intent was sent to the right place
+    assertEquals(input.getService(), result.getComponent().getClassName());
+    assertEquals(JobService.ACTION_EXECUTE, result.getAction());
 
-        final Intent result = intentCaptor.getValue();
-        // verify the intent was sent to the right place
-        assertEquals(input.getService(), result.getComponent().getClassName());
-        assertEquals(JobService.ACTION_EXECUTE, result.getAction());
+    final ServiceConnection connection = connCaptor.getValue();
 
-        final ServiceConnection connection = connCaptor.getValue();
+    ComponentName cname = mock(ComponentName.class);
+    JobService.LocalBinder mockLocalBinder = mock(JobService.LocalBinder.class);
+    final JobParameters[] out = new JobParameters[1];
 
-        ComponentName cname = mock(ComponentName.class);
-        JobService.LocalBinder mockLocalBinder = mock(JobService.LocalBinder.class);
-        final JobParameters[] out = new JobParameters[1];
+    JobService mockJobService =
+        new JobService() {
+          @Override
+          public boolean onStartJob(JobParameters job) {
+            out[0] = job;
+            return false;
+          }
 
-        JobService mockJobService = new JobService() {
-            @Override
-            public boolean onStartJob(JobParameters job) {
-                out[0] = job;
-                return false;
-            }
-
-            @Override
-            public boolean onStopJob(JobParameters job) {
-                return false;
-            }
+          @Override
+          public boolean onStopJob(JobParameters job) {
+            return false;
+          }
         };
 
-        when(mockLocalBinder.getService()).thenReturn(mockJobService);
+    when(mockLocalBinder.getService()).thenReturn(mockJobService);
 
-        connection.onServiceConnected(cname, mockLocalBinder);
+    connection.onServiceConnected(cname, mockLocalBinder);
 
-        TestUtil.assertJobsEqual(input, out[0]);
+    TestUtil.assertJobsEqual(input, out[0]);
 
-        // make sure the countdownlatch was decremented
-        assertTrue(mReceiver.mLatch.await(1, TimeUnit.SECONDS));
+    // make sure the countdownlatch was decremented
+    assertTrue(mReceiver.mLatch.await(1, TimeUnit.SECONDS));
 
-        // verify the lastResult was set correctly
-        assertEquals(JobService.RESULT_SUCCESS, mReceiver.lastResult);
-    }
+    // verify the lastResult was set correctly
+    assertEquals(JobService.RESULT_SUCCESS, mReceiver.lastResult);
+  }
 
-    @Test
-    public void testExecuteJob_handlesNull() {
-        assertFalse("Expected calling triggerExecution on null to fail and return false",
-            mExecutionDelegator.executeJob(null));
-    }
+  @Test
+  public void testExecuteJob_handlesNull() {
+    assertFalse(
+        "Expected calling triggerExecution on null to fail and return false",
+        mExecutionDelegator.executeJob(null));
+  }
 
-    @Test
-    public void testHandleMessage_doesntCrashOnBadJobData() {
-        JobInvocation j = new JobInvocation.Builder()
-                .setService(TestJobService.class.getName())
-                .setTag("tag")
-                .setTrigger(Trigger.NOW)
-                .build();
+  @Test
+  public void testHandleMessage_doesntCrashOnBadJobData() {
+    JobInvocation j =
+        new JobInvocation.Builder()
+            .setService(TestJobService.class.getName())
+            .setTag("tag")
+            .setTrigger(Trigger.NOW)
+            .build();
 
-        mExecutionDelegator.executeJob(j);
+    mExecutionDelegator.executeJob(j);
 
-        ArgumentCaptor<Intent> intentCaptor =
-            ArgumentCaptor.forClass(Intent.class);
-        ArgumentCaptor<ServiceConnection> connCaptor =
-            ArgumentCaptor.forClass(ServiceConnection.class);
+    ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+    ArgumentCaptor<ServiceConnection> connCaptor = ArgumentCaptor.forClass(ServiceConnection.class);
 
-        //noinspection WrongConstant
-        verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+    // noinspection WrongConstant
+    verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
 
-        Intent executeReq = intentCaptor.getValue();
-        assertEquals(JobService.ACTION_EXECUTE, executeReq.getAction());
-    }
+    Intent executeReq = intentCaptor.getValue();
+    assertEquals(JobService.ACTION_EXECUTE, executeReq.getAction());
+  }
 
-    @Test
-    public void onStop_mock() throws InterruptedException {
-        JobInvocation job = new JobInvocation.Builder()
-                .setTag("TAG")
-                .setTrigger(getContentUriTrigger())
-                .setService(TestJobService.class.getName())
-                .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
-                .build();
+  @Test
+  public void onStop_mock() throws InterruptedException {
+    JobInvocation job =
+        new JobInvocation.Builder()
+            .setTag("TAG")
+            .setTrigger(getContentUriTrigger())
+            .setService(TestJobService.class.getName())
+            .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+            .build();
 
-        reset(mMockContext);
-        mReceiver.lastResult = -1;
+    reset(mMockContext);
+    mReceiver.lastResult = -1;
 
-        mExecutionDelegator.executeJob(job);
+    mExecutionDelegator.executeJob(job);
 
-        final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        final ArgumentCaptor<ServiceConnection> connCaptor =
-                ArgumentCaptor.forClass(ServiceConnection.class);
-        verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+    final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+    final ArgumentCaptor<ServiceConnection> connCaptor =
+        ArgumentCaptor.forClass(ServiceConnection.class);
+    verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
 
-        final Intent result = intentCaptor.getValue();
-        // verify the intent was sent to the right place
-        assertEquals(job.getService(), result.getComponent().getClassName());
-        assertEquals(JobService.ACTION_EXECUTE, result.getAction());
+    final Intent result = intentCaptor.getValue();
+    // verify the intent was sent to the right place
+    assertEquals(job.getService(), result.getComponent().getClassName());
+    assertEquals(JobService.ACTION_EXECUTE, result.getAction());
 
-        final JobParameters[] out = new JobParameters[2];
+    final JobParameters[] out = new JobParameters[2];
 
-        JobService mockJobService = new JobService() {
-            @Override
-            public boolean onStartJob(JobParameters job) {
-                out[0] = job;
-                return true;
-            }
+    JobService mockJobService =
+        new JobService() {
+          @Override
+          public boolean onStartJob(JobParameters job) {
+            out[0] = job;
+            return true;
+          }
 
-            @Override
-            public boolean onStopJob(JobParameters job) {
-                out[1] = job;
-                return false;
-            }
+          @Override
+          public boolean onStopJob(JobParameters job) {
+            out[1] = job;
+            return false;
+          }
         };
 
-        JobService.LocalBinder mockLocalBinder = mock(JobService.LocalBinder.class);
-        when(mockLocalBinder.getService()).thenReturn(mockJobService);
+    JobService.LocalBinder mockLocalBinder = mock(JobService.LocalBinder.class);
+    when(mockLocalBinder.getService()).thenReturn(mockJobService);
 
-        ComponentName componentName = mock(ComponentName.class);
-        final ServiceConnection connection = connCaptor.getValue();
-        connection.onServiceConnected(componentName, mockLocalBinder);
+    ComponentName componentName = mock(ComponentName.class);
+    final ServiceConnection connection = connCaptor.getValue();
+    connection.onServiceConnected(componentName, mockLocalBinder);
 
-        mExecutionDelegator.stopJob(job);
+    mExecutionDelegator.stopJob(job);
 
-        TestUtil.assertJobsEqual(job, out[0]);
-        TestUtil.assertJobsEqual(job, out[1]);
+    TestUtil.assertJobsEqual(job, out[0]);
+    TestUtil.assertJobsEqual(job, out[1]);
+  }
+
+  private static final class TestJobReceiver implements ExecutionDelegator.JobFinishedCallback {
+    int lastResult;
+
+    private CountDownLatch mLatch;
+
+    @Override
+    public void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
+      lastResult = result;
+
+      if (mLatch != null) {
+        mLatch.countDown();
+      }
     }
 
-    private final static class TestJobReceiver implements ExecutionDelegator.JobFinishedCallback {
-        int lastResult;
-
-        private CountDownLatch mLatch;
-
-        @Override
-        public void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
-            lastResult = result;
-
-            if (mLatch != null) {
-                mLatch.countDown();
-            }
-        }
-
-        /**
-         * Convenience method for tests.
-         */
-        public void setLatch(CountDownLatch latch) {
-            mLatch = latch;
-        }
+    /** Convenience method for tests. */
+    public void setLatch(CountDownLatch latch) {
+      mLatch = latch;
     }
+  }
 }

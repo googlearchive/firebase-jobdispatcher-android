@@ -21,8 +21,6 @@ package com.firebase.jobdispatcher;
  * execution driver.
  */
 public interface JobCallback {
-    /**
-     * @throws RuntimeException
-     */
-    void jobFinished(@JobService.JobResult int status);
+  /** @throws RuntimeException */
+  void jobFinished(@JobService.JobResult int status);
 }

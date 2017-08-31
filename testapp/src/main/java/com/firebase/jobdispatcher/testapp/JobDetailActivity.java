@@ -24,6 +24,7 @@ import android.widget.TableRow;
 import android.widget.TextView;
 import com.firebase.jobdispatcher.JobParameters;
 
+/** An Activity that shows details on the associated Job. */
 public class JobDetailActivity extends AppCompatActivity {
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -31,16 +32,16 @@ public class JobDetailActivity extends AppCompatActivity {
 
     final Bundle extras = getIntent().getExtras();
     if (extras == null) {
-        throw new IllegalArgumentException("Expected Bundle of extras, got null");
+      throw new IllegalArgumentException("Expected Bundle of extras, got null");
     }
     int pos = extras.getInt("pos", -1);
     if (pos == -1) {
-        throw new IllegalArgumentException("Expected pos to be present, was absent");
+      throw new IllegalArgumentException("Expected pos to be present, was absent");
     }
 
     final JobParameters job = CentralContainer.getStore(getApplicationContext()).get(pos).job;
     if (job == null) {
-        throw new IllegalArgumentException("Expected pos to represent a Job");
+      throw new IllegalArgumentException("Expected pos to represent a Job");
     }
 
     getSupportActionBar().setTitle(job.getTag());

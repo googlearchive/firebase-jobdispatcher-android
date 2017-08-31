@@ -19,26 +19,24 @@ package com.firebase.jobdispatcher;
 import android.support.annotation.Nullable;
 import java.util.List;
 
-/**
- * A very simple Validator that thinks that everything is ok. Used for testing.
- */
+/** A very simple Validator that thinks that everything is ok. Used for testing. */
 class NoopJobValidator implements JobValidator {
 
-    @Nullable
-    @Override
-    public List<String> validate(JobParameters job) {
-        return null;
-    }
+  @Nullable
+  @Override
+  public List<String> validate(JobParameters job) {
+    return null;
+  }
 
-    @Nullable
-    @Override
-    public List<String> validate(JobTrigger trigger) {
-        return null;
-    }
+  @Nullable
+  @Override
+  public List<String> validate(JobTrigger trigger) {
+    return null;
+  }
 
-    @Nullable
-    @Override
-    public List<String> validate(RetryStrategy retryStrategy) {
-        return null;
-    }
+  @Nullable
+  @Override
+  public List<String> validate(RetryStrategy retryStrategy) {
+    return null;
+  }
 }

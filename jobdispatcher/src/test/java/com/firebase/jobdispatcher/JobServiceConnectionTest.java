@@ -35,82 +35,78 @@ import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-/**
- * Test for {@link JobServiceConnection}.
- */
+/** Test for {@link JobServiceConnection}. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobServiceConnectionTest {
 
-    JobInvocation job = new Builder()
-            .setTag("tag")
-            .setService(TestJobService.class.getName())
-            .setTrigger(Trigger.NOW)
-            .build();
+  JobInvocation job =
+      new Builder()
+          .setTag("tag")
+          .setService(TestJobService.class.getName())
+          .setTrigger(Trigger.NOW)
+          .build();
 
-    @Mock
-    Message messageMock;
-    @Mock
-    JobService.LocalBinder binderMock;
-    @Mock
-    JobService jobServiceMock;
+  @Mock Message messageMock;
+  @Mock JobService.LocalBinder binderMock;
+  @Mock JobService jobServiceMock;
 
-    JobServiceConnection connection;
+  JobServiceConnection connection;
 
-    @Before
-    public void setUp() {
-        MockitoAnnotations.initMocks(this);
-        when(binderMock.getService()).thenReturn(jobServiceMock);
-        connection = new JobServiceConnection(job, messageMock);
-    }
+  @Before
+  public void setUp() {
+    MockitoAnnotations.initMocks(this);
+    when(binderMock.getService()).thenReturn(jobServiceMock);
+    connection = new JobServiceConnection(job, messageMock);
+  }
 
-    @Test
-    public void fullConnectionCycle() {
-        assertFalse(connection.isBound());
+  @Test
+  public void fullConnectionCycle() {
+    assertFalse(connection.isBound());
 
-        connection.onServiceConnected(null, binderMock);
-        verify(jobServiceMock).start(job, messageMock);
-        assertTrue(connection.isBound());
+    connection.onServiceConnected(null, binderMock);
+    verify(jobServiceMock).start(job, messageMock);
+    assertTrue(connection.isBound());
 
-        connection.onStop();
-        verify(jobServiceMock).stop(job);
-        assertTrue(connection.isBound());
+    connection.onStop();
+    verify(jobServiceMock).stop(job);
+    assertTrue(connection.isBound());
 
-        connection.onServiceDisconnected(null);
-        assertFalse(connection.isBound());
-    }
+    connection.onServiceDisconnected(null);
+    assertFalse(connection.isBound());
+  }
 
-    @Test
-    public void onServiceConnected_shouldNotSendExecutionRequestTwice() {
-        assertFalse(connection.isBound());
+  @Test
+  public void onServiceConnected_shouldNotSendExecutionRequestTwice() {
+    assertFalse(connection.isBound());
 
-        connection.onServiceConnected(null, binderMock);
-        verify(jobServiceMock).start(job, messageMock);
-        assertTrue(connection.isBound());
-        reset(jobServiceMock);
+    connection.onServiceConnected(null, binderMock);
+    verify(jobServiceMock).start(job, messageMock);
+    assertTrue(connection.isBound());
+    reset(jobServiceMock);
 
-        connection.onServiceConnected(null, binderMock);
-        verify(jobServiceMock, never()).start(job, messageMock); // start should not be called again
+    connection.onServiceConnected(null, binderMock);
+    verify(jobServiceMock, never()).start(job, messageMock); // start should not be called again
 
-        connection.onStop();
-        verify(jobServiceMock).stop(job);
-        assertTrue(connection.isBound());
+    connection.onStop();
+    verify(jobServiceMock).stop(job);
+    assertTrue(connection.isBound());
 
-        connection.onServiceDisconnected(null);
-        assertFalse(connection.isBound());
-    }
+    connection.onServiceDisconnected(null);
+    assertFalse(connection.isBound());
+  }
 
-    @Test
-    public void stopOnUnboundConnection() {
-        assertFalse(connection.isBound());
-        connection.onStop();
-        verify(jobServiceMock, never()).onStopJob(job);
-    }
+  @Test
+  public void stopOnUnboundConnection() {
+    assertFalse(connection.isBound());
+    connection.onStop();
+    verify(jobServiceMock, never()).onStopJob(job);
+  }
 
-    @Test
-    public void onServiceConnectedWrongBinder() {
-        IBinder binder = mock(IBinder.class);
-        connection.onServiceConnected(null, binder);
-        assertFalse(connection.isBound());
-    }
+  @Test
+  public void onServiceConnectedWrongBinder() {
+    IBinder binder = mock(IBinder.class);
+    connection.onServiceConnected(null, binder);
+    assertFalse(connection.isBound());
+  }
 }
