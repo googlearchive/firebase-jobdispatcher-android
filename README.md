@@ -82,8 +82,7 @@ Add the following to your `build.gradle`'s dependencies section:
 compile 'com.firebase:firebase-jobdispatcher:0.8.1'
 ```
 Note: If you are having trouble compiling a project depending on jobdispatcher, check if your `build.gradle` contains the 'jcenter' repository listed, like below:
-    repositories {
-        mavenCentral()
+    repositories {        
         jcenter()
     }
 
