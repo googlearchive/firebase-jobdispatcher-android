@@ -43,7 +43,7 @@ public class GooglePlayJobWriterTest {
 
   private static final boolean[] ALL_BOOLEANS = {true, false};
 
-  private GooglePlayJobWriter mWriter;
+  private GooglePlayJobWriter writer;
 
   private static Builder initializeDefaultBuilder() {
     return TestUtil.getBuilderWithNoopValidator()
@@ -60,14 +60,13 @@ public class GooglePlayJobWriterTest {
 
   @Before
   public void setUp() throws Exception {
-    mWriter = new GooglePlayJobWriter();
+    writer = new GooglePlayJobWriter();
   }
 
   @Test
   public void testWriteToBundle_tags() {
     for (String tag : Arrays.asList("foo", "bar", "foobar", "this is a tag")) {
-      Bundle b =
-          mWriter.writeToBundle(initializeDefaultBuilder().setTag(tag).build(), new Bundle());
+      Bundle b = writer.writeToBundle(initializeDefaultBuilder().setTag(tag).build(), new Bundle());
 
       assertEquals("tag", tag, b.getString("tag"));
     }
@@ -77,7 +76,7 @@ public class GooglePlayJobWriterTest {
   public void testWriteToBundle_updateCurrent() {
     for (boolean replaceCurrent : ALL_BOOLEANS) {
       Bundle b =
-          mWriter.writeToBundle(
+          writer.writeToBundle(
               initializeDefaultBuilder().setReplaceCurrent(replaceCurrent).build(), new Bundle());
 
       assertEquals("update_current", replaceCurrent, b.getBoolean("update_current"));
@@ -87,14 +86,14 @@ public class GooglePlayJobWriterTest {
   @Test
   public void testWriteToBundle_persisted() {
     Bundle b =
-        mWriter.writeToBundle(
+        writer.writeToBundle(
             initializeDefaultBuilder().setLifetime(Lifetime.FOREVER).build(), new Bundle());
 
     assertTrue("persisted", b.getBoolean("persisted"));
 
     for (int lifetime : new int[] {Lifetime.UNTIL_NEXT_BOOT}) {
       b =
-          mWriter.writeToBundle(
+          writer.writeToBundle(
               initializeDefaultBuilder().setLifetime(lifetime).build(), new Bundle());
 
       assertFalse("persisted", b.getBoolean("persisted"));
@@ -104,7 +103,7 @@ public class GooglePlayJobWriterTest {
   @Test
   public void testWriteToBundle_service() {
     Bundle b =
-        mWriter.writeToBundle(
+        writer.writeToBundle(
             initializeDefaultBuilder().setService(TestJobService.class).build(), new Bundle());
 
     assertEquals("service", GooglePlayReceiver.class.getName(), b.getString("service"));
@@ -120,7 +119,7 @@ public class GooglePlayJobWriterTest {
     for (Entry<Integer, Integer> testCase : mapping.entrySet()) {
       @SuppressWarnings("WrongConstant")
       Bundle b =
-          mWriter.writeToBundle(
+          writer.writeToBundle(
               initializeDefaultBuilder().setConstraints(testCase.getKey()).build(), new Bundle());
 
       assertEquals("requiredNetwork", (int) testCase.getValue(), b.getInt("requiredNetwork"));
@@ -130,7 +129,7 @@ public class GooglePlayJobWriterTest {
   @Test
   public void testWriteToBundle_unmeteredConstraintShouldTakePrecendence() {
     Bundle b =
-        mWriter.writeToBundle(
+        writer.writeToBundle(
             initializeDefaultBuilder()
                 .setConstraints(Constraint.ON_ANY_NETWORK, Constraint.ON_UNMETERED_NETWORK)
                 .build(),
@@ -146,7 +145,7 @@ public class GooglePlayJobWriterTest {
   public void testWriteToBundle_requiresCharging() {
     assertTrue(
         "requiresCharging",
-        mWriter
+        writer
             .writeToBundle(
                 initializeDefaultBuilder().setConstraints(Constraint.DEVICE_CHARGING).build(),
                 new Bundle())
@@ -157,7 +156,7 @@ public class GooglePlayJobWriterTest {
 
       assertFalse(
           "requiresCharging",
-          mWriter
+          writer
               .writeToBundle(
                   initializeDefaultBuilder().setConstraints(constraint).build(), new Bundle())
               .getBoolean("requiresCharging"));
@@ -168,7 +167,7 @@ public class GooglePlayJobWriterTest {
   public void testWriteToBundle_requiresIdle() {
     assertTrue(
         "requiresIdle",
-        mWriter
+        writer
             .writeToBundle(
                 initializeDefaultBuilder().setConstraints(Constraint.DEVICE_IDLE).build(),
                 new Bundle())
@@ -179,7 +178,7 @@ public class GooglePlayJobWriterTest {
 
       assertFalse(
           "requiresIdle",
-          mWriter
+          writer
               .writeToBundle(
                   initializeDefaultBuilder().setConstraints(constraint).build(), new Bundle())
               .getBoolean("requiresIdle"));
@@ -191,7 +190,7 @@ public class GooglePlayJobWriterTest {
     assertEquals(
         "retry_policy",
         GooglePlayJobWriter.LEGACY_RETRY_POLICY_EXPONENTIAL,
-        mWriter
+        writer
             .writeToBundle(
                 initializeDefaultBuilder()
                     .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
@@ -203,7 +202,7 @@ public class GooglePlayJobWriterTest {
     assertEquals(
         "retry_policy",
         GooglePlayJobWriter.LEGACY_RETRY_POLICY_LINEAR,
-        mWriter
+        writer
             .writeToBundle(
                 initializeDefaultBuilder().setRetryStrategy(RetryStrategy.DEFAULT_LINEAR).build(),
                 new Bundle())
@@ -217,7 +216,7 @@ public class GooglePlayJobWriterTest {
         Arrays.asList(RetryStrategy.DEFAULT_EXPONENTIAL, RetryStrategy.DEFAULT_LINEAR)) {
 
       Bundle b =
-          mWriter
+          writer
               .writeToBundle(
                   initializeDefaultBuilder().setRetryStrategy(retryStrategy).build(), new Bundle())
               .getBundle("retryStrategy");
@@ -238,7 +237,7 @@ public class GooglePlayJobWriterTest {
   public void testWriteToBundle_triggers() {
     // immediate
     Bundle b =
-        mWriter.writeToBundle(
+        writer.writeToBundle(
             initializeDefaultBuilder().setTrigger(Trigger.NOW).build(), new Bundle());
 
     assertEquals("window_start", 0, b.getLong("window_start"));
@@ -246,14 +245,14 @@ public class GooglePlayJobWriterTest {
 
     // execution window (oneoff)
     JobTrigger.ExecutionWindowTrigger t = Trigger.executionWindow(631, 978);
-    b = mWriter.writeToBundle(initializeDefaultBuilder().setTrigger(t).build(), new Bundle());
+    b = writer.writeToBundle(initializeDefaultBuilder().setTrigger(t).build(), new Bundle());
 
     assertEquals("window_start", t.getWindowStart(), b.getLong("window_start"));
     assertEquals("window_end", t.getWindowEnd(), b.getLong("window_end"));
 
     // execution window (periodic)
     b =
-        mWriter.writeToBundle(
+        writer.writeToBundle(
             initializeDefaultBuilder().setRecurring(true).setTrigger(t).build(), new Bundle());
 
     assertEquals("period", t.getWindowEnd(), b.getLong("period"));
@@ -266,7 +265,7 @@ public class GooglePlayJobWriterTest {
         new ObservedUri(ContactsContract.AUTHORITY_URI, Flags.FLAG_NOTIFY_FOR_DESCENDANTS);
     ContentUriTrigger contentUriTrigger = Trigger.contentUriTrigger(Arrays.asList(observedUri));
     Bundle bundle =
-        mWriter.writeToBundle(
+        writer.writeToBundle(
             initializeDefaultBuilder().setTrigger(contentUriTrigger).build(), new Bundle());
     Uri[] uris = (Uri[]) bundle.getParcelableArray(BundleProtocol.PACKED_PARAM_CONTENT_URI_ARRAY);
     int[] flags = bundle.getIntArray(BundleProtocol.PACKED_PARAM_CONTENT_URI_FLAGS_ARRAY);
@@ -284,7 +283,7 @@ public class GooglePlayJobWriterTest {
     Bundle extras = new Bundle();
 
     Bundle result =
-        mWriter.writeToBundle(initializeDefaultBuilder().setExtras(extras).build(), new Bundle());
+        writer.writeToBundle(initializeDefaultBuilder().setExtras(extras).build(), new Bundle());
 
     assertEquals("extras", extras, result.getBundle("extras"));
   }

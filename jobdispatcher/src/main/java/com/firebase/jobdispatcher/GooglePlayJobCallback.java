@@ -27,10 +27,10 @@ import android.os.RemoteException;
   /** The only supported transaction ID. */
   private static final int TRANSACTION_TASK_FINISHED = IBinder.FIRST_CALL_TRANSACTION + 1;
 
-  private final IBinder mRemote;
+  private final IBinder remote;
 
   public GooglePlayJobCallback(IBinder binder) {
-    mRemote = binder;
+    remote = binder;
   }
 
   @Override
@@ -41,7 +41,7 @@ import android.os.RemoteException;
       request.writeInterfaceToken(DESCRIPTOR);
       request.writeInt(status);
 
-      mRemote.transact(TRANSACTION_TASK_FINISHED, request, response, 0);
+      remote.transact(TRANSACTION_TASK_FINISHED, request, response, 0);
 
       response.readException();
     } catch (RemoteException e) {

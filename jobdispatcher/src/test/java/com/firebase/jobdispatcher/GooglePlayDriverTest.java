@@ -50,15 +50,15 @@ import org.robolectric.annotation.Config;
 public class GooglePlayDriverTest {
   @Mock public Context mMockContext;
 
-  private TestJobDriver mDriver;
-  private FirebaseJobDispatcher mDispatcher;
+  private TestJobDriver driver;
+  private FirebaseJobDispatcher dispatcher;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
 
-    mDriver = new TestJobDriver(new GooglePlayDriver(mMockContext));
-    mDispatcher = new FirebaseJobDispatcher(mDriver);
+    driver = new TestJobDriver(new GooglePlayDriver(mMockContext));
+    dispatcher = new FirebaseJobDispatcher(driver);
 
     when(mMockContext.getPackageName()).thenReturn("foo.bar.whatever");
   }
@@ -71,7 +71,7 @@ public class GooglePlayDriverTest {
     Job job = null;
     try {
       job =
-          mDispatcher
+          dispatcher
               .newJobBuilder()
               .setService(TestJobService.class)
               .setTag("foobar")
@@ -85,7 +85,7 @@ public class GooglePlayDriverTest {
     assertEquals(
         "Expected schedule() request to fail when backend is unavailable",
         FirebaseJobDispatcher.SCHEDULE_RESULT_NO_DRIVER_AVAILABLE,
-        mDispatcher.schedule(job));
+        dispatcher.schedule(job));
   }
 
   @Test
@@ -95,7 +95,7 @@ public class GooglePlayDriverTest {
     assertEquals(
         "Expected cancelAll() request to fail when backend is unavailable",
         FirebaseJobDispatcher.CANCEL_RESULT_NO_DRIVER_AVAILABLE,
-        mDispatcher.cancelAll());
+        dispatcher.cancelAll());
   }
 
   @Test
@@ -103,7 +103,7 @@ public class GooglePlayDriverTest {
     ArgumentCaptor<Intent> pmQueryIntentCaptor = mockPackageManagerInfo();
 
     Job job =
-        mDispatcher
+        dispatcher
             .newJobBuilder()
             .setConstraints(Constraint.DEVICE_CHARGING)
             .setService(TestJobService.class)
@@ -120,7 +120,7 @@ public class GooglePlayDriverTest {
     assertEquals(
         "Expected schedule() request to succeed",
         FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS,
-        mDispatcher.schedule(job));
+        dispatcher.schedule(job));
 
     final ArgumentCaptor<Intent> captor = ArgumentCaptor.forClass(Intent.class);
     verify(mMockContext).sendBroadcast(captor.capture());
@@ -158,7 +158,7 @@ public class GooglePlayDriverTest {
 
   @Test
   public void testCancel_sendsAppropriateBroadcast() {
-    mDispatcher.cancel("foobar");
+    dispatcher.cancel("foobar");
 
     ArgumentCaptor<Intent> captor = ArgumentCaptor.forClass(Intent.class);
     verify(mMockContext).sendBroadcast(captor.capture());
@@ -170,7 +170,7 @@ public class GooglePlayDriverTest {
   }
 
   private void markBackendUnavailable() {
-    mDriver.available = false;
+    driver.available = false;
   }
 
   /**

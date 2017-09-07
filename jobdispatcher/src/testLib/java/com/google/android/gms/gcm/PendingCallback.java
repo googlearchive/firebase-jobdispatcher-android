@@ -39,14 +39,14 @@ public final class PendingCallback implements Parcelable {
           return new PendingCallback[i];
         }
       };
-  private final IBinder mBinder;
+  private final IBinder binder;
 
   public PendingCallback(Parcel in) {
-    mBinder = in.readStrongBinder();
+    binder = in.readStrongBinder();
   }
 
   public IBinder getIBinder() {
-    return mBinder;
+    return binder;
   }
 
   @Override
@@ -56,6 +56,6 @@ public final class PendingCallback implements Parcelable {
 
   @Override
   public void writeToParcel(Parcel parcel, int flags) {
-    parcel.writeStrongBinder(mBinder);
+    parcel.writeStrongBinder(binder);
   }
 }

@@ -30,38 +30,38 @@ import org.robolectric.annotation.Config;
 public class JobBuilderTest {
   private static final int[] ALL_LIFETIMES = {Lifetime.UNTIL_NEXT_BOOT, Lifetime.FOREVER};
 
-  private Job.Builder mBuilder;
+  private Job.Builder builder;
 
   @Before
   public void setUp() throws Exception {
-    mBuilder = TestUtil.getBuilderWithNoopValidator();
+    builder = TestUtil.getBuilderWithNoopValidator();
   }
 
   @Test
   public void testAddConstraints() {
-    mBuilder
+    builder
         .setConstraints()
         .addConstraint(Constraint.DEVICE_CHARGING)
         .addConstraint(Constraint.ON_UNMETERED_NETWORK);
 
     int[] expected = {Constraint.DEVICE_CHARGING, Constraint.ON_UNMETERED_NETWORK};
 
-    assertEquals(Constraint.compact(expected), Constraint.compact(mBuilder.getConstraints()));
+    assertEquals(Constraint.compact(expected), Constraint.compact(builder.getConstraints()));
   }
 
   @Test
   public void testSetLifetime() {
     for (int lifetime : ALL_LIFETIMES) {
-      mBuilder.setLifetime(lifetime);
-      assertEquals(lifetime, mBuilder.getLifetime());
+      builder.setLifetime(lifetime);
+      assertEquals(lifetime, builder.getLifetime());
     }
   }
 
   @Test
   public void testSetShouldReplaceCurrent() {
     for (boolean replace : new boolean[] {true, false}) {
-      mBuilder.setReplaceCurrent(replace);
-      assertEquals(replace, mBuilder.shouldReplaceCurrent());
+      builder.setReplaceCurrent(replace);
+      assertEquals(replace, builder.shouldReplaceCurrent());
     }
   }
 }
