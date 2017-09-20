@@ -21,6 +21,7 @@ import static com.firebase.jobdispatcher.TestUtil.encodeRecurringContentUriJob;
 import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.inOrder;
@@ -49,6 +50,7 @@ import com.firebase.jobdispatcher.TestUtil.InspectableBinder;
 import com.google.android.gms.gcm.PendingCallback;
 import java.util.ArrayList;
 import java.util.Arrays;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -81,25 +83,18 @@ public class GooglePlayReceiverTest {
   @Implements(Messenger.class)
   public static class ShadowMessenger {}
 
-  GooglePlayReceiver receiver;
+  private GooglePlayReceiver receiver;
 
-  JobCoder jobCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+  @Mock private Messenger messengerMock;
+  @Mock private IBinder binderMock;
+  @Mock private JobCallback callbackMock;
+  @Mock private ExecutionDelegator executionDelegatorMock;
+  @Mock private JobCallback jobCallbackMock;
+  @Mock private JobServiceConnection jobServiceConnectionMock;
+  @Mock private Driver driverMock;
+  @Captor private ArgumentCaptor<Job> jobArgumentCaptor;
 
-  @Mock Messenger messengerMock;
-  @Mock IBinder binderMock;
-  @Mock JobCallback callbackMock;
-  @Mock ExecutionDelegator executionDelegatorMock;
-  @Mock Driver driverMock;
-  @Captor ArgumentCaptor<Job> jobArgumentCaptor;
-
-  ArrayList<Uri> triggeredUris = new ArrayList<>();
-
-  {
-    triggeredUris.add(ContactsContract.AUTHORITY_URI);
-    triggeredUris.add(Media.EXTERNAL_CONTENT_URI);
-  }
-
-  Builder jobInvocationBuilder =
+  private final Builder jobInvocationBuilder =
       new Builder()
           .setTag("tag")
           .setService(TestJobService.class.getName())
@@ -112,6 +107,61 @@ public class GooglePlayReceiverTest {
     when(receiver.getExecutionDelegator()).thenReturn(executionDelegatorMock);
     receiver.driver = driverMock;
     receiver.validationEnforcer = new ValidationEnforcer(new NoopJobValidator());
+  }
+
+  @After
+  public void tearDown() {
+    GooglePlayReceiver.clearCallbacks();
+  }
+
+  @Test
+  public void onReschedule_notRunning_noException() {
+    Job job =
+        TestUtil.getBuilderWithNoopValidator()
+            .setService(TestJobService.class)
+            .setTrigger(Trigger.NOW)
+            .setTag("TAG")
+            .build();
+
+    GooglePlayReceiver.onSchedule(job);
+  }
+
+  @Test
+  public void onReschedule_notRunningWrongTag_noException() {
+    Bundle bundle = TestUtil.getBundleForContentJobExecution();
+    Job job =
+        TestUtil.getBuilderWithNoopValidator()
+            .setService(TestJobService.class)
+            .setTrigger(Trigger.NOW)
+            .setTag("TAG")
+            .build();
+
+    receiver.prepareJob(jobCallbackMock, bundle);
+
+    GooglePlayReceiver.onSchedule(job);
+  }
+
+  @Test
+  public void onReschedule_stopJob() {
+    Bundle bundle = TestUtil.getBundleForContentJobExecution();
+    JobCoder prefixedCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+    JobInvocation invocation = prefixedCoder.decodeIntentBundle(bundle);
+
+    Job job =
+        TestUtil.getBuilderWithNoopValidator()
+            .setService(TestJobService.class)
+            .setTrigger(invocation.getTrigger())
+            .setTag(invocation.getTag())
+            .build();
+
+    receiver.prepareJob(jobCallbackMock, bundle);
+    ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
+
+    GooglePlayReceiver.onSchedule(job);
+
+    verify(jobServiceConnectionMock).onStop(false);
+    assertTrue(
+        "JobServiceConnection should be removed.", ExecutionDelegator.serviceConnections.isEmpty());
   }
 
   @Test
@@ -127,7 +177,7 @@ public class GooglePlayReceiverTest {
         Trigger.contentUriTrigger(Arrays.asList(new ObservedUri(Contacts.CONTENT_URI, 0))));
 
     JobInvocation jobInvocation =
-        receiver.prepareJob(callbackMock, getBundleForContentJobExecution());
+        receiver.prepareJob(callbackMock, TestUtil.getBundleForContentJobExecution());
 
     receiver.onJobFinished(jobInvocation, JobService.RESULT_SUCCESS);
     verify(callbackMock).jobFinished(JobService.RESULT_SUCCESS);
@@ -170,7 +220,7 @@ public class GooglePlayReceiverTest {
   public void prepareJob() {
     Intent intent = new Intent();
 
-    Bundle encode = encodeContentUriJob(getContentUriTrigger(), jobCoder);
+    Bundle encode = encodeContentUriJob(getContentUriTrigger(), TestUtil.JOB_CODER);
     intent.putExtra(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
 
     Parcel container = Parcel.obtain();
@@ -196,31 +246,20 @@ public class GooglePlayReceiverTest {
 
   @Test
   public void prepareJob_messenger_noExtras() {
-    Bundle bundle = getBundleForContentJobExecution();
+    Bundle bundle = TestUtil.getBundleForContentJobExecution();
 
     JobInvocation jobInvocation = receiver.prepareJob(callbackMock, bundle);
-    assertEquals(jobInvocation.getTriggerReason().getTriggeredContentUris(), triggeredUris);
-  }
-
-  @NonNull
-  private Bundle getBundleForContentJobExecution() {
-    Bundle bundle = new Bundle();
-
-    Bundle encode = encodeContentUriJob(getContentUriTrigger(), jobCoder);
-    bundle.putBundle(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
-
-    bundle.putParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, triggeredUris);
-    return bundle;
+    assertEquals(jobInvocation.getTriggerReason().getTriggeredContentUris(), TestUtil.URIS);
   }
 
   @NonNull
   private Bundle getBundleForContentJobExecutionRecurring() {
     Bundle bundle = new Bundle();
 
-    Bundle encode = encodeRecurringContentUriJob(getContentUriTrigger(), jobCoder);
+    Bundle encode = encodeRecurringContentUriJob(getContentUriTrigger(), TestUtil.JOB_CODER);
     bundle.putBundle(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
 
-    bundle.putParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, triggeredUris);
+    bundle.putParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, TestUtil.URIS);
     return bundle;
   }
 

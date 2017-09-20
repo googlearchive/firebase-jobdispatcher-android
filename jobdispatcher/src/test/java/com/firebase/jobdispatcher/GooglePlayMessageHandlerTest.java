@@ -31,10 +31,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
+import junit.framework.Assert;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
@@ -61,6 +62,11 @@ public class GooglePlayMessageHandlerTest {
     when(receiverMock.getExecutionDelegator()).thenReturn(executionDelegatorMock);
     when(receiverMock.getApplicationContext()).thenReturn(context);
     when(context.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(appOpsManager);
+  }
+
+  @After
+  public void tearDown() {
+    ExecutionDelegator.serviceConnections.clear();
   }
 
   @Test
@@ -126,13 +132,11 @@ public class GooglePlayMessageHandlerTest {
     message.setData(data);
     message.replyTo = messengerMock;
 
+    ExecutionDelegator.serviceConnections.put(jobInvocation, null);
+
     handler.handleMessage(message);
 
-    final ArgumentCaptor<JobInvocation> captor = ArgumentCaptor.forClass(JobInvocation.class);
-
-    verify(executionDelegatorMock).stopJob(captor.capture());
-
-    TestUtil.assertJobsEqual(jobInvocation, captor.getValue());
+    Assert.assertTrue(ExecutionDelegator.serviceConnections.isEmpty());
   }
 
   @Test
@@ -142,7 +146,5 @@ public class GooglePlayMessageHandlerTest {
     message.replyTo = messengerMock;
 
     handler.handleMessage(message);
-
-    verify(executionDelegatorMock, never()).stopJob(any(JobInvocation.class));
   }
 }

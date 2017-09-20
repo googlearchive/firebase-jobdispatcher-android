@@ -198,7 +198,7 @@ public class ExecutionDelegatorTest {
     final ServiceConnection connection = connCaptor.getValue();
     connection.onServiceConnected(componentName, mockLocalBinder);
 
-    executionDelegator.stopJob(job);
+    ExecutionDelegator.stopJob(job, true);
 
     TestUtil.assertJobsEqual(job, out[0]);
     TestUtil.assertJobsEqual(job, out[1]);

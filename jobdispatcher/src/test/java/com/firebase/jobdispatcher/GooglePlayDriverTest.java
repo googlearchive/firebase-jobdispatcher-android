@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -31,10 +32,12 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import java.util.Arrays;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,19 +51,29 @@ import org.robolectric.annotation.Config;
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class GooglePlayDriverTest {
-  @Mock public Context mMockContext;
+  @Mock private Context mMockContext;
+  @Mock private JobCallback jobCallbackMock;
+  @Mock private JobServiceConnection jobServiceConnectionMock;
 
   private TestJobDriver driver;
+  private GooglePlayDriver googlePlayDriver;
   private FirebaseJobDispatcher dispatcher;
+  private final GooglePlayReceiver googlePlayReceiver = new GooglePlayReceiver();
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
 
-    driver = new TestJobDriver(new GooglePlayDriver(mMockContext));
+    googlePlayDriver = new GooglePlayDriver(mMockContext);
+    driver = new TestJobDriver(googlePlayDriver);
     dispatcher = new FirebaseJobDispatcher(driver);
 
     when(mMockContext.getPackageName()).thenReturn("foo.bar.whatever");
+  }
+
+  @After
+  public void tearDown() {
+    GooglePlayReceiver.clearCallbacks();
   }
 
   @Test
@@ -138,6 +151,32 @@ public class GooglePlayDriverTest {
     assertTrue(
         "Expected 'app' value to be a PendingIntent",
         parcelablePendingIntent instanceof PendingIntent);
+  }
+
+  @Test
+  public void schedule_whenRunning_onStopIsCalled() {
+    // simulate running job
+    Bundle bundle = TestUtil.getBundleForContentJobExecution();
+    googlePlayReceiver.prepareJob(jobCallbackMock, bundle);
+
+    JobCoder prefixedCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+    JobInvocation invocation = prefixedCoder.decodeIntentBundle(bundle);
+
+    ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
+
+    Job job =
+        TestUtil.getBuilderWithNoopValidator()
+            .setService(TestJobService.class)
+            .setTrigger(invocation.getTrigger())
+            .setTag(invocation.getTag())
+            .build();
+
+    googlePlayDriver.schedule(job); // reschedule request during the execution
+
+    verify(mMockContext).sendBroadcast(any(Intent.class));
+    verify(jobServiceConnectionMock).onStop(false);
+    assertTrue(
+        "JobServiceConnection should be removed.", ExecutionDelegator.serviceConnections.isEmpty());
   }
 
   private ArgumentCaptor<Intent> mockPackageManagerInfo() {

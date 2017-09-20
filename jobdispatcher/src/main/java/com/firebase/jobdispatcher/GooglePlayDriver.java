@@ -85,6 +85,8 @@ public final class GooglePlayDriver implements Driver {
   public int schedule(@NonNull Job job) {
     context.sendBroadcast(createScheduleRequest(job));
 
+    GooglePlayReceiver.onSchedule(job); // need to stop the job if it is running.
+
     return FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS;
   }
 

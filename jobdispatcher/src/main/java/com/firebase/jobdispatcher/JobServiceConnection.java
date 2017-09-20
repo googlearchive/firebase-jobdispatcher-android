@@ -19,6 +19,7 @@ package com.firebase.jobdispatcher;
 import static com.firebase.jobdispatcher.ExecutionDelegator.TAG;
 
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.Message;
@@ -33,14 +34,16 @@ class JobServiceConnection implements ServiceConnection {
   // Should be sent only once. Can't be reused.
   private final Message jobFinishedMessage;
   private boolean wasMessageUsed = false;
+  private final Context context;
 
   // Guarded by "this". Can be updated from main and binder threads.
   private JobService.LocalBinder binder;
 
-  JobServiceConnection(JobInvocation jobInvocation, Message jobFinishedMessage) {
+  JobServiceConnection(JobInvocation jobInvocation, Message jobFinishedMessage, Context context) {
     this.jobFinishedMessage = jobFinishedMessage;
     this.jobInvocation = jobInvocation;
     this.jobFinishedMessage.obj = this.jobInvocation;
+    this.context = context;
   }
 
   @Override
@@ -68,13 +71,26 @@ class JobServiceConnection implements ServiceConnection {
     binder = null;
   }
 
+  @VisibleForTesting
   synchronized boolean isBound() {
     return binder != null;
   }
 
-  synchronized void onStop() {
+  synchronized void onStop(boolean needToSendResult) {
     if (isBound()) {
-      binder.getService().stop(jobInvocation);
+      binder.getService().stop(jobInvocation, needToSendResult);
+      unbind();
+    }
+  }
+
+  synchronized void unbind() {
+    if (isBound()) {
+      binder = null;
+      try {
+        context.unbindService(this);
+      } catch (IllegalArgumentException e) {
+        Log.w(TAG, "Error unbinding service: " + e.getMessage());
+      }
     }
   }
 }

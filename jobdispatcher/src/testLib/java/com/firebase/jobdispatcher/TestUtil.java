@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.Parcel;
@@ -46,6 +47,10 @@ public class TestUtil {
 
   private static final String TAG = "TAG";
   private static final String[] TAG_COMBINATIONS = {"tag", "foobar", "fooooooo", "bz", "100"};
+
+  static final ArrayList<Uri> URIS =
+      new ArrayList<>(Arrays.asList(ContactsContract.AUTHORITY_URI, Media.EXTERNAL_CONTENT_URI));
+  static final JobCoder JOB_CODER = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
 
   private static final int[] LIFETIME_COMBINATIONS = {Lifetime.UNTIL_NEXT_BOOT, Lifetime.FOREVER};
 
@@ -269,6 +274,17 @@ public class TestUtil {
         new ObservedUri(ContactsContract.AUTHORITY_URI, Flags.FLAG_NOTIFY_FOR_DESCENDANTS);
     ObservedUri imageUri = new ObservedUri(Media.EXTERNAL_CONTENT_URI, 0);
     return Trigger.contentUriTrigger(Arrays.asList(contactUri, imageUri));
+  }
+
+  @NonNull
+  static Bundle getBundleForContentJobExecution() {
+    Bundle bundle = new Bundle();
+
+    Bundle encode = encodeContentUriJob(getContentUriTrigger(), JOB_CODER);
+    bundle.putBundle(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
+
+    bundle.putParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, URIS);
+    return bundle;
   }
 
   /** A simple data object that holds all the arguments passed in a binder transaction. */

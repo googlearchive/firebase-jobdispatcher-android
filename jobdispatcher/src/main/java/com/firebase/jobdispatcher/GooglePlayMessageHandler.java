@@ -107,6 +107,6 @@ class GooglePlayMessageHandler extends Handler {
       return;
     }
     JobInvocation job = builder.build();
-    googlePlayReceiver.getExecutionDelegator().stopJob(job);
+    ExecutionDelegator.stopJob(job, true);
   }
 }
