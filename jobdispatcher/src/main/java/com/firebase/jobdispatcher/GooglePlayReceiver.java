@@ -74,8 +74,14 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
   private int latestStartId;
 
   /** Endpoint (String) -> Tag (String) -> JobCallback */
-  private final SimpleArrayMap<String, SimpleArrayMap<String, JobCallback>> callbacks =
+  private static final SimpleArrayMap<String, SimpleArrayMap<String, JobCallback>> callbacks =
       new SimpleArrayMap<>(1);
+
+  static void clearCallbacks() {
+    synchronized (callbacks) {
+      callbacks.clear();
+    }
+  }
 
   private static void sendResultSafely(JobCallback callback, int result) {
     try {
@@ -248,5 +254,32 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
 
   static JobCoder getJobCoder() {
     return prefixedCoder;
+  }
+
+  /**
+   * Stops the job if it is running.
+   *
+   * <p>Needed to avoid possibility of sending job result before the reschedule request is received
+   * by Google Play services.
+   */
+  static void onSchedule(Job job) {
+    // Stop if running
+    synchronized (callbacks) {
+      SimpleArrayMap<String, JobCallback> jobs = callbacks.get(job.getService());
+      if (jobs == null) { // not running
+        return;
+      }
+      JobCallback jobCallback = jobs.get(job.getTag());
+      if (jobCallback == null) { // not running
+        return;
+      }
+      JobInvocation key =
+          new JobInvocation.Builder()
+              .setTag(job.getTag())
+              .setService(job.getService())
+              .setTrigger(job.getTrigger())
+              .build();
+      ExecutionDelegator.stopJob(key, false /* must not send the result */);
+    }
   }
 }

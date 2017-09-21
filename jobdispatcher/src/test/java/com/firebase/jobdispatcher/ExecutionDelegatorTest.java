@@ -50,17 +50,17 @@ import org.robolectric.annotation.Config;
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class ExecutionDelegatorTest {
 
-  private Context mMockContext;
-  private TestJobReceiver mReceiver;
-  private ExecutionDelegator mExecutionDelegator;
+  private Context mockContext;
+  private TestJobReceiver receiver;
+  private ExecutionDelegator executionDelegator;
 
   @Before
   public void setUp() {
-    mMockContext = spy(RuntimeEnvironment.application);
-    doReturn("com.example.foo").when(mMockContext).getPackageName();
+    mockContext = spy(RuntimeEnvironment.application);
+    doReturn("com.example.foo").when(mockContext).getPackageName();
 
-    mReceiver = new TestJobReceiver();
-    mExecutionDelegator = new ExecutionDelegator(mMockContext, mReceiver);
+    receiver = new TestJobReceiver();
+    executionDelegator = new ExecutionDelegator(mockContext, receiver);
   }
 
   @Test
@@ -71,17 +71,17 @@ public class ExecutionDelegatorTest {
   }
 
   private void verifyExecuteJob(JobInvocation input) throws Exception {
-    reset(mMockContext);
-    mReceiver.lastResult = -1;
+    reset(mockContext);
+    receiver.lastResult = -1;
 
-    mReceiver.setLatch(new CountDownLatch(1));
+    receiver.setLatch(new CountDownLatch(1));
 
-    mExecutionDelegator.executeJob(input);
+    executionDelegator.executeJob(input);
 
     final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
     final ArgumentCaptor<ServiceConnection> connCaptor =
         ArgumentCaptor.forClass(ServiceConnection.class);
-    verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+    verify(mockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
 
     final Intent result = intentCaptor.getValue();
     // verify the intent was sent to the right place
@@ -115,17 +115,17 @@ public class ExecutionDelegatorTest {
     TestUtil.assertJobsEqual(input, out[0]);
 
     // make sure the countdownlatch was decremented
-    assertTrue(mReceiver.mLatch.await(1, TimeUnit.SECONDS));
+    assertTrue(receiver.latch.await(1, TimeUnit.SECONDS));
 
     // verify the lastResult was set correctly
-    assertEquals(JobService.RESULT_SUCCESS, mReceiver.lastResult);
+    assertEquals(JobService.RESULT_SUCCESS, receiver.lastResult);
   }
 
   @Test
   public void testExecuteJob_handlesNull() {
     assertFalse(
         "Expected calling triggerExecution on null to fail and return false",
-        mExecutionDelegator.executeJob(null));
+        executionDelegator.executeJob(null));
   }
 
   @Test
@@ -137,13 +137,13 @@ public class ExecutionDelegatorTest {
             .setTrigger(Trigger.NOW)
             .build();
 
-    mExecutionDelegator.executeJob(j);
+    executionDelegator.executeJob(j);
 
     ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
     ArgumentCaptor<ServiceConnection> connCaptor = ArgumentCaptor.forClass(ServiceConnection.class);
 
     // noinspection WrongConstant
-    verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+    verify(mockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
 
     Intent executeReq = intentCaptor.getValue();
     assertEquals(JobService.ACTION_EXECUTE, executeReq.getAction());
@@ -159,15 +159,15 @@ public class ExecutionDelegatorTest {
             .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
             .build();
 
-    reset(mMockContext);
-    mReceiver.lastResult = -1;
+    reset(mockContext);
+    receiver.lastResult = -1;
 
-    mExecutionDelegator.executeJob(job);
+    executionDelegator.executeJob(job);
 
     final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
     final ArgumentCaptor<ServiceConnection> connCaptor =
         ArgumentCaptor.forClass(ServiceConnection.class);
-    verify(mMockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+    verify(mockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
 
     final Intent result = intentCaptor.getValue();
     // verify the intent was sent to the right place
@@ -198,7 +198,7 @@ public class ExecutionDelegatorTest {
     final ServiceConnection connection = connCaptor.getValue();
     connection.onServiceConnected(componentName, mockLocalBinder);
 
-    mExecutionDelegator.stopJob(job);
+    ExecutionDelegator.stopJob(job, true);
 
     TestUtil.assertJobsEqual(job, out[0]);
     TestUtil.assertJobsEqual(job, out[1]);
@@ -207,20 +207,20 @@ public class ExecutionDelegatorTest {
   private static final class TestJobReceiver implements ExecutionDelegator.JobFinishedCallback {
     int lastResult;
 
-    private CountDownLatch mLatch;
+    private CountDownLatch latch;
 
     @Override
     public void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
       lastResult = result;
 
-      if (mLatch != null) {
-        mLatch.countDown();
+      if (latch != null) {
+        latch.countDown();
       }
     }
 
     /** Convenience method for tests. */
     public void setLatch(CountDownLatch latch) {
-      mLatch = latch;
+      this.latch = latch;
     }
   }
 }

@@ -18,12 +18,14 @@ package com.firebase.jobdispatcher;
 
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.Context;
 import android.os.IBinder;
 import android.os.Message;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
@@ -51,13 +53,14 @@ public class JobServiceConnectionTest {
   @Mock JobService.LocalBinder binderMock;
   @Mock JobService jobServiceMock;
 
+  @Mock Context contextMock;
   JobServiceConnection connection;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
     when(binderMock.getService()).thenReturn(jobServiceMock);
-    connection = new JobServiceConnection(job, messageMock);
+    connection = new JobServiceConnection(job, messageMock, contextMock);
   }
 
   @Test
@@ -68,8 +71,18 @@ public class JobServiceConnectionTest {
     verify(jobServiceMock).start(job, messageMock);
     assertTrue(connection.isBound());
 
-    connection.onStop();
-    verify(jobServiceMock).stop(job);
+    connection.onStop(true);
+    verify(jobServiceMock).stop(job, true);
+    assertFalse(connection.isBound());
+
+    connection.onServiceDisconnected(null);
+    assertFalse(connection.isBound());
+  }
+
+  @Test
+  public void onServiceDisconnected() {
+    connection.onServiceConnected(null, binderMock);
+    verify(jobServiceMock).start(job, messageMock);
     assertTrue(connection.isBound());
 
     connection.onServiceDisconnected(null);
@@ -88,9 +101,9 @@ public class JobServiceConnectionTest {
     connection.onServiceConnected(null, binderMock);
     verify(jobServiceMock, never()).start(job, messageMock); // start should not be called again
 
-    connection.onStop();
-    verify(jobServiceMock).stop(job);
-    assertTrue(connection.isBound());
+    connection.onStop(true);
+    verify(jobServiceMock).stop(job, true);
+    assertFalse(connection.isBound());
 
     connection.onServiceDisconnected(null);
     assertFalse(connection.isBound());
@@ -99,7 +112,7 @@ public class JobServiceConnectionTest {
   @Test
   public void stopOnUnboundConnection() {
     assertFalse(connection.isBound());
-    connection.onStop();
+    connection.onStop(true);
     verify(jobServiceMock, never()).onStopJob(job);
   }
 
@@ -108,5 +121,42 @@ public class JobServiceConnectionTest {
     IBinder binder = mock(IBinder.class);
     connection.onServiceConnected(null, binder);
     assertFalse(connection.isBound());
+  }
+
+  @Test
+  public void onStop_doNotSendResult() {
+    connection.onServiceConnected(null, binderMock);
+    verify(jobServiceMock).start(job, messageMock);
+    assertTrue(connection.isBound());
+
+    connection.onStop(false);
+    verify(jobServiceMock).stop(job, false);
+    assertFalse(connection.isBound());
+  }
+
+  @Test
+  public void unbind() {
+    connection.onServiceConnected(null, binderMock);
+    verify(jobServiceMock).start(job, messageMock);
+    assertTrue(connection.isBound());
+
+    connection.unbind();
+
+    assertFalse(connection.isBound());
+    verify(contextMock).unbindService(connection);
+  }
+
+  @Test
+  public void unbind_throws_noException() {
+    connection.onServiceConnected(null, binderMock);
+    verify(jobServiceMock).start(job, messageMock);
+    assertTrue(connection.isBound());
+
+    doThrow(IllegalArgumentException.class).when(contextMock).unbindService(connection);
+
+    connection.unbind();
+
+    assertFalse(connection.isBound());
+    verify(contextMock).unbindService(connection);
   }
 }

@@ -44,7 +44,8 @@ import java.lang.ref.WeakReference;
   }
 
   /** A mapping of {@link JobInvocation} to (local) binder connections. Synchronized by itself. */
-  private final SimpleArrayMap<JobInvocation, JobServiceConnection> serviceConnections =
+  @VisibleForTesting
+  static final SimpleArrayMap<JobInvocation, JobServiceConnection> serviceConnections =
       new SimpleArrayMap<>();
 
   private final ResponseHandler responseHandler =
@@ -69,7 +70,8 @@ import java.lang.ref.WeakReference;
     }
 
     JobServiceConnection conn =
-        new JobServiceConnection(jobInvocation, responseHandler.obtainMessage(JOB_FINISHED));
+        new JobServiceConnection(
+            jobInvocation, responseHandler.obtainMessage(JOB_FINISHED), context);
 
     synchronized (serviceConnections) {
       JobServiceConnection oldConnection = serviceConnections.put(jobInvocation, conn);
@@ -87,22 +89,11 @@ import java.lang.ref.WeakReference;
     return execReq;
   }
 
-  void stopJob(JobInvocation job) {
+  static void stopJob(JobInvocation job, boolean needToSendResult) {
     synchronized (serviceConnections) {
       JobServiceConnection jobServiceConnection = serviceConnections.remove(job);
       if (jobServiceConnection != null) {
-        jobServiceConnection.onStop();
-        safeUnbindService(jobServiceConnection);
-      }
-    }
-  }
-
-  private void safeUnbindService(JobServiceConnection connection) {
-    if (connection != null && connection.isBound()) {
-      try {
-        context.unbindService(connection);
-      } catch (IllegalArgumentException e) {
-        Log.w(TAG, "Error unbinding service: " + e.getMessage());
+        jobServiceConnection.onStop(needToSendResult);
       }
     }
   }
@@ -110,7 +101,9 @@ import java.lang.ref.WeakReference;
   private void onJobFinishedMessage(JobInvocation jobInvocation, int result) {
     synchronized (serviceConnections) {
       JobServiceConnection connection = serviceConnections.remove(jobInvocation);
-      safeUnbindService(connection);
+      if (connection != null) {
+        connection.unbind();
+      }
     }
 
     jobFinishedCallback.onJobFinished(jobInvocation, result);

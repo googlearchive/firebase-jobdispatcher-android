@@ -7,12 +7,6 @@ jdk: oraclejdk8
 sudo: required
 
 env:
-    matrix:
-        - ANDROID_TARGET=android-16 ANDROID_ABI=armeabi-v7a
-        - ANDROID_TARGET=android-17 ANDROID_ABI=armeabi-v7a
-        - ANDROID_TARGET=android-18 ANDROID_ABI=armeabi-v7a
-        - ANDROID_TARGET=android-19 ANDROID_ABI=armeabi-v7a
-        - ANDROID_TARGET=android-21 ANDROID_ABI=armeabi-v7a
     global:
         - ADB_INSTALL_TIMEOUT=10 # Default is 2 minutes, bump to 10
 
@@ -43,18 +37,6 @@ cache:
         - $HOME/.gradle/wrapper/
         - $HOME/.android/build-cache
 
-before_script:
-    # Print the list of available targets to aid in debugging CI issues
-    - android list targets
-    # Create the AVD (name "test")
-    - echo no | android create avd --force --name test --target $ANDROID_TARGET --abi $ANDROID_ABI
-    # Start the emulator in the background
-    - emulator -avd test -no-skin -no-audio -no-window &
-
 script:
-    - android-wait-for-emulator
-    - adb devices
-    # Simulate hitting the menu button
-    - adb shell input keyevent 82 &
     # Build the library + run unit tests, run device tests, build the test app
     - ./gradlew jobdispatcher:build testapp:assemble

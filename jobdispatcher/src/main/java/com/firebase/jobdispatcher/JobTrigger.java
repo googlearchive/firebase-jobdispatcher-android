@@ -36,20 +36,20 @@ public class JobTrigger {
    * behavior.
    */
   public static final class ExecutionWindowTrigger extends JobTrigger {
-    private final int mWindowStart;
-    private final int mWindowEnd;
+    private final int windowStart;
+    private final int windowEnd;
 
     /* package */ ExecutionWindowTrigger(int windowStart, int windowEnd) {
-      this.mWindowStart = windowStart;
-      this.mWindowEnd = windowEnd;
+      this.windowStart = windowStart;
+      this.windowEnd = windowEnd;
     }
 
     public int getWindowStart() {
-      return mWindowStart;
+      return windowStart;
     }
 
     public int getWindowEnd() {
-      return mWindowEnd;
+      return windowEnd;
     }
   }
 

@@ -90,7 +90,9 @@ public abstract class JobService extends Service {
    * JobService#jobFinished(JobParameters, boolean)} to notify the scheduling service that the work
    * is completed.
    *
-   * <p>In order to reschedule use {@link JobService#jobFinished(JobParameters, boolean)}.
+   * <p>If a job with the same service and tag was rescheduled during execution {@link
+   * JobService#onStopJob(JobParameters)} will be called and the wakelock will be released. Please
+   * make sure that all reschedule requests happen at the end of the job.
    *
    * @return {@code true} if there is more work remaining in the worker thread, {@code false} if the
    *     job was completed.
@@ -130,8 +132,13 @@ public abstract class JobService extends Service {
     }
   }
 
+  /**
+   * Asks job to stop.
+   *
+   * <p>Sending results can be skipped if the call was initiated by a reschedule request.
+   */
   @MainThread
-  void stop(JobInvocation job) {
+  void stop(JobInvocation job, boolean needToSendResult) {
     synchronized (runningJobs) {
       JobCallback jobCallback = runningJobs.remove(job.getTag());
 
@@ -142,7 +149,9 @@ public abstract class JobService extends Service {
         return;
       }
       boolean shouldRetry = onStopJob(job);
-      jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
+      if (needToSendResult) {
+        jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
+      }
     }
   }
 

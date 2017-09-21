@@ -48,30 +48,30 @@ public final class RetryStrategy {
   public static final RetryStrategy DEFAULT_LINEAR =
       new RetryStrategy(RETRY_POLICY_LINEAR, 30, 3600);
 
-  @RetryPolicy private final int mPolicy;
-  private final int mInitialBackoff;
-  private final int mMaximumBackoff;
+  @RetryPolicy private final int policy;
+  private final int initialBackoff;
+  private final int maximumBackoff;
 
   /* package */ RetryStrategy(@RetryPolicy int policy, int initialBackoff, int maximumBackoff) {
-    mPolicy = policy;
-    mInitialBackoff = initialBackoff;
-    mMaximumBackoff = maximumBackoff;
+    this.policy = policy;
+    this.initialBackoff = initialBackoff;
+    this.maximumBackoff = maximumBackoff;
   }
 
   /** Returns the backoff policy in place. */
   @RetryPolicy
   public int getPolicy() {
-    return mPolicy;
+    return policy;
   }
 
   /** Returns the initial backoff (i.e. when # of failures == 1), in seconds. */
   public int getInitialBackoff() {
-    return mInitialBackoff;
+    return initialBackoff;
   }
 
   /** Returns the maximum backoff duration in seconds. */
   public int getMaximumBackoff() {
-    return mMaximumBackoff;
+    return maximumBackoff;
   }
 
   /** Defines the list of acceptable retry policies. */
@@ -80,15 +80,15 @@ public final class RetryStrategy {
   public @interface RetryPolicy {}
 
   /* package */ static final class Builder {
-    private final ValidationEnforcer mValidator;
+    private final ValidationEnforcer validator;
 
     Builder(ValidationEnforcer validator) {
-      mValidator = validator;
+      this.validator = validator;
     }
 
     public RetryStrategy build(@RetryPolicy int policy, int initialBackoff, int maxBackoff) {
       RetryStrategy rs = new RetryStrategy(policy, initialBackoff, maxBackoff);
-      mValidator.ensureValid(rs);
+      validator.ensureValid(rs);
       return rs;
     }
   }
