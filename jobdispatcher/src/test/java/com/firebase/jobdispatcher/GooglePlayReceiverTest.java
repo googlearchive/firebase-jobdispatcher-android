@@ -155,13 +155,19 @@ public class GooglePlayReceiverTest {
             .build();
 
     receiver.prepareJob(jobCallbackMock, bundle);
-    ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
+
+    synchronized (ExecutionDelegator.serviceConnections) {
+      ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
+    }
 
     GooglePlayReceiver.onSchedule(job);
 
     verify(jobServiceConnectionMock).onStop(false);
-    assertTrue(
-        "JobServiceConnection should be removed.", ExecutionDelegator.serviceConnections.isEmpty());
+    synchronized (ExecutionDelegator.serviceConnections) {
+      assertTrue(
+          "JobServiceConnection should be removed.",
+          ExecutionDelegator.serviceConnections.isEmpty());
+    }
   }
 
   @Test

@@ -21,6 +21,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
+// import android.support.annotation.GuardedBy;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.util.Pair;
@@ -47,7 +48,7 @@ import java.util.ArrayList;
   /** A magic number that indicates the following value is a Parcelable. */
   private static final int VAL_PARCELABLE = 4;
 
-  // GuardedBy("GooglePlayCallbackExtractor.class")
+  // @GuardedBy("GooglePlayCallbackExtractor.class")
   private static Boolean shouldReadKeysAsStringsCached = null;
 
   public Pair<JobCallback, Bundle> extractCallback(@Nullable Bundle data) {

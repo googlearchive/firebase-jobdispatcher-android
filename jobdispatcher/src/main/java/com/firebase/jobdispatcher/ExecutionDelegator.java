@@ -23,6 +23,7 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+// import android.support.annotation.GuardedBy;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 import android.support.v4.util.SimpleArrayMap;
@@ -45,6 +46,7 @@ import java.lang.ref.WeakReference;
 
   /** A mapping of {@link JobInvocation} to (local) binder connections. Synchronized by itself. */
   @VisibleForTesting
+  // @GuardedBy("serviceConnections")
   static final SimpleArrayMap<JobInvocation, JobServiceConnection> serviceConnections =
       new SimpleArrayMap<>();
 

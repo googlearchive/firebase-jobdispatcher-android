@@ -66,7 +66,9 @@ public class GooglePlayMessageHandlerTest {
 
   @After
   public void tearDown() {
-    ExecutionDelegator.serviceConnections.clear();
+    synchronized (ExecutionDelegator.serviceConnections) {
+      ExecutionDelegator.serviceConnections.clear();
+    }
   }
 
   @Test
@@ -132,11 +134,15 @@ public class GooglePlayMessageHandlerTest {
     message.setData(data);
     message.replyTo = messengerMock;
 
-    ExecutionDelegator.serviceConnections.put(jobInvocation, null);
+    synchronized (ExecutionDelegator.serviceConnections) {
+      ExecutionDelegator.serviceConnections.put(jobInvocation, null);
+    }
 
     handler.handleMessage(message);
 
-    Assert.assertTrue(ExecutionDelegator.serviceConnections.isEmpty());
+    synchronized (ExecutionDelegator.serviceConnections) {
+      Assert.assertTrue(ExecutionDelegator.serviceConnections.isEmpty());
+    }
   }
 
   @Test

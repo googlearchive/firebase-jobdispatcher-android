@@ -23,6 +23,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Messenger;
+// import android.support.annotation.GuardedBy;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
@@ -74,6 +75,7 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
   private int latestStartId;
 
   /** Endpoint (String) -> Tag (String) -> JobCallback */
+  // @GuardedBy("callbacks")
   private static final SimpleArrayMap<String, SimpleArrayMap<String, JobCallback>> callbacks =
       new SimpleArrayMap<>(1);
 
@@ -112,7 +114,7 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
       Log.e(TAG, ERROR_UNKNOWN_ACTION);
       return START_NOT_STICKY;
     } finally {
-      synchronized (this) {
+      synchronized (callbacks) {
         latestStartId = startId;
         if (callbacks.isEmpty()) {
           stopSelf(latestStartId);
@@ -183,51 +185,54 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
   }
 
   @Nullable
-  synchronized JobInvocation prepareJob(JobCallback callback, Bundle bundle) {
+  JobInvocation prepareJob(JobCallback callback, Bundle bundle) {
     JobInvocation job = prefixedCoder.decodeIntentBundle(bundle);
     if (job == null) {
       Log.e(TAG, "unable to decode job");
       sendResultSafely(callback, JobService.RESULT_FAIL_NORETRY);
       return null;
     }
-    SimpleArrayMap<String, JobCallback> map = callbacks.get(job.getService());
-    if (map == null) {
-      map = new SimpleArrayMap<>(1);
-      callbacks.put(job.getService(), map);
+    synchronized (callbacks) {
+      SimpleArrayMap<String, JobCallback> map = callbacks.get(job.getService());
+      if (map == null) {
+        map = new SimpleArrayMap<>(1);
+        callbacks.put(job.getService(), map);
+      }
+
+      map.put(job.getTag(), callback);
     }
-
-    map.put(job.getTag(), callback);
-
     return job;
   }
 
   @Override
-  public synchronized void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
-    try {
-      SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
-      if (map == null) {
-        return;
-      }
-      JobCallback callback = map.remove(js.getTag());
-      if (callback == null) {
-        return;
-      }
-      if (map.isEmpty()) {
-        callbacks.remove(js.getService());
-      }
-
-      if (needsToBeRescheduled(js, result)) {
-        reschedule(js);
-      } else {
-        if (Log.isLoggable(TAG, Log.VERBOSE)) {
-          Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
+  public void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
+    synchronized (callbacks) {
+      try {
+        SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
+        if (map == null) {
+          return;
         }
-        sendResultSafely(callback, result);
-      }
-    } finally {
-      if (callbacks.isEmpty()) {
-        // Safe to call stopSelf, even if we're being bound to
-        stopSelf(latestStartId);
+        JobCallback callback = map.remove(js.getTag());
+        if (callback == null) {
+          return;
+        }
+        if (map.isEmpty()) {
+          callbacks.remove(js.getService());
+        }
+
+        if (needsToBeRescheduled(js, result)) {
+          reschedule(js);
+        } else {
+          if (Log.isLoggable(TAG, Log.VERBOSE)) {
+            Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
+          }
+          sendResultSafely(callback, result);
+        }
+      } finally {
+        if (callbacks.isEmpty()) {
+          // Safe to call stopSelf, even if we're being bound to
+          stopSelf(latestStartId);
+        }
       }
     }
   }
