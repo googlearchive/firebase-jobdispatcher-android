@@ -50,8 +50,17 @@ import java.lang.ref.WeakReference;
   static final SimpleArrayMap<JobInvocation, JobServiceConnection> serviceConnections =
       new SimpleArrayMap<>();
 
-  private final ResponseHandler responseHandler =
+  @VisibleForTesting
+  static void cleanServiceConnections() {
+    synchronized (serviceConnections) {
+      serviceConnections.clear();
+    }
+  }
+
+  @VisibleForTesting
+  final ResponseHandler responseHandler =
       new ResponseHandler(Looper.getMainLooper(), new WeakReference<>(this));
+
   private final Context context;
   private final JobFinishedCallback jobFinishedCallback;
 
@@ -63,24 +72,31 @@ import java.lang.ref.WeakReference;
   /**
    * Executes the provided {@code jobInvocation} by kicking off the creation of a new Binder
    * connection to the Service.
-   *
-   * @return true if the service was bound successfully.
    */
-  boolean executeJob(JobInvocation jobInvocation) {
+  void executeJob(JobInvocation jobInvocation) {
     if (jobInvocation == null) {
-      return false;
+      return;
     }
 
-    JobServiceConnection conn =
-        new JobServiceConnection(
-            jobInvocation, responseHandler.obtainMessage(JOB_FINISHED), context);
-
     synchronized (serviceConnections) {
-      JobServiceConnection oldConnection = serviceConnections.put(jobInvocation, conn);
+      JobServiceConnection oldConnection = serviceConnections.get(jobInvocation);
       if (oldConnection != null) {
-        Log.e(TAG, "Received execution request for already running job");
+        if (!oldConnection.isConnected() && !oldConnection.wasUnbound()) {
+          // Fresh connection. Not yet connected or not able to connect.
+          // TODO(user) Handle invalid service when the connection can't be established.
+          return;
+        }
+        oldConnection.onStop(false /* Do not send result because it is new execution request. */);
       }
-      return context.bindService(createBindIntent(jobInvocation), conn, BIND_AUTO_CREATE);
+      JobServiceConnection conn =
+          new JobServiceConnection(
+              jobInvocation, responseHandler.obtainMessage(JOB_FINISHED), context);
+
+      serviceConnections.put(jobInvocation, conn);
+      if (!context.bindService(createBindIntent(jobInvocation), conn, BIND_AUTO_CREATE)) {
+        Log.e(TAG, "Unable to bind to " + jobInvocation.getService());
+        conn.unbind();
+      }
     }
   }
 
@@ -111,7 +127,8 @@ import java.lang.ref.WeakReference;
     jobFinishedCallback.onJobFinished(jobInvocation, result);
   }
 
-  private static class ResponseHandler extends Handler {
+  @VisibleForTesting
+  static class ResponseHandler extends Handler {
 
     /**
      * We hold a WeakReference to the ExecutionDelegator because it holds a reference to a Service
@@ -132,8 +149,7 @@ import java.lang.ref.WeakReference;
           if (msg.obj instanceof JobInvocation) {
             ExecutionDelegator delegator = this.executionDelegatorReference.get();
             if (delegator == null) {
-              Log.wtf(
-                  TAG, "handleMessage: service was unexpectedly GC'd" + ", can't send job result");
+              Log.wtf(TAG, "handleMessage: service was unexpectedly GC'd, can't send job result");
               return;
             }
 

@@ -57,21 +57,26 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
 
   private final GooglePlayCallbackExtractor callbackExtractor = new GooglePlayCallbackExtractor();
 
-  /** The single Messenger that's returned from valid onBind requests. Guarded by intrinsic lock. */
-  @VisibleForTesting Messenger serviceMessenger;
+  /** The single Messenger that's returned from valid onBind requests. */
+  // @GuardedBy("this")
+  @VisibleForTesting
+  Messenger serviceMessenger;
 
-  /** Driver for rescheduling jobs. Guarded by intrinsic lock. */
-  @VisibleForTesting Driver driver;
+  /** Driver for rescheduling jobs. */
+  // @GuardedBy("this")
+  @VisibleForTesting
+  Driver driver;
 
-  /** Guarded by intrinsic lock. */
-  @VisibleForTesting ValidationEnforcer validationEnforcer;
+  // @GuardedBy("this")
+  @VisibleForTesting
+  ValidationEnforcer validationEnforcer;
 
-  /**
-   * The ExecutionDelegator used to communicate with client JobServices. Guarded by intrinsic lock.
-   */
+  /** The ExecutionDelegator used to communicate with client JobServices. */
+  // @GuardedBy("this")
   private ExecutionDelegator executionDelegator;
 
-  /** The most recent startId passed to onStartCommand. Guarded by intrinsic lock. */
+  /** The most recent startId passed to onStartCommand. */
+  // @GuardedBy("callbacks")
   private int latestStartId;
 
   /** Endpoint (String) -> Tag (String) -> JobCallback */
@@ -79,6 +84,7 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
   private static final SimpleArrayMap<String, SimpleArrayMap<String, JobCallback>> callbacks =
       new SimpleArrayMap<>(1);
 
+  @VisibleForTesting
   static void clearCallbacks() {
     synchronized (callbacks) {
       callbacks.clear();
@@ -158,12 +164,22 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
     return driver;
   }
 
+  @VisibleForTesting
+  synchronized void setGooglePlayDriver(Driver driver) {
+    this.driver = driver;
+  }
+
   @NonNull
   private synchronized ValidationEnforcer getValidationEnforcer() {
     if (validationEnforcer == null) {
       validationEnforcer = new ValidationEnforcer(getGooglePlayDriver().getValidator());
     }
     return validationEnforcer;
+  }
+
+  @VisibleForTesting
+  synchronized void setValidationEnforcer(ValidationEnforcer validationEnforcer) {
+    this.validationEnforcer = validationEnforcer;
   }
 
   @Nullable

@@ -105,8 +105,8 @@ public class GooglePlayReceiverTest {
     MockitoAnnotations.initMocks(this);
     receiver = spy(new GooglePlayReceiver());
     when(receiver.getExecutionDelegator()).thenReturn(executionDelegatorMock);
-    receiver.driver = driverMock;
-    receiver.validationEnforcer = new ValidationEnforcer(new NoopJobValidator());
+    receiver.setGooglePlayDriver(driverMock);
+    receiver.setValidationEnforcer(new ValidationEnforcer(new NoopJobValidator()));
   }
 
   @After
@@ -351,8 +351,6 @@ public class GooglePlayReceiverTest {
                 new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true)
                     .encode(job, new Bundle()))
             .putExtra("callback", new InspectableBinder().toPendingCallback());
-
-    when(executionDelegatorMock.executeJob(any(JobInvocation.class))).thenReturn(true);
 
     assertResultWasStartNotSticky(receiver.onStartCommand(execIntent, 0, 101));
 

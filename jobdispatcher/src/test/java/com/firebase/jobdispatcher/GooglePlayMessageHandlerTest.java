@@ -66,9 +66,7 @@ public class GooglePlayMessageHandlerTest {
 
   @After
   public void tearDown() {
-    synchronized (ExecutionDelegator.serviceConnections) {
-      ExecutionDelegator.serviceConnections.clear();
-    }
+    ExecutionDelegator.cleanServiceConnections();
   }
 
   @Test
