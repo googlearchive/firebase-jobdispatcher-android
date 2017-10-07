@@ -22,6 +22,7 @@ import android.content.res.Configuration;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.Message;
+// import android.support.annotation.GuardedBy;
 import android.support.annotation.IntDef;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
@@ -80,6 +81,7 @@ public abstract class JobService extends Service {
    * Correlates job tags (unique strings) with Messages, which are used to signal the completion of
    * a job.
    */
+  // @GuardedBy("runningJobs")
   private final SimpleArrayMap<String, JobCallback> runningJobs = new SimpleArrayMap<>(1);
 
   private final LocalBinder binder = new LocalBinder();

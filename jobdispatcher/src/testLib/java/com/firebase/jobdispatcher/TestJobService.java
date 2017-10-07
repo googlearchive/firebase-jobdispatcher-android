@@ -16,6 +16,8 @@
 
 package com.firebase.jobdispatcher;
 
+// import android.support.annotation.GuardedBy;
+
 /** A very simple JobService that can be configured for individual tests. */
 public class TestJobService extends JobService {
 
@@ -44,7 +46,7 @@ public class TestJobService extends JobService {
 
   private static final Object lock = new Object();
 
-  // GuardedBy("lock")
+  // @GuardedBy("lock")
   private static JobServiceProxy currentProxy = NOOP_PROXY;
 
   public static void setProxy(JobServiceProxy proxy) {

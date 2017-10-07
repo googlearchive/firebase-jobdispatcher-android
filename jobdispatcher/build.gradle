@@ -40,6 +40,7 @@ android {
 dependencies {
     // The main library only depends on the Android support lib
     compile "com.android.support:support-v4:${project.ext.supportLibraryVersion}"
+    // compile "com.android.support:support-annotations:${project.ext.supportLibraryVersion}"
 
     def junit = 'junit:junit:4.12'
     def robolectric = 'org.robolectric:robolectric:3.3.2'

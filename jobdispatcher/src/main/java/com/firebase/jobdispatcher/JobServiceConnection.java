@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.Message;
+// import android.support.annotation.GuardedBy;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
@@ -33,10 +34,10 @@ class JobServiceConnection implements ServiceConnection {
   private final JobInvocation jobInvocation;
   // Should be sent only once. Can't be reused.
   private final Message jobFinishedMessage;
-  private boolean wasMessageUsed = false;
+  private boolean wasUnbound = false;
   private final Context context;
 
-  // Guarded by "this". Can be updated from main and binder threads.
+  // @GuardedBy("this")
   private JobService.LocalBinder binder;
 
   JobServiceConnection(JobInvocation jobInvocation, Message jobFinishedMessage, Context context) {
@@ -52,11 +53,9 @@ class JobServiceConnection implements ServiceConnection {
       Log.w(TAG, "Unknown service connected");
       return;
     }
-    if (wasMessageUsed) {
-      Log.w(TAG, "onServiceConnected Duplicate calls. Ignored.");
+    if (binder != null || wasUnbound()) {
+      Log.w(TAG, "Connection have been used already.");
       return;
-    } else {
-      wasMessageUsed = true;
     }
 
     binder = (JobService.LocalBinder) service;
@@ -68,24 +67,32 @@ class JobServiceConnection implements ServiceConnection {
 
   @Override
   public synchronized void onServiceDisconnected(ComponentName name) {
-    binder = null;
+    unbind();
   }
 
-  @VisibleForTesting
-  synchronized boolean isBound() {
+  synchronized boolean wasUnbound() {
+    return wasUnbound;
+  }
+
+  synchronized boolean isConnected() {
     return binder != null;
   }
 
   synchronized void onStop(boolean needToSendResult) {
-    if (isBound()) {
-      binder.getService().stop(jobInvocation, needToSendResult);
+    if (!wasUnbound()) {
+      if (binder != null) {
+        binder.getService().stop(jobInvocation, needToSendResult);
+      }
       unbind();
+    } else {
+      Log.w(TAG, "Can't send stop request because service was unbound.");
     }
   }
 
   synchronized void unbind() {
-    if (isBound()) {
+    if (!wasUnbound()) {
       binder = null;
+      wasUnbound = true;
       try {
         context.unbindService(this);
       } catch (IllegalArgumentException e) {

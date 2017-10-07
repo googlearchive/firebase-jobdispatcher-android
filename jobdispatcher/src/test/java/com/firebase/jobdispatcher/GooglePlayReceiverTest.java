@@ -105,8 +105,8 @@ public class GooglePlayReceiverTest {
     MockitoAnnotations.initMocks(this);
     receiver = spy(new GooglePlayReceiver());
     when(receiver.getExecutionDelegator()).thenReturn(executionDelegatorMock);
-    receiver.driver = driverMock;
-    receiver.validationEnforcer = new ValidationEnforcer(new NoopJobValidator());
+    receiver.setGooglePlayDriver(driverMock);
+    receiver.setValidationEnforcer(new ValidationEnforcer(new NoopJobValidator()));
   }
 
   @After
@@ -155,13 +155,19 @@ public class GooglePlayReceiverTest {
             .build();
 
     receiver.prepareJob(jobCallbackMock, bundle);
-    ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
+
+    synchronized (ExecutionDelegator.serviceConnections) {
+      ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
+    }
 
     GooglePlayReceiver.onSchedule(job);
 
     verify(jobServiceConnectionMock).onStop(false);
-    assertTrue(
-        "JobServiceConnection should be removed.", ExecutionDelegator.serviceConnections.isEmpty());
+    synchronized (ExecutionDelegator.serviceConnections) {
+      assertTrue(
+          "JobServiceConnection should be removed.",
+          ExecutionDelegator.serviceConnections.isEmpty());
+    }
   }
 
   @Test
@@ -345,8 +351,6 @@ public class GooglePlayReceiverTest {
                 new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true)
                     .encode(job, new Bundle()))
             .putExtra("callback", new InspectableBinder().toPendingCallback());
-
-    when(executionDelegatorMock.executeJob(any(JobInvocation.class))).thenReturn(true);
 
     assertResultWasStartNotSticky(receiver.onStartCommand(execIntent, 0, 101));
 

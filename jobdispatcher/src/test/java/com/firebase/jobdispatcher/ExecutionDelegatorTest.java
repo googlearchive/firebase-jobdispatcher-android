@@ -16,19 +16,21 @@
 
 package com.firebase.jobdispatcher;
 
+import static android.content.Context.BIND_AUTO_CREATE;
 import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -40,8 +42,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
 /** Tests for the {@link ExecutionDelegator}. */
@@ -50,17 +54,36 @@ import org.robolectric.annotation.Config;
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
 public class ExecutionDelegatorTest {
 
-  private Context mockContext;
   private TestJobReceiver receiver;
   private ExecutionDelegator executionDelegator;
 
+  @Captor private ArgumentCaptor<Intent> intentCaptor;
+  @Captor private ArgumentCaptor<JobServiceConnection> connCaptor;
+  @Mock private JobService.LocalBinder binderMock;
+  @Mock private Context mockContext;
+
   @Before
   public void setUp() {
-    mockContext = spy(RuntimeEnvironment.application);
+    MockitoAnnotations.initMocks(this);
     doReturn("com.example.foo").when(mockContext).getPackageName();
 
     receiver = new TestJobReceiver();
     executionDelegator = new ExecutionDelegator(mockContext, receiver);
+    ExecutionDelegator.cleanServiceConnections();
+
+    when(binderMock.getService())
+        .thenReturn(
+            new JobService() {
+              @Override
+              public boolean onStartJob(JobParameters job) {
+                return true;
+              }
+
+              @Override
+              public boolean onStopJob(JobParameters job) {
+                return false;
+              }
+            });
   }
 
   @Test
@@ -70,18 +93,104 @@ public class ExecutionDelegatorTest {
     }
   }
 
+  @Test
+  public void executeJob_alreadyRunning_doesNotBindSecondTime() {
+    JobInvocation jobInvocation =
+        new JobInvocation.Builder()
+            .setTag("tag")
+            .setService("service")
+            .setTrigger(Trigger.NOW)
+            .build();
+
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
+    executionDelegator.executeJob(jobInvocation);
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
+    connCaptor.getValue().onServiceConnected(null, binderMock);
+
+    assertFalse(connCaptor.getValue().wasUnbound());
+    assertTrue(connCaptor.getValue().isConnected());
+    reset(mockContext);
+
+    executionDelegator.executeJob(jobInvocation);
+
+    assertTrue(connCaptor.getValue().wasUnbound());
+    verify(mockContext).unbindService(connCaptor.getValue());
+
+    verify(mockContext)
+        .bindService(any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE));
+  }
+
+  @Test
+  public void executeJob_startedButNotConnected_doNotStartAgain() {
+    JobInvocation jobInvocation =
+        new JobInvocation.Builder()
+            .setTag("tag")
+            .setService("service")
+            .setTrigger(Trigger.NOW)
+            .build();
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
+    executionDelegator.executeJob(jobInvocation);
+
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
+    reset(mockContext);
+
+    executionDelegator.executeJob(jobInvocation);
+
+    verify(mockContext, never())
+        .bindService(any(Intent.class), any(JobServiceConnection.class), eq(BIND_AUTO_CREATE));
+  }
+
+  @Test
+  public void executeJob_wasStartedButDisconnected_startAgain() {
+    JobInvocation jobInvocation =
+        new JobInvocation.Builder()
+            .setTag("tag")
+            .setService("service")
+            .setTrigger(Trigger.NOW)
+            .build();
+
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+    executionDelegator.executeJob(jobInvocation);
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
+
+    JobServiceConnection jobServiceConnection = connCaptor.getValue();
+    jobServiceConnection.onServiceConnected(null, binderMock);
+    jobServiceConnection.unbind();
+
+    verify(mockContext).unbindService(jobServiceConnection);
+
+    reset(mockContext);
+
+    executionDelegator.executeJob(jobInvocation);
+    verify(mockContext)
+        .bindService(any(Intent.class), any(JobServiceConnection.class), eq(BIND_AUTO_CREATE));
+  }
+
   private void verifyExecuteJob(JobInvocation input) throws Exception {
     reset(mockContext);
     receiver.lastResult = -1;
 
     receiver.setLatch(new CountDownLatch(1));
 
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
     executionDelegator.executeJob(input);
 
-    final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-    final ArgumentCaptor<ServiceConnection> connCaptor =
-        ArgumentCaptor.forClass(ServiceConnection.class);
-    verify(mockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
 
     final Intent result = intentCaptor.getValue();
     // verify the intent was sent to the right place
@@ -90,8 +199,6 @@ public class ExecutionDelegatorTest {
 
     final ServiceConnection connection = connCaptor.getValue();
 
-    ComponentName cname = mock(ComponentName.class);
-    JobService.LocalBinder mockLocalBinder = mock(JobService.LocalBinder.class);
     final JobParameters[] out = new JobParameters[1];
 
     JobService mockJobService =
@@ -108,9 +215,9 @@ public class ExecutionDelegatorTest {
           }
         };
 
-    when(mockLocalBinder.getService()).thenReturn(mockJobService);
+    when(binderMock.getService()).thenReturn(mockJobService);
 
-    connection.onServiceConnected(cname, mockLocalBinder);
+    connection.onServiceConnected(null, binderMock);
 
     TestUtil.assertJobsEqual(input, out[0]);
 
@@ -123,9 +230,8 @@ public class ExecutionDelegatorTest {
 
   @Test
   public void testExecuteJob_handlesNull() {
-    assertFalse(
-        "Expected calling triggerExecution on null to fail and return false",
-        executionDelegator.executeJob(null));
+    executionDelegator.executeJob(null);
+    verifyZeroInteractions(mockContext);
   }
 
   @Test
@@ -138,9 +244,6 @@ public class ExecutionDelegatorTest {
             .build();
 
     executionDelegator.executeJob(j);
-
-    ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-    ArgumentCaptor<ServiceConnection> connCaptor = ArgumentCaptor.forClass(ServiceConnection.class);
 
     // noinspection WrongConstant
     verify(mockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
@@ -162,17 +265,18 @@ public class ExecutionDelegatorTest {
     reset(mockContext);
     receiver.lastResult = -1;
 
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
     executionDelegator.executeJob(job);
 
-    final ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-    final ArgumentCaptor<ServiceConnection> connCaptor =
-        ArgumentCaptor.forClass(ServiceConnection.class);
-    verify(mockContext).bindService(intentCaptor.capture(), connCaptor.capture(), anyInt());
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
 
-    final Intent result = intentCaptor.getValue();
+    final Intent bindIntent = intentCaptor.getValue();
     // verify the intent was sent to the right place
-    assertEquals(job.getService(), result.getComponent().getClassName());
-    assertEquals(JobService.ACTION_EXECUTE, result.getAction());
+    assertEquals(job.getService(), bindIntent.getComponent().getClassName());
+    assertEquals(JobService.ACTION_EXECUTE, bindIntent.getAction());
 
     final JobParameters[] out = new JobParameters[2];
 
@@ -191,17 +295,38 @@ public class ExecutionDelegatorTest {
           }
         };
 
-    JobService.LocalBinder mockLocalBinder = mock(JobService.LocalBinder.class);
-    when(mockLocalBinder.getService()).thenReturn(mockJobService);
+    when(binderMock.getService()).thenReturn(mockJobService);
 
-    ComponentName componentName = mock(ComponentName.class);
     final ServiceConnection connection = connCaptor.getValue();
-    connection.onServiceConnected(componentName, mockLocalBinder);
+    connection.onServiceConnected(null, binderMock);
 
     ExecutionDelegator.stopJob(job, true);
 
     TestUtil.assertJobsEqual(job, out[0]);
     TestUtil.assertJobsEqual(job, out[1]);
+  }
+
+  @Test
+  public void failedToBind_unbind() throws InterruptedException {
+    JobInvocation job =
+        new JobInvocation.Builder()
+            .setTag("TAG")
+            .setTrigger(getContentUriTrigger())
+            .setService(TestJobService.class.getName())
+            .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+            .build();
+
+    reset(mockContext);
+
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(false);
+
+    executionDelegator.executeJob(job);
+
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
+    verify(mockContext).unbindService(connCaptor.getValue());
   }
 
   private static final class TestJobReceiver implements ExecutionDelegator.JobFinishedCallback {

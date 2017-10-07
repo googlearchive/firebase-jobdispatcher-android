@@ -65,37 +65,36 @@ public class JobServiceConnectionTest {
 
   @Test
   public void fullConnectionCycle() {
-    assertFalse(connection.isBound());
-
+    assertFalse(connection.wasUnbound());
     connection.onServiceConnected(null, binderMock);
     verify(jobServiceMock).start(job, messageMock);
-    assertTrue(connection.isBound());
+    assertFalse(connection.wasUnbound());
 
     connection.onStop(true);
     verify(jobServiceMock).stop(job, true);
-    assertFalse(connection.isBound());
+    assertTrue(connection.wasUnbound());
 
     connection.onServiceDisconnected(null);
-    assertFalse(connection.isBound());
+    assertTrue(connection.wasUnbound());
   }
 
   @Test
   public void onServiceDisconnected() {
     connection.onServiceConnected(null, binderMock);
     verify(jobServiceMock).start(job, messageMock);
-    assertTrue(connection.isBound());
+    assertFalse(connection.wasUnbound());
 
     connection.onServiceDisconnected(null);
-    assertFalse(connection.isBound());
+    assertTrue(connection.wasUnbound());
   }
 
   @Test
   public void onServiceConnected_shouldNotSendExecutionRequestTwice() {
-    assertFalse(connection.isBound());
+    assertFalse(connection.wasUnbound());
 
     connection.onServiceConnected(null, binderMock);
     verify(jobServiceMock).start(job, messageMock);
-    assertTrue(connection.isBound());
+    assertFalse(connection.wasUnbound());
     reset(jobServiceMock);
 
     connection.onServiceConnected(null, binderMock);
@@ -103,46 +102,48 @@ public class JobServiceConnectionTest {
 
     connection.onStop(true);
     verify(jobServiceMock).stop(job, true);
-    assertFalse(connection.isBound());
+    assertTrue(connection.wasUnbound());
 
     connection.onServiceDisconnected(null);
-    assertFalse(connection.isBound());
+    assertTrue(connection.wasUnbound());
   }
 
   @Test
-  public void stopOnUnboundConnection() {
-    assertFalse(connection.isBound());
+  public void stopOnUnboundConnection_nothingHappens() {
+    assertFalse(connection.wasUnbound());
+
     connection.onStop(true);
-    verify(jobServiceMock, never()).onStopJob(job);
+
+    assertTrue(connection.wasUnbound());
+    verify(contextMock).unbindService(connection);
   }
 
   @Test
-  public void onServiceConnectedWrongBinder() {
+  public void onServiceConnectedWrongBinder_doesNotThrow() {
     IBinder binder = mock(IBinder.class);
     connection.onServiceConnected(null, binder);
-    assertFalse(connection.isBound());
   }
 
   @Test
   public void onStop_doNotSendResult() {
     connection.onServiceConnected(null, binderMock);
     verify(jobServiceMock).start(job, messageMock);
-    assertTrue(connection.isBound());
+    assertFalse(connection.wasUnbound());
 
     connection.onStop(false);
     verify(jobServiceMock).stop(job, false);
-    assertFalse(connection.isBound());
+    assertTrue(connection.wasUnbound());
   }
 
   @Test
   public void unbind() {
     connection.onServiceConnected(null, binderMock);
     verify(jobServiceMock).start(job, messageMock);
-    assertTrue(connection.isBound());
+    assertFalse(connection.wasUnbound());
 
     connection.unbind();
 
-    assertFalse(connection.isBound());
+    assertTrue(connection.wasUnbound());
     verify(contextMock).unbindService(connection);
   }
 
@@ -150,13 +151,13 @@ public class JobServiceConnectionTest {
   public void unbind_throws_noException() {
     connection.onServiceConnected(null, binderMock);
     verify(jobServiceMock).start(job, messageMock);
-    assertTrue(connection.isBound());
+    assertFalse(connection.wasUnbound());
 
     doThrow(IllegalArgumentException.class).when(contextMock).unbindService(connection);
 
     connection.unbind();
 
-    assertFalse(connection.isBound());
+    assertTrue(connection.wasUnbound());
     verify(contextMock).unbindService(connection);
   }
 }

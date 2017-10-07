@@ -161,8 +161,9 @@ public class GooglePlayDriverTest {
 
     JobCoder prefixedCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
     JobInvocation invocation = prefixedCoder.decodeIntentBundle(bundle);
-
-    ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
+    synchronized (ExecutionDelegator.serviceConnections) {
+      ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
+    }
 
     Job job =
         TestUtil.getBuilderWithNoopValidator()
@@ -175,8 +176,11 @@ public class GooglePlayDriverTest {
 
     verify(mMockContext).sendBroadcast(any(Intent.class));
     verify(jobServiceConnectionMock).onStop(false);
-    assertTrue(
-        "JobServiceConnection should be removed.", ExecutionDelegator.serviceConnections.isEmpty());
+    synchronized (ExecutionDelegator.serviceConnections) {
+      assertTrue(
+          "JobServiceConnection should be removed.",
+          ExecutionDelegator.serviceConnections.isEmpty());
+    }
   }
 
   private ArgumentCaptor<Intent> mockPackageManagerInfo() {
