@@ -6,14 +6,18 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.2.2'
+        classpath 'com.android.tools.build:gradle:2.3.1'
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.4.1'
     }
 }
 
 allprojects { project ->
     repositories {
         jcenter()
+        maven {
+            url "https://maven.google.com"
+        }
     }
 
     project.apply from: "${rootDir}/common/constants.gradle"
@@ -30,5 +34,5 @@ task wrapper(type: Wrapper) {
     // but requires Gradle 2.13+.
     //
     // See: https://github.com/jacoco/jacoco/pull/288
-    gradleVersion = '3.1'
+    gradleVersion = '3.3'
 }

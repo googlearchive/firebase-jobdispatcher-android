@@ -55,20 +55,20 @@ public final class FirebaseJobDispatcher {
   /** Indicates the cancel request failed because the driver was unavailable. */
   public static final int CANCEL_RESULT_NO_DRIVER_AVAILABLE = 2;
   /** The backing Driver for this instance. */
-  private final Driver mDriver;
+  private final Driver driver;
   /** The ValidationEnforcer configured for the current Driver. */
-  private final ValidationEnforcer mValidator;
+  private final ValidationEnforcer validator;
   /**
    * Single instance of a RetryStrategy.Builder, configured with the current driver's validation
    * settings. We can do this because the RetryStrategy.Builder is stateless.
    */
-  private final RetryStrategy.Builder mRetryStrategyBuilder;
+  private final RetryStrategy.Builder retryStrategyBuilder;
 
   /** Instantiates a new FirebaseJobDispatcher using the provided Driver. */
   public FirebaseJobDispatcher(Driver driver) {
-    mDriver = driver;
-    mValidator = new ValidationEnforcer(mDriver.getValidator());
-    mRetryStrategyBuilder = new RetryStrategy.Builder(mValidator);
+    this.driver = driver;
+    validator = new ValidationEnforcer(driver.getValidator());
+    retryStrategyBuilder = new RetryStrategy.Builder(validator);
   }
 
   /**
@@ -78,11 +78,11 @@ public final class FirebaseJobDispatcher {
    */
   @ScheduleResult
   public int schedule(@NonNull Job job) {
-    if (!mDriver.isAvailable()) {
+    if (!driver.isAvailable()) {
       return SCHEDULE_RESULT_NO_DRIVER_AVAILABLE;
     }
 
-    return mDriver.schedule(job);
+    return driver.schedule(job);
   }
 
   /**
@@ -92,11 +92,11 @@ public final class FirebaseJobDispatcher {
    */
   @CancelResult
   public int cancel(@NonNull String tag) {
-    if (!mDriver.isAvailable()) {
+    if (!driver.isAvailable()) {
       return CANCEL_RESULT_NO_DRIVER_AVAILABLE;
     }
 
-    return mDriver.cancel(tag);
+    return driver.cancel(tag);
   }
 
   /**
@@ -106,11 +106,11 @@ public final class FirebaseJobDispatcher {
    */
   @CancelResult
   public int cancelAll() {
-    if (!mDriver.isAvailable()) {
+    if (!driver.isAvailable()) {
       return CANCEL_RESULT_NO_DRIVER_AVAILABLE;
     }
 
-    return mDriver.cancelAll();
+    return driver.cancelAll();
   }
 
   /**
@@ -126,13 +126,13 @@ public final class FirebaseJobDispatcher {
 
   /** Returns a ValidationEnforcer configured for the current Driver. */
   public ValidationEnforcer getValidator() {
-    return mValidator;
+    return validator;
   }
 
   /** Creates a new Job.Builder, configured with the current driver's validation settings. */
   @NonNull
   public Job.Builder newJobBuilder() {
-    return new Job.Builder(mValidator);
+    return new Job.Builder(validator);
   }
 
   /**
@@ -148,7 +148,7 @@ public final class FirebaseJobDispatcher {
   public RetryStrategy newRetryStrategy(
       @RetryPolicy int policy, int initialBackoff, int maximumBackoff) {
 
-    return mRetryStrategyBuilder.build(policy, initialBackoff, maximumBackoff);
+    return retryStrategyBuilder.build(policy, initialBackoff, maximumBackoff);
   }
 
   /** Results that can legally be returned from {@link #schedule(Job)} calls. */

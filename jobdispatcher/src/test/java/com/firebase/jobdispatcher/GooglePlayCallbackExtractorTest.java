@@ -44,20 +44,20 @@ import org.robolectric.annotation.Config;
   shadows = {ExtendedShadowParcel.class}
 )
 public final class GooglePlayCallbackExtractorTest {
-  @Mock private IBinder mBinder;
+  @Mock private IBinder binder;
 
-  private GooglePlayCallbackExtractor mExtractor;
+  private GooglePlayCallbackExtractor extractor;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
 
-    mExtractor = new GooglePlayCallbackExtractor();
+    extractor = new GooglePlayCallbackExtractor();
   }
 
   @Test
   public void testExtractCallback_nullBundle() {
-    assertNull(mExtractor.extractCallback(null));
+    assertNull(extractor.extractCallback(null));
   }
 
   @Test
@@ -118,7 +118,7 @@ public final class GooglePlayCallbackExtractorTest {
   }
 
   private Pair<JobCallback, Bundle> extractCallback(Bundle bundle) {
-    return mExtractor.extractCallback(bundle);
+    return extractor.extractCallback(bundle);
   }
 
   private static final class BadParcelable implements Parcelable {
@@ -134,14 +134,14 @@ public final class GooglePlayCallbackExtractorTest {
             return new BadParcelable[size];
           }
         };
-    private final int mNum;
+    private final int num;
 
     public BadParcelable(int i) {
-      mNum = i;
+      num = i;
     }
 
     private BadParcelable(Parcel in) {
-      mNum = in.readInt();
+      num = in.readInt();
     }
 
     @Override
@@ -151,7 +151,7 @@ public final class GooglePlayCallbackExtractorTest {
 
     @Override
     public void writeToParcel(Parcel dst, int flags) {
-      dst.writeInt(mNum);
+      dst.writeInt(num);
     }
   }
 }

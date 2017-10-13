@@ -49,55 +49,57 @@ public final class GooglePlayDriver implements Driver {
   private static final int JOB_DISPATCHER_SOURCE_CODE = 1 << 3;
   private static final int JOB_DISPATCHER_SOURCE_VERSION_CODE = 1;
 
-  private final JobValidator mValidator;
+  private final JobValidator validator;
   /** The application Context. Used to send broadcasts. */
-  private final Context mContext;
+  private final Context context;
   /**
    * A PendingIntent from this package. Passed inside the broadcast so the receiver can verify the
    * sender's package.
    */
-  private final PendingIntent mToken;
+  private final PendingIntent token;
   /** Turns Jobs into Bundles. */
-  private final GooglePlayJobWriter mWriter;
+  private final GooglePlayJobWriter writer;
   /**
    * This is hardcoded to true to avoid putting an unnecessary dependency on the Google Play
    * services library.
    */
   // TODO: this is an unsatisfying solution
-  private final boolean mAvailable = true;
+  private final boolean available = true;
 
   /** Instantiates a new GooglePlayDriver. */
   public GooglePlayDriver(Context context) {
-    mContext = context;
-    mToken = PendingIntent.getBroadcast(context, 0, new Intent(), 0);
-    mWriter = new GooglePlayJobWriter();
-    mValidator = new DefaultJobValidator(context);
+    this.context = context;
+    token = PendingIntent.getBroadcast(context, 0, new Intent(), 0);
+    writer = new GooglePlayJobWriter();
+    validator = new DefaultJobValidator(context);
   }
 
   @Override
   public boolean isAvailable() {
-    return mAvailable;
+    return available;
   }
 
   /** Schedules the provided Job. */
   @Override
   @ScheduleResult
   public int schedule(@NonNull Job job) {
-    mContext.sendBroadcast(createScheduleRequest(job));
+    context.sendBroadcast(createScheduleRequest(job));
+
+    GooglePlayReceiver.onSchedule(job); // need to stop the job if it is running.
 
     return FirebaseJobDispatcher.SCHEDULE_RESULT_SUCCESS;
   }
 
   @Override
   public int cancel(@NonNull String tag) {
-    mContext.sendBroadcast(createCancelRequest(tag));
+    context.sendBroadcast(createCancelRequest(tag));
 
     return FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS;
   }
 
   @Override
   public int cancelAll() {
-    mContext.sendBroadcast(createBatchCancelRequest());
+    context.sendBroadcast(createBatchCancelRequest());
 
     return FirebaseJobDispatcher.CANCEL_RESULT_SUCCESS;
   }
@@ -106,14 +108,14 @@ public final class GooglePlayDriver implements Driver {
   protected Intent createCancelRequest(@NonNull String tag) {
     Intent cancelReq = createSchedulerIntent(SCHEDULER_ACTION_CANCEL_TASK);
     cancelReq.putExtra(BUNDLE_PARAM_TAG, tag);
-    cancelReq.putExtra(BUNDLE_PARAM_COMPONENT, new ComponentName(mContext, getReceiverClass()));
+    cancelReq.putExtra(BUNDLE_PARAM_COMPONENT, new ComponentName(context, getReceiverClass()));
     return cancelReq;
   }
 
   @NonNull
   protected Intent createBatchCancelRequest() {
     Intent cancelReq = createSchedulerIntent(SCHEDULER_ACTION_CANCEL_ALL);
-    cancelReq.putExtra(BUNDLE_PARAM_COMPONENT, new ComponentName(mContext, getReceiverClass()));
+    cancelReq.putExtra(BUNDLE_PARAM_COMPONENT, new ComponentName(context, getReceiverClass()));
     return cancelReq;
   }
 
@@ -125,13 +127,13 @@ public final class GooglePlayDriver implements Driver {
   @NonNull
   @Override
   public JobValidator getValidator() {
-    return mValidator;
+    return validator;
   }
 
   @NonNull
   private Intent createScheduleRequest(JobParameters job) {
     Intent scheduleReq = createSchedulerIntent(SCHEDULER_ACTION_SCHEDULE_TASK);
-    scheduleReq.putExtras(mWriter.writeToBundle(job, scheduleReq.getExtras()));
+    scheduleReq.putExtras(writer.writeToBundle(job, scheduleReq.getExtras()));
     return scheduleReq;
   }
 
@@ -141,7 +143,7 @@ public final class GooglePlayDriver implements Driver {
 
     scheduleReq.setPackage(BACKEND_PACKAGE);
     scheduleReq.putExtra(BUNDLE_PARAM_SCHEDULER_ACTION, schedulerAction);
-    scheduleReq.putExtra(BUNDLE_PARAM_TOKEN, mToken);
+    scheduleReq.putExtra(BUNDLE_PARAM_TOKEN, token);
     scheduleReq.putExtra(INTENT_PARAM_SOURCE, JOB_DISPATCHER_SOURCE_CODE);
     scheduleReq.putExtra(INTENT_PARAM_SOURCE_VERSION, JOB_DISPATCHER_SOURCE_VERSION_CODE);
 

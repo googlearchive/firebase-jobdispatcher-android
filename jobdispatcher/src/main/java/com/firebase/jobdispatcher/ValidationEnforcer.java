@@ -23,17 +23,17 @@ import java.util.List;
 
 /** Wraps a JobValidator and provides helpful validation utilities. */
 public class ValidationEnforcer implements JobValidator {
-  private final JobValidator mValidator;
+  private final JobValidator validator;
 
   public ValidationEnforcer(JobValidator validator) {
-    mValidator = validator;
+    this.validator = validator;
   }
 
   /** {@inheritDoc} */
   @Nullable
   @Override
   public List<String> validate(JobParameters job) {
-    return mValidator.validate(job);
+    return validator.validate(job);
   }
 
   /**
@@ -44,14 +44,14 @@ public class ValidationEnforcer implements JobValidator {
   @Nullable
   @Override
   public List<String> validate(JobTrigger trigger) {
-    return mValidator.validate(trigger);
+    return validator.validate(trigger);
   }
 
   /** {@inheritDoc} */
   @Nullable
   @Override
   public List<String> validate(RetryStrategy retryStrategy) {
-    return mValidator.validate(retryStrategy);
+    return validator.validate(retryStrategy);
   }
 
   /** Indicates whether the provided JobParameters is valid. */
@@ -104,15 +104,15 @@ public class ValidationEnforcer implements JobValidator {
 
   /** An Exception thrown when a validation error is encountered. */
   public static final class ValidationException extends RuntimeException {
-    private final List<String> mErrors;
+    private final List<String> errors;
 
     public ValidationException(String msg, @NonNull List<String> errors) {
       super(msg + ": " + TextUtils.join("\n  - ", errors));
-      mErrors = errors;
+      this.errors = errors;
     }
 
     public List<String> getErrors() {
-      return mErrors;
+      return errors;
     }
   }
 }

@@ -39,9 +39,9 @@ import org.robolectric.annotation.Config;
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobCoderTest {
-  private final JobCoder mCoder = new JobCoder(PREFIX, true);
+  private final JobCoder coder = new JobCoder(PREFIX, true);
   private static final String PREFIX = "prefix";
-  private Builder mBuilder;
+  private Builder builder;
 
   private static Builder setValidBuilderDefaults(Builder mBuilder) {
     return mBuilder
@@ -53,14 +53,14 @@ public class JobCoderTest {
 
   @Before
   public void setUp() throws Exception {
-    mBuilder = TestUtil.getBuilderWithNoopValidator();
+    builder = TestUtil.getBuilderWithNoopValidator();
   }
 
   @Test
   public void testCodingIsLossless() {
-    for (JobParameters input : TestUtil.getJobCombinations(mBuilder)) {
+    for (JobParameters input : TestUtil.getJobCombinations(builder)) {
 
-      JobParameters output = mCoder.decode(mCoder.encode(input, input.getExtras())).build();
+      JobParameters output = coder.decode(coder.encode(input, input.getExtras())).build();
 
       TestUtil.assertJobsEqual(input, output);
     }
@@ -68,46 +68,45 @@ public class JobCoderTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void testEncode_throwsOnNullBundle() {
-    mCoder.encode(mBuilder.build(), null);
+    coder.encode(builder.build(), null);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testDecode_throwsOnNullBundle() {
-    mCoder.decode(null);
+    coder.decode(null);
   }
 
   @Test
   public void testDecode_failsWhenMissingFields() {
     assertNull(
         "Expected null tag to cause decoding to fail",
-        mCoder.decode(
-            mCoder.encode(setValidBuilderDefaults(mBuilder).setTag(null).build(), new Bundle())));
+        coder.decode(
+            coder.encode(setValidBuilderDefaults(builder).setTag(null).build(), new Bundle())));
 
     assertNull(
         "Expected null service to cause decoding to fail",
-        mCoder.decode(
-            mCoder.encode(
-                setValidBuilderDefaults(mBuilder).setService(null).build(), new Bundle())));
+        coder.decode(
+            coder.encode(setValidBuilderDefaults(builder).setService(null).build(), new Bundle())));
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testDecode_failsUnsupportedTrigger() {
-    mCoder.decode(
-        mCoder.encode(setValidBuilderDefaults(mBuilder).setTrigger(null).build(), new Bundle()));
+    coder.decode(
+        coder.encode(setValidBuilderDefaults(builder).setTrigger(null).build(), new Bundle()));
   }
 
   @Test
   public void testDecode_ignoresMissingRetryStrategy() {
     assertNotNull(
         "Expected null retry strategy to cause decode to use a default",
-        mCoder.decode(
-            mCoder.encode(
-                setValidBuilderDefaults(mBuilder).setRetryStrategy(null).build(), new Bundle())));
+        coder.decode(
+            coder.encode(
+                setValidBuilderDefaults(builder).setRetryStrategy(null).build(), new Bundle())));
   }
 
   @Test
   public void encode_contentUriTrigger() {
-    Bundle encode = TestUtil.encodeContentUriJob(TestUtil.getContentUriTrigger(), mCoder);
+    Bundle encode = TestUtil.encodeContentUriJob(TestUtil.getContentUriTrigger(), coder);
     int triggerType = encode.getInt(PREFIX + BundleProtocol.PACKED_PARAM_TRIGGER_TYPE);
     assertEquals("Trigger type", BundleProtocol.TRIGGER_TYPE_CONTENT_URI, triggerType);
 
@@ -121,8 +120,8 @@ public class JobCoderTest {
   @Test
   public void decode_contentUriTrigger() {
     ContentUriTrigger contentUriTrigger = TestUtil.getContentUriTrigger();
-    Bundle bundle = TestUtil.encodeContentUriJob(contentUriTrigger, mCoder);
-    JobInvocation decode = mCoder.decode(bundle).build();
+    Bundle bundle = TestUtil.encodeContentUriJob(contentUriTrigger, coder);
+    JobInvocation decode = coder.decode(bundle).build();
     ContentUriTrigger trigger = (ContentUriTrigger) decode.getTrigger();
     assertEquals(contentUriTrigger.getUris(), trigger.getUris());
   }
@@ -130,9 +129,9 @@ public class JobCoderTest {
   @Test
   public void decode_addBundleAsExtras() {
     ContentUriTrigger contentUriTrigger = TestUtil.getContentUriTrigger();
-    Bundle bundle = TestUtil.encodeContentUriJob(contentUriTrigger, mCoder);
+    Bundle bundle = TestUtil.encodeContentUriJob(contentUriTrigger, coder);
     bundle.putString("test_key", "test_value");
-    JobInvocation decode = mCoder.decode(bundle).build();
+    JobInvocation decode = coder.decode(bundle).build();
     assertEquals("test_value", decode.getExtras().getString("test_key"));
   }
 
@@ -141,7 +140,7 @@ public class JobCoderTest {
     Bundle bundle = new Bundle();
 
     ContentUriTrigger uriTrigger = getContentUriTrigger();
-    Bundle encode = encodeContentUriJob(uriTrigger, mCoder);
+    Bundle encode = encodeContentUriJob(uriTrigger, coder);
     bundle.putBundle(GooglePlayJobWriter.REQUEST_PARAM_EXTRAS, encode);
 
     ArrayList<Uri> uris = new ArrayList<>();
@@ -149,7 +148,7 @@ public class JobCoderTest {
     uris.add(Media.EXTERNAL_CONTENT_URI);
     bundle.putParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, uris);
 
-    JobInvocation jobInvocation = mCoder.decodeIntentBundle(bundle);
+    JobInvocation jobInvocation = coder.decodeIntentBundle(bundle);
 
     assertEquals(uris, jobInvocation.getTriggerReason().getTriggeredContentUris());
     assertEquals("TAG", jobInvocation.getTag());

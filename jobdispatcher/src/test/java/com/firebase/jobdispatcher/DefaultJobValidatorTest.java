@@ -43,15 +43,15 @@ import org.robolectric.annotation.Config;
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class DefaultJobValidatorTest {
 
-  @Mock private Context mMockContext;
+  @Mock private Context mockContext;
 
-  private DefaultJobValidator mValidator;
+  private DefaultJobValidator validator;
 
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
 
-    mValidator = new DefaultJobValidator(mMockContext);
+    validator = new DefaultJobValidator(mockContext);
   }
 
   @SuppressWarnings("WrongConstant")
@@ -81,7 +81,7 @@ public class DefaultJobValidatorTest {
         singletonList("Maximum backoff must be greater than or equal to initial backoff"));
 
     for (Entry<RetryStrategy, List<String>> testCase : testCases.entrySet()) {
-      List<String> validationErrors = mValidator.validate(testCase.getKey());
+      List<String> validationErrors = validator.validate(testCase.getKey());
       assertNotNull("Expected validation errors, but got null", validationErrors);
 
       for (String expected : testCase.getValue()) {
@@ -106,7 +106,7 @@ public class DefaultJobValidatorTest {
     testCases.put(contentUriTrigger, null);
 
     for (Entry<JobTrigger, String> testCase : testCases.entrySet()) {
-      List<String> validationErrors = mValidator.validate(testCase.getKey());
+      List<String> validationErrors = validator.validate(testCase.getKey());
       if (testCase.getValue() == null) {
         assertNull("Expected no validation errors for trigger", validationErrors);
       } else {

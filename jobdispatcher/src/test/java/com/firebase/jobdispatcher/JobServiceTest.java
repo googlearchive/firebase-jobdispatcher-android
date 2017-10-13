@@ -201,7 +201,7 @@ public class JobServiceTest {
             .setTrigger(Trigger.NOW)
             .setService(StoppableJobService.class.getName())
             .build();
-    service.stop(job);
+    service.stop(job, true);
     verify(service, never()).onStopJob(job);
   }
 
@@ -220,7 +220,7 @@ public class JobServiceTest {
     Message message = Message.obtain(handlerMock);
     service.start(job, message);
 
-    service.stop(job);
+    service.stop(job, true);
     verify(service).onStopJob(job);
     verify(handlerMock).sendMessage(message);
     assertEquals(JobService.RESULT_SUCCESS, message.arg1);
@@ -241,7 +241,7 @@ public class JobServiceTest {
     Message message = Message.obtain(handlerMock);
     service.start(job, message);
 
-    service.stop(job);
+    service.stop(job, true);
     verify(service).onStopJob(job);
     verify(handlerMock).sendMessage(message);
     assertEquals(JobService.RESULT_FAIL_RETRY, message.arg1);

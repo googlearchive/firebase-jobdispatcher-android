@@ -18,6 +18,7 @@ package com.firebase.jobdispatcher;
 
 import android.os.AsyncTask;
 import android.support.annotation.CallSuper;
+// import android.support.annotation.GuardedBy;
 import android.support.v4.util.SimpleArrayMap;
 
 /**
@@ -26,6 +27,7 @@ import android.support.v4.util.SimpleArrayMap;
  * <p>Users should override onRunJob and return one of the {@link JobResult} ints.
  */
 public abstract class SimpleJobService extends JobService {
+  // @GuardedBy("runningJobs")
   private final SimpleArrayMap<JobParameters, AsyncJobTask> runningJobs = new SimpleArrayMap<>();
 
   @CallSuper
