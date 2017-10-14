@@ -52,19 +52,56 @@
                 android:singleLine="true"
                 android:text="@={form.tag}" />
 
-            <EditText
+            <Spinner
+                android:id="@+id/trigger_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+            <LinearLayout
+                android:id="@+id/uriPanel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number"
-                android:hint="Window start (seconds)"
-                android:text="@={form.winStartSecondsStr}" />
+                android:orientation="vertical"
+                android:paddingBottom="@dimen/activity_vertical_margin"
+                android:paddingLeft="@dimen/activity_horizontal_margin"
+                android:paddingRight="@dimen/activity_horizontal_margin"
+                android:paddingTop="@dimen/activity_vertical_margin" >
 
-            <EditText
-                android:layout_width="match_parent"
+                <Spinner
+                    android:id="@+id/uri_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <CheckBox
+                    android:id="@+id/notify_for_descendants"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Notify for descendant"/>
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:id="@+id/timePanel"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:inputType="number"
-                android:hint="Window end (seconds)"
-                android:text="@={form.winEndSecondsStr}" />
+                android:orientation="vertical"
+                android:paddingBottom="@dimen/activity_vertical_margin"
+                android:paddingLeft="@dimen/activity_horizontal_margin"
+                android:paddingRight="@dimen/activity_horizontal_margin"
+                android:paddingTop="@dimen/activity_vertical_margin">
+                <EditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:hint="Window start (seconds)"
+                    android:text="@={form.winStartSecondsStr}" />
+
+                <EditText
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:hint="Window end (seconds)"
+                    android:text="@={form.winEndSecondsStr}" />
+            </LinearLayout>
 
             <CheckBox
                 android:layout_width="match_parent"

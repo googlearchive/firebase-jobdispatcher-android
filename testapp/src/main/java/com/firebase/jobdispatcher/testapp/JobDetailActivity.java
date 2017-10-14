@@ -16,13 +16,18 @@
 
 package com.firebase.jobdispatcher.testapp;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.widget.ScrollView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import com.firebase.jobdispatcher.JobParameters;
+import com.firebase.jobdispatcher.JobTrigger;
+import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
+import com.firebase.jobdispatcher.ObservedUri;
 
 /** An Activity that shows details on the associated Job. */
 public class JobDetailActivity extends AppCompatActivity {
@@ -49,19 +54,34 @@ public class JobDetailActivity extends AppCompatActivity {
   }
 
   private View createViewForJob(JobParameters job) {
-    final TableRow tagRow = new TableRow(this);
-    TextView tagTxt = new TextView(this);
-    tagTxt.setText("TAG = " + job.getTag());
-    tagRow.addView(tagTxt);
+    TableLayout tableLayout = new TableLayout(this);
+    addRow(tableLayout, "TAG = " + job.getTag());
+    addRow(tableLayout, "SERVICE = " + job.getService());
+    if (job.getTriggerReason() != null
+        && job.getTrigger() instanceof JobTrigger.ContentUriTrigger) {
+      ContentUriTrigger trigger = (ContentUriTrigger) job.getTrigger();
 
-    final TableRow serviceRow = new TableRow(this);
-    TextView serviceTxt = new TextView(this);
-    serviceTxt.setText("SERVICE = " + job.getService());
-    serviceRow.addView(serviceTxt);
+      addRow(tableLayout, "OBSERVED URIs = ");
+      for (ObservedUri uri : trigger.getUris()) {
+        addRow(
+            tableLayout,
+            "URI = " + uri.getUri() + ", flags = " + Integer.toBinaryString(uri.getFlags()));
+      }
+      addRow(tableLayout, "TRIGGERED URIs = ");
+      for (Uri uri : job.getTriggerReason().getTriggeredContentUris()) {
+        addRow(tableLayout, uri.toString());
+      }
+    }
+    ScrollView scrollView = new ScrollView(this);
+    scrollView.addView(tableLayout);
+    return scrollView;
+  }
 
-    final TableLayout layout = new TableLayout(this);
-    layout.addView(tagRow);
-    layout.addView(serviceRow);
-    return layout;
+  private void addRow(TableLayout tableLayout, String text) {
+    TableRow tableRow = new TableRow(this);
+    TextView textView = new TextView(this);
+    textView.setText(text);
+    tableRow.addView(textView);
+    tableLayout.addView(tableRow);
   }
 }

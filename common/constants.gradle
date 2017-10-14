@@ -6,6 +6,7 @@ project.ext {
     buildtools = "25.0.0"
     supportLibraryVersion = "25.0.0"
     compileSdk = 25
+    targetSdk = 26
     minSdk = 9
 
     licenseName = "The Apache Software License, Version 2.0"
