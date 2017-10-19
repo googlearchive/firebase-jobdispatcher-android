@@ -241,7 +241,7 @@ public class GooglePlayJobWriterTest {
             initializeDefaultBuilder().setTrigger(Trigger.NOW).build(), new Bundle());
 
     assertEquals("window_start", 0, b.getLong("window_start"));
-    assertEquals("window_end", 30, b.getLong("window_end"));
+    assertEquals("window_end", 1, b.getLong("window_end"));
 
     // execution window (oneoff)
     JobTrigger.ExecutionWindowTrigger t = Trigger.executionWindow(631, 978);
