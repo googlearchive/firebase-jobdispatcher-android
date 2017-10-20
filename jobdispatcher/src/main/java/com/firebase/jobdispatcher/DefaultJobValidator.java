@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.GooglePlayReceiver.TAG;
 import static com.firebase.jobdispatcher.RetryStrategy.RETRY_POLICY_EXPONENTIAL;
 import static com.firebase.jobdispatcher.RetryStrategy.RETRY_POLICY_LINEAR;
 
@@ -28,6 +29,8 @@ import android.os.Parcel;
 import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.VisibleForTesting;
+import android.util.Log;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -244,7 +247,8 @@ public class DefaultJobValidator implements JobValidator {
         key);
   }
 
-  private List<String> validateService(String service) {
+  @VisibleForTesting
+  List<String> validateService(String service) {
     if (service == null || service.isEmpty()) {
       return getMutableSingletonList("Service can't be empty");
     }
@@ -258,16 +262,18 @@ public class DefaultJobValidator implements JobValidator {
       return getMutableSingletonList("PackageManager is null, can't validate service");
     }
 
-    final String msg =
-        "Couldn't find a registered service with the name "
-            + service
-            + ". Is it declared in the manifest with the right intent-filter?";
-
     Intent executeIntent = new Intent(JobService.ACTION_EXECUTE);
     executeIntent.setClassName(context, service);
     List<ResolveInfo> intentServices = pm.queryIntentServices(executeIntent, 0);
     if (intentServices == null || intentServices.isEmpty()) {
-      return getMutableSingletonList(msg);
+      // queryIntentServices might incorrectly return an empty list.
+      String msg =
+          "Couldn't find a registered service with the name "
+              + service
+              + ". Is it declared in the manifest with the right intent-filter?"
+              + " If not, the job won't be started.";
+      Log.e(TAG, msg);
+      return null;
     }
 
     for (ResolveInfo info : intentServices) {
@@ -277,7 +283,7 @@ public class DefaultJobValidator implements JobValidator {
       }
     }
 
-    return getMutableSingletonList(msg);
+    return getMutableSingletonList(service + " is disabled.");
   }
 
   private static List<String> validateTag(String tag) {

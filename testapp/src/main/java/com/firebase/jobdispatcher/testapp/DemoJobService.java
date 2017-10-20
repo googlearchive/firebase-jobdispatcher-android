@@ -25,7 +25,7 @@ import com.firebase.jobdispatcher.JobService;
 public class DemoJobService extends JobService {
   @Override
   public boolean onStartJob(JobParameters job) {
-    Log.i("FJD.DemoJobService", "onStartJob called");
+    Log.i(JobFormActivity.TAG, "onStartJob called");
 
     Bundle extras = job.getExtras();
     assert extras != null;

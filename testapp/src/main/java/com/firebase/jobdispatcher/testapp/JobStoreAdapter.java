@@ -18,30 +18,36 @@ package com.firebase.jobdispatcher.testapp;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import com.firebase.jobdispatcher.JobParameters;
 import com.firebase.jobdispatcher.testapp.JobStore.OnChangeListener;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /** An adapter between a JobStore and the list view that displays its contents. */
 public class JobStoreAdapter extends ArrayAdapter<JobHistory> implements OnChangeListener {
   private final JobStore mStore;
-  private static final String CELL_FORMAT = "tag = %s, endpoint = %s";
+  private static final String CELL_FORMAT = "tag = %s, endpoint = %s, uris = %s";
 
   @Override
   public View getView(final int position, View convertView, ViewGroup parent) {
     final Context ctx = getContext();
 
-    TextView view = new TextView(parent.getContext());
+    TextView textView = new TextView(parent.getContext());
     JobParameters job = getItem(position).job;
-    view.setText(String.format(Locale.US, CELL_FORMAT, job.getTag(), job.getService()));
+    List<Uri> uris =
+        job.getTriggerReason() != null
+            ? job.getTriggerReason().getTriggeredContentUris()
+            : Collections.<Uri>emptyList();
+    textView.setText(String.format(Locale.US, CELL_FORMAT, job.getTag(), job.getService(), uris));
 
-    view.setOnClickListener(
-        new OnClickListener() {
+    textView.setOnClickListener(
+        new View.OnClickListener() {
           @Override
           public void onClick(View v) {
             Intent i = new Intent(ctx, JobDetailActivity.class);
@@ -50,7 +56,7 @@ public class JobStoreAdapter extends ArrayAdapter<JobHistory> implements OnChang
           }
         });
 
-    return view;
+    return textView;
   }
 
   public JobStoreAdapter(Context ctx, JobStore store) {

@@ -17,4 +17,14 @@
 <resources>
   <string name="title_job_list">Jobs</string>
   <string name="title_job_detail">Job Detail</string>
+  <string-array name="trigger_array">
+    <item>Constraints only</item>
+    <item>Timed</item>
+    <item>Content URI</item>
+  </string-array>
+  <string-array name="uri_array">
+    <item>Photo</item>
+    <item>Contacts</item>
+    <item>Video</item>
+  </string-array>
 </resources>

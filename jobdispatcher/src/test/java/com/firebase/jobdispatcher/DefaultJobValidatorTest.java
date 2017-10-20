@@ -17,15 +17,26 @@
 package com.firebase.jobdispatcher;
 
 import static java.util.Collections.singletonList;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.provider.ContactsContract;
 import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
 import com.firebase.jobdispatcher.ObservedUri.Flags;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +44,8 @@ import java.util.Map.Entry;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
@@ -44,6 +57,8 @@ import org.robolectric.annotation.Config;
 public class DefaultJobValidatorTest {
 
   @Mock private Context mockContext;
+  @Mock private PackageManager packageManagerMock;
+  @Captor private ArgumentCaptor<Intent> intentCaptor;
 
   private DefaultJobValidator validator;
 
@@ -115,5 +130,72 @@ public class DefaultJobValidatorTest {
             validationErrors.contains(testCase.getValue()));
       }
     }
+  }
+
+  @Test
+  public void validateService_null() {
+    List<String> errors = validator.validateService(null);
+    assertTrue(errors.contains("Service can't be empty"));
+  }
+
+  @Test
+  public void validateService_empty() {
+    List<String> errors = validator.validateService("");
+    assertTrue(errors.contains("Service can't be empty"));
+  }
+
+  @Test
+  public void validateService_packageManagerIsNotAvailable() {
+    when(mockContext.getPackageManager()).thenReturn(null);
+
+    List<String> errors = validator.validateService("service");
+
+    assertTrue(errors.contains("PackageManager is null, can't validate service"));
+  }
+
+  @Test
+  public void validateService_noSuchService() {
+    when(mockContext.getPackageManager()).thenReturn(packageManagerMock);
+    when(packageManagerMock.queryIntentServices(any(Intent.class), eq(0)))
+        .thenReturn(Collections.<ResolveInfo>emptyList());
+    when(mockContext.getPackageName()).thenReturn("package");
+
+    List<String> errors = validator.validateService("service");
+    assertNull(errors);
+
+    verify(packageManagerMock).queryIntentServices(intentCaptor.capture(), eq(0));
+    Intent intent = intentCaptor.getValue();
+    assertEquals(JobService.ACTION_EXECUTE, intent.getAction());
+    assertEquals(new ComponentName("package", "service"), intent.getComponent());
+  }
+
+  @Test
+  public void validateService_noActiveService() {
+    when(mockContext.getPackageManager()).thenReturn(packageManagerMock);
+    ResolveInfo resolveInfo = new ResolveInfo();
+    resolveInfo.serviceInfo = new ServiceInfo();
+    resolveInfo.serviceInfo.enabled = false;
+
+    when(packageManagerMock.queryIntentServices(any(Intent.class), eq(0)))
+        .thenReturn(Arrays.asList(resolveInfo));
+    when(mockContext.getPackageName()).thenReturn("package");
+
+    List<String> errors = validator.validateService("service");
+    assertTrue(errors.contains("service is disabled."));
+  }
+
+  @Test
+  public void validateService() {
+    when(mockContext.getPackageManager()).thenReturn(packageManagerMock);
+    ResolveInfo resolveInfo = new ResolveInfo();
+    resolveInfo.serviceInfo = new ServiceInfo();
+    resolveInfo.serviceInfo.enabled = true;
+
+    when(packageManagerMock.queryIntentServices(any(Intent.class), eq(0)))
+        .thenReturn(Arrays.asList(resolveInfo));
+    when(mockContext.getPackageName()).thenReturn("package");
+
+    List<String> errors = validator.validateService("service");
+    assertNull(errors);
   }
 }

@@ -75,7 +75,7 @@ import java.lang.annotation.RetentionPolicy;
   private static void writeImmediateTriggerToBundle(Bundle b) {
     b.putInt(REQUEST_PARAM_TRIGGER_TYPE, BundleProtocol.TRIGGER_TYPE_IMMEDIATE);
     b.putLong(REQUEST_PARAM_TRIGGER_WINDOW_START, 0);
-    b.putLong(REQUEST_PARAM_TRIGGER_WINDOW_END, 30);
+    b.putLong(REQUEST_PARAM_TRIGGER_WINDOW_END, 1);
   }
 
   private static void writeContentUriTriggerToBundle(Bundle data, ContentUriTrigger uriTrigger) {
