@@ -14,22 +14,15 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-<manifest
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.firebase.jobdispatcher">
-
-    <uses-sdk android:minSdkVersion="14" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-
-    <instrumentation
-        android:targetPackage="com.firebase.jobdispatcher"
-        android:name="android.test.InstrumentationTestRunner" />
-
-    <application>
-        <service android:exported="false" android:name=".TestJobService">
-            <intent-filter>
-                <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
-            </intent-filter>
-        </service>
-    </application>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.firebase.jobdispatcher">
+  <uses-sdk android:minSdkVersion="14"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+  <instrumentation android:targetPackage="com.firebase.jobdispatcher" android:name="android.test.InstrumentationTestRunner"/>
+  <application>
+    <service android:exported="false" android:name=".TestJobService">
+      <intent-filter>
+        <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
+      </intent-filter>
+    </service>
+  </application>
 </manifest>
