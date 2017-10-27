@@ -48,10 +48,11 @@ dependencies {
     // The common test library uses JUnit
     testLibCompile junit
 
-    // The unit tests are written using JUnit, Robolectric, and Mockito
+    // The unit tests are written using JUnit, Robolectric, Mockito, and Guava
     testCompile junit
     testCompile robolectric
     testCompile 'org.mockito:mockito-core:2.2.5'
+    testCompile 'com.google.guava:guava:23.2-android'
 
     // The Android (e2e) tests are written using JUnit and the test support lib
     androidTestCompile junit

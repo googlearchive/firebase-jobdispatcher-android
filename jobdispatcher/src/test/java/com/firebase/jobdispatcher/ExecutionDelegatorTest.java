@@ -34,8 +34,10 @@ import static org.mockito.Mockito.when;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.JobService.JobResult;
+import com.google.common.util.concurrent.SettableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.junit.Before;
@@ -47,6 +49,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 /** Tests for the {@link ExecutionDelegator}. */
 @SuppressWarnings("WrongConstant")
@@ -199,13 +202,12 @@ public class ExecutionDelegatorTest {
 
     final ServiceConnection connection = connCaptor.getValue();
 
-    final JobParameters[] out = new JobParameters[1];
-
+    final SettableFuture<JobParameters> startedJobFuture = SettableFuture.create();
     JobService mockJobService =
         new JobService() {
           @Override
           public boolean onStartJob(JobParameters job) {
-            out[0] = job;
+            startedJobFuture.set(job);
             return false;
           }
 
@@ -219,7 +221,7 @@ public class ExecutionDelegatorTest {
 
     connection.onServiceConnected(null, binderMock);
 
-    TestUtil.assertJobsEqual(input, out[0]);
+    TestUtil.assertJobsEqual(input, startedJobFuture.get(0, TimeUnit.SECONDS));
 
     // make sure the countdownlatch was decremented
     assertTrue(receiver.latch.await(1, TimeUnit.SECONDS));
@@ -253,7 +255,7 @@ public class ExecutionDelegatorTest {
   }
 
   @Test
-  public void onStop_mock() throws InterruptedException {
+  public void onStop_mock() throws Exception {
     JobInvocation job =
         new JobInvocation.Builder()
             .setTag("TAG")
@@ -278,19 +280,20 @@ public class ExecutionDelegatorTest {
     assertEquals(job.getService(), bindIntent.getComponent().getClassName());
     assertEquals(JobService.ACTION_EXECUTE, bindIntent.getAction());
 
-    final JobParameters[] out = new JobParameters[2];
+    final SettableFuture<JobParameters> startedJobFuture = SettableFuture.create();
+    final SettableFuture<JobParameters> stoppedJobFuture = SettableFuture.create();
 
     JobService mockJobService =
         new JobService() {
           @Override
           public boolean onStartJob(JobParameters job) {
-            out[0] = job;
+            startedJobFuture.set(job);
             return true;
           }
 
           @Override
           public boolean onStopJob(JobParameters job) {
-            out[1] = job;
+            stoppedJobFuture.set(job);
             return false;
           }
         };
@@ -302,12 +305,65 @@ public class ExecutionDelegatorTest {
 
     ExecutionDelegator.stopJob(job, true);
 
-    TestUtil.assertJobsEqual(job, out[0]);
-    TestUtil.assertJobsEqual(job, out[1]);
+    TestUtil.assertJobsEqual(job, startedJobFuture.get(0, TimeUnit.SECONDS));
+    TestUtil.assertJobsEqual(job, stoppedJobFuture.get(0, TimeUnit.SECONDS));
   }
 
   @Test
-  public void failedToBind_unbind() throws InterruptedException {
+  public void onStop_calledOnMainThread() throws Exception {
+    final JobInvocation job =
+        new JobInvocation.Builder()
+            .setTag("TAG")
+            .setTrigger(getContentUriTrigger())
+            .setService(TestJobService.class.getName())
+            .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+            .build();
+
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
+    final SettableFuture<Looper> futureLooper = SettableFuture.create();
+    when(binderMock.getService())
+        .thenReturn(
+            new JobService() {
+              @Override
+              public boolean onStartJob(JobParameters job) {
+                return true;
+              }
+
+              @Override
+              public boolean onStopJob(JobParameters job) {
+                futureLooper.set(Looper.myLooper());
+                return false;
+              }
+            });
+
+    executionDelegator.executeJob(job);
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
+    connCaptor.getValue().onServiceConnected(null, binderMock);
+
+    // call stopJob on a background thread and wait for it
+    Thread workerThread =
+        new Thread() {
+          @Override
+          public void run() {
+            ExecutionDelegator.stopJob(job, true);
+          }
+        };
+    workerThread.start();
+    workerThread.join(TimeUnit.SECONDS.toMillis(1));
+
+    ShadowLooper.idleMainLooper();
+    assertEquals(
+        "onStopJob was not called on main thread",
+        Looper.getMainLooper(),
+        futureLooper.get(1, TimeUnit.SECONDS));
+  }
+
+  @Test
+  public void failedToBind_unbind() throws Exception {
     JobInvocation job =
         new JobInvocation.Builder()
             .setTag("TAG")
