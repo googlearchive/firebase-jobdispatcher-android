@@ -20,7 +20,9 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Message;
 // import android.support.annotation.GuardedBy;
 import android.support.annotation.IntDef;
@@ -77,6 +79,8 @@ public abstract class JobService extends Service {
   @VisibleForTesting
   static final String ACTION_EXECUTE = "com.firebase.jobdispatcher.ACTION_EXECUTE";
 
+  private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+
   /**
    * Correlates job tags (unique strings) with Messages, which are used to signal the completion of
    * a job.
@@ -114,8 +118,11 @@ public abstract class JobService extends Service {
   @MainThread
   public abstract boolean onStopJob(JobParameters job);
 
-  @MainThread
-  void start(JobParameters job, Message msg) {
+  /**
+   * Asks the {@code job} to start running. Calls {@link #onStartJob} on the main thread. Once
+   * complete, the {@code msg} will be used to send the result back.
+   */
+  void start(final JobParameters job, Message msg) {
     synchronized (runningJobs) {
       if (runningJobs.containsKey(job.getTag())) {
         Log.w(
@@ -123,15 +130,23 @@ public abstract class JobService extends Service {
         return;
       }
       runningJobs.put(job.getTag(), new JobCallback(msg));
-
-      boolean moreWork = onStartJob(job);
-      if (!moreWork) {
-        JobCallback callback = runningJobs.remove(job.getTag());
-        if (callback != null) {
-          callback.sendResult(RESULT_SUCCESS);
-        }
-      }
     }
+
+    mainHandler.post(
+        new Runnable() {
+          @Override
+          public void run() {
+            synchronized (runningJobs) {
+              boolean moreWork = onStartJob(job);
+              if (!moreWork) {
+                JobCallback callback = runningJobs.remove(job.getTag());
+                if (callback != null) {
+                  callback.sendResult(RESULT_SUCCESS);
+                }
+              }
+            }
+          }
+        });
   }
 
   /**
@@ -139,22 +154,29 @@ public abstract class JobService extends Service {
    *
    * <p>Sending results can be skipped if the call was initiated by a reschedule request.
    */
-  @MainThread
-  void stop(JobInvocation job, boolean needToSendResult) {
+  void stop(final JobInvocation job, final boolean needToSendResult) {
+    @Nullable final JobCallback jobCallback;
     synchronized (runningJobs) {
-      JobCallback jobCallback = runningJobs.remove(job.getTag());
-
-      if (jobCallback == null) {
-        if (Log.isLoggable(TAG, Log.DEBUG)) {
-          Log.d(TAG, "Provided job has already been executed.");
-        }
-        return;
-      }
-      boolean shouldRetry = onStopJob(job);
-      if (needToSendResult) {
-        jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
-      }
+      jobCallback = runningJobs.remove(job.getTag());
     }
+
+    if (jobCallback == null) {
+      if (Log.isLoggable(TAG, Log.DEBUG)) {
+        Log.d(TAG, "Provided job has already been executed.");
+      }
+      return;
+    }
+
+    mainHandler.post(
+        new Runnable() {
+          @Override
+          public void run() {
+            boolean shouldRetry = onStopJob(job);
+            if (needToSendResult) {
+              jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
+            }
+          }
+        });
   }
 
   /**
@@ -194,6 +216,7 @@ public abstract class JobService extends Service {
   }
 
   @Override
+  @MainThread
   public final boolean onUnbind(Intent intent) {
     synchronized (runningJobs) {
       for (int i = runningJobs.size() - 1; i >= 0; i--) {
