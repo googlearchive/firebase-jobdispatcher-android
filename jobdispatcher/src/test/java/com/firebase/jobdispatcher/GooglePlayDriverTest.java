@@ -159,7 +159,7 @@ public class GooglePlayDriverTest {
     Bundle bundle = TestUtil.getBundleForContentJobExecution();
     googlePlayReceiver.prepareJob(jobCallbackMock, bundle);
 
-    JobCoder prefixedCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+    JobCoder prefixedCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX);
     JobInvocation invocation = prefixedCoder.decodeIntentBundle(bundle);
     synchronized (ExecutionDelegator.serviceConnections) {
       ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);

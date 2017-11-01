@@ -16,12 +16,16 @@
 
 package com.firebase.jobdispatcher;
 
-import static org.junit.Assert.assertTrue;
+import static com.firebase.jobdispatcher.TestUtil.assertBundlesEqual;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Bundle;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
-import java.util.concurrent.CountDownLatch;
+import com.google.common.util.concurrent.SettableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,13 +48,13 @@ public final class EndToEndTest {
   }
 
   @Test
-  public void basicImmediateJob() throws InterruptedException {
-    final CountDownLatch latch = new CountDownLatch(1);
+  public void basicImmediateJob() throws Exception {
+    final SettableFuture<Bundle> bundleFuture = SettableFuture.create();
     TestJobService.setProxy(
         new TestJobService.JobServiceProxy() {
           @Override
           public boolean onStartJob(JobParameters params) {
-            latch.countDown();
+            bundleFuture.set(params.getExtras());
             return false;
           }
 
@@ -60,14 +64,54 @@ public final class EndToEndTest {
           }
         });
 
+    Bundle extras = new Bundle();
+    extras.putBoolean("extras", true);
+
     dispatcher.mustSchedule(
         dispatcher
             .newJobBuilder()
             .setService(TestJobService.class)
             .setTrigger(Trigger.NOW)
             .setTag("basic-immediate-job")
+            .setExtras(extras)
             .build());
 
-    assertTrue("Latch wasn't counted down as expected", latch.await(120, TimeUnit.SECONDS));
+    assertBundlesEqual(extras, bundleFuture.get(120, TimeUnit.SECONDS));
+  }
+
+  /**
+   * Tests that JobServices work correctly when defined in alternative processes. Relies on the
+   * broadcast-sending code in {@link WorkerProcessTestJobService}.
+   */
+  @Test
+  public void workerProcessImmediateJob() throws Exception {
+    final SettableFuture<Bundle> bundleFuture = SettableFuture.create();
+    appContext.registerReceiver(
+        new BroadcastReceiver() {
+          @Override
+          public void onReceive(Context context, Intent intent) {
+            Bundle results = new Bundle();
+            results.putBoolean(WorkerProcessTestJobService.EXTRA_MORE_WORK_REMAINING, false);
+            setResultExtras(results);
+
+            bundleFuture.set(
+                intent.getBundleExtra(WorkerProcessTestJobService.EXTRA_BUNDLE_EXTRAS));
+          }
+        },
+        new IntentFilter(WorkerProcessTestJobService.ACTION_JOBSERVICE_EVENT));
+
+    Bundle extras = new Bundle();
+    extras.putBoolean("extras", true);
+
+    dispatcher.mustSchedule(
+        dispatcher
+            .newJobBuilder()
+            .setService(WorkerProcessTestJobService.class)
+            .setTrigger(Trigger.NOW)
+            .setTag("worker-process-immediate-job")
+            .setExtras(extras)
+            .build());
+
+    assertBundlesEqual(extras, bundleFuture.get(120, TimeUnit.SECONDS));
   }
 }

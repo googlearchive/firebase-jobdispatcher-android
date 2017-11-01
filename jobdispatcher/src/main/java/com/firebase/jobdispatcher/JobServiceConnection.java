@@ -17,12 +17,14 @@
 package com.firebase.jobdispatcher;
 
 import static com.firebase.jobdispatcher.ExecutionDelegator.TAG;
+import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
 
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.ServiceConnection;
+import android.os.Bundle;
 import android.os.IBinder;
-import android.os.Message;
+import android.os.RemoteException;
 // import android.support.annotation.GuardedBy;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
@@ -31,38 +33,36 @@ import android.util.Log;
 @VisibleForTesting
 class JobServiceConnection implements ServiceConnection {
 
-  private final JobInvocation jobInvocation;
-  // Should be sent only once. Can't be reused.
-  private final Message jobFinishedMessage;
-  private boolean wasUnbound = false;
+  private final Bundle invocationData;
+  private final IJobCallback callback;
   private final Context context;
 
   // @GuardedBy("this")
-  private JobService.LocalBinder binder;
+  private boolean wasUnbound = false;
 
-  JobServiceConnection(JobInvocation jobInvocation, Message jobFinishedMessage, Context context) {
-    this.jobFinishedMessage = jobFinishedMessage;
-    this.jobInvocation = jobInvocation;
-    this.jobFinishedMessage.obj = this.jobInvocation;
+  // @GuardedBy("this")
+  private IRemoteJobService binder;
+
+  JobServiceConnection(JobInvocation jobInvocation, IJobCallback callback, Context context) {
+    this.invocationData = getJobCoder().encode(jobInvocation, new Bundle());
+    this.callback = callback;
     this.context = context;
   }
 
   @Override
   public synchronized void onServiceConnected(ComponentName name, IBinder service) {
-    if (!(service instanceof JobService.LocalBinder)) {
-      Log.w(TAG, "Unknown service connected");
-      return;
-    }
-    if (binder != null || wasUnbound()) {
+    if (isConnected() || wasUnbound()) {
       Log.w(TAG, "Connection have been used already.");
       return;
     }
 
-    binder = (JobService.LocalBinder) service;
-
-    JobService jobService = binder.getService();
-
-    jobService.start(jobInvocation, jobFinishedMessage);
+    try {
+      binder = IRemoteJobService.Stub.asInterface(service);
+      binder.start(invocationData, callback);
+    } catch (RemoteException remoteException) {
+      Log.e(TAG, "Failed to start jobservice", remoteException);
+      unbind();
+    }
   }
 
   @Override
@@ -80,8 +80,12 @@ class JobServiceConnection implements ServiceConnection {
 
   synchronized void onStop(boolean needToSendResult) {
     if (!wasUnbound()) {
-      if (binder != null) {
-        binder.getService().stop(jobInvocation, needToSendResult);
+      if (isConnected()) {
+        try {
+          binder.stop(invocationData, needToSendResult);
+        } catch (RemoteException remoteException) {
+          Log.e(TAG, "Failed to stop jobservice", remoteException);
+        }
       }
       unbind();
     } else {

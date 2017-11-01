@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.os.Looper;
+import android.os.Bundle;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.JobService.JobResult;
 import com.google.common.util.concurrent.SettableFuture;
@@ -49,7 +49,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
-import org.robolectric.shadows.ShadowLooper;
 
 /** Tests for the {@link ExecutionDelegator}. */
 @SuppressWarnings("WrongConstant")
@@ -59,10 +58,10 @@ public class ExecutionDelegatorTest {
 
   private TestJobReceiver receiver;
   private ExecutionDelegator executionDelegator;
+  private IRemoteJobService.Stub noopBinder;
 
   @Captor private ArgumentCaptor<Intent> intentCaptor;
   @Captor private ArgumentCaptor<JobServiceConnection> connCaptor;
-  @Mock private JobService.LocalBinder binderMock;
   @Mock private Context mockContext;
 
   @Before
@@ -74,19 +73,14 @@ public class ExecutionDelegatorTest {
     executionDelegator = new ExecutionDelegator(mockContext, receiver);
     ExecutionDelegator.cleanServiceConnections();
 
-    when(binderMock.getService())
-        .thenReturn(
-            new JobService() {
-              @Override
-              public boolean onStartJob(JobParameters job) {
-                return true;
-              }
+    noopBinder =
+        new IRemoteJobService.Stub() {
+          @Override
+          public void start(Bundle invocationData, IJobCallback callback) {}
 
-              @Override
-              public boolean onStopJob(JobParameters job) {
-                return false;
-              }
-            });
+          @Override
+          public void stop(Bundle invocationData, boolean needToSendResult) {}
+        };
   }
 
   @Test
@@ -112,7 +106,7 @@ public class ExecutionDelegatorTest {
     executionDelegator.executeJob(jobInvocation);
     verify(mockContext)
         .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
-    connCaptor.getValue().onServiceConnected(null, binderMock);
+    connCaptor.getValue().onServiceConnected(null, noopBinder);
 
     assertFalse(connCaptor.getValue().wasUnbound());
     assertTrue(connCaptor.getValue().isConnected());
@@ -168,7 +162,7 @@ public class ExecutionDelegatorTest {
         .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
 
     JobServiceConnection jobServiceConnection = connCaptor.getValue();
-    jobServiceConnection.onServiceConnected(null, binderMock);
+    jobServiceConnection.onServiceConnected(null, noopBinder);
     jobServiceConnection.unbind();
 
     verify(mockContext).unbindService(jobServiceConnection);
@@ -203,31 +197,20 @@ public class ExecutionDelegatorTest {
     final ServiceConnection connection = connCaptor.getValue();
 
     final SettableFuture<JobParameters> startedJobFuture = SettableFuture.create();
-    JobService mockJobService =
-        new JobService() {
+    IRemoteJobService.Stub jobServiceBinder =
+        new IRemoteJobService.Stub() {
           @Override
-          public boolean onStartJob(JobParameters job) {
-            startedJobFuture.set(job);
-            return false;
+          public void start(Bundle invocationData, IJobCallback callback) {
+            startedJobFuture.set(GooglePlayReceiver.getJobCoder().decode(invocationData).build());
           }
 
           @Override
-          public boolean onStopJob(JobParameters job) {
-            return false;
-          }
+          public void stop(Bundle invocationData, boolean needToSendResult) {}
         };
 
-    when(binderMock.getService()).thenReturn(mockJobService);
-
-    connection.onServiceConnected(null, binderMock);
+    connection.onServiceConnected(null, jobServiceBinder);
 
     TestUtil.assertJobsEqual(input, startedJobFuture.get(0, TimeUnit.SECONDS));
-
-    // make sure the countdownlatch was decremented
-    assertTrue(receiver.latch.await(1, TimeUnit.SECONDS));
-
-    // verify the lastResult was set correctly
-    assertEquals(JobService.RESULT_SUCCESS, receiver.lastResult);
   }
 
   @Test
@@ -283,83 +266,26 @@ public class ExecutionDelegatorTest {
     final SettableFuture<JobParameters> startedJobFuture = SettableFuture.create();
     final SettableFuture<JobParameters> stoppedJobFuture = SettableFuture.create();
 
-    JobService mockJobService =
-        new JobService() {
+    IRemoteJobService.Stub jobServiceBinder =
+        new IRemoteJobService.Stub() {
           @Override
-          public boolean onStartJob(JobParameters job) {
-            startedJobFuture.set(job);
-            return true;
+          public void start(Bundle invocationData, IJobCallback callback) {
+            startedJobFuture.set(GooglePlayReceiver.getJobCoder().decode(invocationData).build());
           }
 
           @Override
-          public boolean onStopJob(JobParameters job) {
-            stoppedJobFuture.set(job);
-            return false;
+          public void stop(Bundle invocationData, boolean needToSendResult) {
+            stoppedJobFuture.set(GooglePlayReceiver.getJobCoder().decode(invocationData).build());
           }
         };
 
-    when(binderMock.getService()).thenReturn(mockJobService);
-
     final ServiceConnection connection = connCaptor.getValue();
-    connection.onServiceConnected(null, binderMock);
+    connection.onServiceConnected(null, jobServiceBinder);
 
     ExecutionDelegator.stopJob(job, true);
 
     TestUtil.assertJobsEqual(job, startedJobFuture.get(0, TimeUnit.SECONDS));
     TestUtil.assertJobsEqual(job, stoppedJobFuture.get(0, TimeUnit.SECONDS));
-  }
-
-  @Test
-  public void onStop_calledOnMainThread() throws Exception {
-    final JobInvocation job =
-        new JobInvocation.Builder()
-            .setTag("TAG")
-            .setTrigger(getContentUriTrigger())
-            .setService(TestJobService.class.getName())
-            .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
-            .build();
-
-    when(mockContext.bindService(
-            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
-        .thenReturn(true);
-
-    final SettableFuture<Looper> futureLooper = SettableFuture.create();
-    when(binderMock.getService())
-        .thenReturn(
-            new JobService() {
-              @Override
-              public boolean onStartJob(JobParameters job) {
-                return true;
-              }
-
-              @Override
-              public boolean onStopJob(JobParameters job) {
-                futureLooper.set(Looper.myLooper());
-                return false;
-              }
-            });
-
-    executionDelegator.executeJob(job);
-    verify(mockContext)
-        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
-    connCaptor.getValue().onServiceConnected(null, binderMock);
-
-    // call stopJob on a background thread and wait for it
-    Thread workerThread =
-        new Thread() {
-          @Override
-          public void run() {
-            ExecutionDelegator.stopJob(job, true);
-          }
-        };
-    workerThread.start();
-    workerThread.join(TimeUnit.SECONDS.toMillis(1));
-
-    ShadowLooper.idleMainLooper();
-    assertEquals(
-        "onStopJob was not called on main thread",
-        Looper.getMainLooper(),
-        futureLooper.get(1, TimeUnit.SECONDS));
   }
 
   @Test
