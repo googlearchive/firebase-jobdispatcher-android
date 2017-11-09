@@ -67,9 +67,9 @@ Framework [JobScheduler][] | 21          | No                     | JobScheduler
 Firebase JobDispatcher     | 9           | Yes                    | JobScheduler                    | Yes
 [evernote/android-job][]   | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes
 
-<a name="fn1">1</a>: Refers to the methods that need to be implemented in the
+<sup><a name="fn1">1</a></sup> Refers to the methods that need to be implemented in the
 Service subclass.<br>
-<a name="fn2">2</a>: Uses AlarmManager to support API levels <= 21 if Google
+<sup><a name="fn2">2</a></sup> Uses AlarmManager to support API levels <= 21 if Google
 Play services is unavailable.<br>
 
 ## Getting started
