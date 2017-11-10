@@ -79,7 +79,7 @@ Play services is unavailable.<br>
 Add the following to your `build.gradle`'s dependencies section:
 
 ```
-compile 'com.firebase:firebase-jobdispatcher:0.8.4'
+compile 'com.firebase:firebase-jobdispatcher:0.8.5'
 ```
 
 ### Usage
