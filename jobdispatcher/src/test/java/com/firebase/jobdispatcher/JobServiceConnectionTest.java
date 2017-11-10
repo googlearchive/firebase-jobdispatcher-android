@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import android.content.Context;
@@ -121,8 +122,27 @@ public class JobServiceConnectionTest {
           @Override
           public void jobFinished(Bundle invocationData, @JobService.JobResult int result) {}
         };
-    connection = new JobServiceConnection(job, noopCallback, contextMock);
+    connection = new JobServiceConnection(noopCallback, contextMock);
+    connection.startJob(job);
     binderMock = new ManuallyMockedRemoteJobService();
+  }
+
+  @Test
+  public void fullConnectionCycleWithStop() throws Exception {
+    assertFalse(connection.wasUnbound());
+    connection.onServiceConnected(null, binderMock);
+    binderMock.verifyStartArguments(jobData, noopCallback);
+    assertFalse(connection.wasUnbound());
+
+    connection.onStop(job, true);
+    binderMock.verifyStopArguments(jobData, true);
+    assertFalse(connection.wasUnbound());
+
+    connection.onJobFinished(job);
+    assertTrue(connection.wasUnbound());
+
+    connection.onServiceDisconnected(null);
+    assertTrue(connection.wasUnbound());
   }
 
   @Test
@@ -132,8 +152,7 @@ public class JobServiceConnectionTest {
     binderMock.verifyStartArguments(jobData, noopCallback);
     assertFalse(connection.wasUnbound());
 
-    connection.onStop(true);
-    binderMock.verifyStopArguments(jobData, true);
+    connection.onJobFinished(job);
     assertTrue(connection.wasUnbound());
 
     connection.onServiceDisconnected(null);
@@ -162,8 +181,11 @@ public class JobServiceConnectionTest {
     connection.onServiceConnected(null, binderMock);
     assertNull(binderMock.startArguments); // start should not be called again
 
-    connection.onStop(true);
+    connection.onStop(job, true);
     binderMock.verifyStopArguments(jobData, true);
+    assertFalse(connection.wasUnbound());
+
+    connection.onJobFinished(job);
     assertTrue(connection.wasUnbound());
 
     connection.onServiceDisconnected(null);
@@ -171,13 +193,13 @@ public class JobServiceConnectionTest {
   }
 
   @Test
-  public void stopOnUnboundConnection_nothingHappens() throws Exception {
+  public void stopWithResult_keepConnectionOpen() throws Exception {
     assertFalse(connection.wasUnbound());
 
-    connection.onStop(true);
+    connection.onStop(job, true);
 
-    assertTrue(connection.wasUnbound());
-    verify(contextMock).unbindService(connection);
+    assertFalse(connection.wasUnbound());
+    verify(contextMock, never()).unbindService(connection);
   }
 
   @Test
@@ -192,9 +214,10 @@ public class JobServiceConnectionTest {
     binderMock.verifyStartArguments(jobData, noopCallback);
     assertFalse(connection.wasUnbound());
 
-    connection.onStop(false);
+    connection.onStop(job, false);
     binderMock.verifyStopArguments(jobData, false);
     assertTrue(connection.wasUnbound());
+    verify(contextMock).unbindService(connection);
   }
 
   @Test
@@ -230,7 +253,7 @@ public class JobServiceConnectionTest {
     assertFalse(connection.wasUnbound());
 
     binderMock.setStopException(new RemoteException("something bad happened"));
-    connection.onStop(true);
+    connection.onStop(job, true);
     binderMock.verifyStopArguments(jobData, true);
     assertTrue(connection.wasUnbound());
     verify(contextMock).unbindService(connection);

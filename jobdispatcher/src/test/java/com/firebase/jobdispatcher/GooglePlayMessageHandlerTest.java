@@ -16,8 +16,13 @@
 
 package com.firebase.jobdispatcher;
 
+import static android.content.Context.BIND_AUTO_CREATE;
 import static com.firebase.jobdispatcher.GooglePlayJobWriter.REQUEST_PARAM_TAG;
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -26,16 +31,20 @@ import static org.mockito.Mockito.when;
 
 import android.app.AppOpsManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
+import com.firebase.jobdispatcher.ExecutionDelegator.JobFinishedCallback;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
-import junit.framework.Assert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
@@ -48,10 +57,18 @@ public class GooglePlayMessageHandlerTest {
 
   @Mock Looper looper;
   @Mock GooglePlayReceiver receiverMock;
-  @Mock Context context;
+  @Mock Context contextMock;
   @Mock AppOpsManager appOpsManager;
   @Mock Messenger messengerMock;
-  @Mock ExecutionDelegator executionDelegatorMock;
+  @Mock JobFinishedCallback jobFinishedCallbackMock;
+  @Captor ArgumentCaptor<JobServiceConnection> jobServiceConnectionCaptor;
+
+  @Captor private ArgumentCaptor<IJobCallback> jobCallbackCaptor;
+  @Captor private ArgumentCaptor<Bundle> bundleCaptor;
+  @Mock private IRemoteJobService jobServiceMock;
+  @Mock private IBinder iBinderMock;
+
+  ExecutionDelegator executionDelegator;
 
   GooglePlayMessageHandler handler;
 
@@ -59,9 +76,10 @@ public class GooglePlayMessageHandlerTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     handler = new GooglePlayMessageHandler(looper, receiverMock);
-    when(receiverMock.getExecutionDelegator()).thenReturn(executionDelegatorMock);
-    when(receiverMock.getApplicationContext()).thenReturn(context);
-    when(context.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(appOpsManager);
+    executionDelegator = new ExecutionDelegator(contextMock, jobFinishedCallbackMock);
+    when(receiverMock.getExecutionDelegator()).thenReturn(executionDelegator);
+    when(receiverMock.getApplicationContext()).thenReturn(contextMock);
+    when(contextMock.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(appOpsManager);
   }
 
   @After
@@ -118,12 +136,13 @@ public class GooglePlayMessageHandlerTest {
         .thenReturn(jobInvocation);
 
     handler.handleMessage(message);
-
-    verify(executionDelegatorMock).executeJob(jobInvocation);
+    verify(contextMock)
+        .bindService(any(Intent.class), jobServiceConnectionCaptor.capture(), eq(BIND_AUTO_CREATE));
+    assertTrue(jobServiceConnectionCaptor.getValue().hasJobInvocation(jobInvocation));
   }
 
   @Test
-  public void handleMessage_stopExecution() throws Exception {
+  public void handleMessage_stopExecution_noUnbindWaitForTheResult() throws Exception {
     Message message = Message.obtain();
     message.what = GooglePlayMessageHandler.MSG_STOP_EXEC;
     JobCoder jobCoder = GooglePlayReceiver.getJobCoder();
@@ -132,15 +151,35 @@ public class GooglePlayMessageHandlerTest {
     message.setData(data);
     message.replyTo = messengerMock;
 
-    synchronized (ExecutionDelegator.serviceConnections) {
-      ExecutionDelegator.serviceConnections.put(jobInvocation, null);
-    }
+    when(contextMock.bindService(
+            any(Intent.class), any(JobServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
+    executionDelegator.executeJob(jobInvocation);
+    verify(contextMock)
+        .bindService(any(Intent.class), jobServiceConnectionCaptor.capture(), eq(BIND_AUTO_CREATE));
+    JobServiceConnection serviceConnection = jobServiceConnectionCaptor.getValue();
+    assertTrue(serviceConnection.hasJobInvocation(jobInvocation));
+
+    when(iBinderMock.queryLocalInterface(anyString())).thenReturn(jobServiceMock);
+    serviceConnection.onServiceConnected(null, iBinderMock);
+
+    verify(jobServiceMock).start(bundleCaptor.capture(), jobCallbackCaptor.capture());
 
     handler.handleMessage(message);
 
-    synchronized (ExecutionDelegator.serviceConnections) {
-      Assert.assertTrue(ExecutionDelegator.serviceConnections.isEmpty());
-    }
+    assertEquals(
+        serviceConnection, ExecutionDelegator.getJobServiceConnection(jobInvocation.getService()));
+    assertFalse(serviceConnection.wasUnbound());
+    // The connection must be active to process jobFinished
+    verify(contextMock, never()).unbindService(serviceConnection);
+
+    jobCallbackCaptor
+        .getValue()
+        .jobFinished(bundleCaptor.getValue(), JobService.RESULT_FAIL_NORETRY);
+
+    verify(contextMock).unbindService(serviceConnection);
+    assertTrue(serviceConnection.wasUnbound());
   }
 
   @Test

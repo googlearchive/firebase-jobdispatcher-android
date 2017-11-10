@@ -19,6 +19,8 @@ package com.firebase.jobdispatcher;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.Constraint.JobConstraint;
+import java.util.Arrays;
+import org.json.JSONObject;
 
 /** An internal non-Job implementation of JobParameters. Passed to JobService invocations. */
 /* package */ final class JobInvocation implements JobParameters {
@@ -216,5 +218,33 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
     int result = tag.hashCode();
     result = 31 * result + service.hashCode();
     return result;
+  }
+
+  @Override
+  public String toString() {
+    return "JobInvocation{"
+        + "tag='"
+        + JSONObject.quote(tag)
+        + '\''
+        + ", service='"
+        + service
+        + '\''
+        + ", trigger="
+        + trigger
+        + ", recurring="
+        + recurring
+        + ", lifetime="
+        + lifetime
+        + ", constraints="
+        + Arrays.toString(constraints)
+        + ", extras="
+        + extras
+        + ", retryStrategy="
+        + retryStrategy
+        + ", replaceCurrent="
+        + replaceCurrent
+        + ", triggerReason="
+        + triggerReason
+        + '}';
   }
 }

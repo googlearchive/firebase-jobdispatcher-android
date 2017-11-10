@@ -16,8 +16,10 @@
 
 package com.firebase.jobdispatcher;
 
+import static android.content.Context.BIND_AUTO_CREATE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
@@ -36,12 +38,14 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
+import com.firebase.jobdispatcher.ExecutionDelegator.JobFinishedCallback;
 import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
@@ -53,7 +57,8 @@ import org.robolectric.annotation.Config;
 public class GooglePlayDriverTest {
   @Mock private Context mMockContext;
   @Mock private JobCallback jobCallbackMock;
-  @Mock private JobServiceConnection jobServiceConnectionMock;
+  @Mock private JobFinishedCallback callbackMock;
+  @Captor ArgumentCaptor<JobServiceConnection> serviceConnectionCaptor;
 
   private TestJobDriver driver;
   private GooglePlayDriver googlePlayDriver;
@@ -157,13 +162,15 @@ public class GooglePlayDriverTest {
   public void schedule_whenRunning_onStopIsCalled() {
     // simulate running job
     Bundle bundle = TestUtil.getBundleForContentJobExecution();
-    googlePlayReceiver.prepareJob(jobCallbackMock, bundle);
 
     JobCoder prefixedCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX);
     JobInvocation invocation = prefixedCoder.decodeIntentBundle(bundle);
-    synchronized (ExecutionDelegator.serviceConnections) {
-      ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
-    }
+    googlePlayReceiver.prepareJob(jobCallbackMock, bundle);
+
+    when(mMockContext.bindService(
+            any(Intent.class), serviceConnectionCaptor.capture(), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+    new ExecutionDelegator(mMockContext, callbackMock).executeJob(invocation);
 
     Job job =
         TestUtil.getBuilderWithNoopValidator()
@@ -175,12 +182,11 @@ public class GooglePlayDriverTest {
     googlePlayDriver.schedule(job); // reschedule request during the execution
 
     verify(mMockContext).sendBroadcast(any(Intent.class));
-    verify(jobServiceConnectionMock).onStop(false);
-    synchronized (ExecutionDelegator.serviceConnections) {
-      assertTrue(
-          "JobServiceConnection should be removed.",
-          ExecutionDelegator.serviceConnections.isEmpty());
-    }
+
+    assertTrue(serviceConnectionCaptor.getValue().wasUnbound());
+    assertNull(
+        "JobServiceConnection should be removed.",
+        ExecutionDelegator.getJobServiceConnection(invocation.getService()));
   }
 
   private ArgumentCaptor<Intent> mockPackageManagerInfo() {
