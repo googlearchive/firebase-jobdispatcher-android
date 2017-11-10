@@ -20,11 +20,11 @@ import static android.content.Context.BIND_AUTO_CREATE;
 import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
@@ -35,11 +35,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.JobService.JobResult;
 import com.google.common.util.concurrent.SettableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -62,12 +65,16 @@ public class ExecutionDelegatorTest {
 
   @Captor private ArgumentCaptor<Intent> intentCaptor;
   @Captor private ArgumentCaptor<JobServiceConnection> connCaptor;
+  @Captor private ArgumentCaptor<IJobCallback> jobCallbackCaptor;
+  @Captor private ArgumentCaptor<Bundle> bundleCaptor;
   @Mock private Context mockContext;
+  @Mock private IRemoteJobService jobServiceMock;
+  @Mock private IBinder iBinderMock;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
-    doReturn("com.example.foo").when(mockContext).getPackageName();
+    when(mockContext.getPackageName()).thenReturn("com.example.foo");
 
     receiver = new TestJobReceiver();
     executionDelegator = new ExecutionDelegator(mockContext, receiver);
@@ -81,6 +88,40 @@ public class ExecutionDelegatorTest {
           @Override
           public void stop(Bundle invocationData, boolean needToSendResult) {}
         };
+  }
+
+  @Test
+  public void jobFinished() throws RemoteException {
+    JobInvocation jobInvocation =
+        new JobInvocation.Builder()
+            .setTag("tag")
+            .setService("service")
+            .setTrigger(Trigger.NOW)
+            .build();
+
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
+    executionDelegator.executeJob(jobInvocation);
+
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
+
+    JobServiceConnection connection = connCaptor.getValue();
+    when(iBinderMock.queryLocalInterface(IRemoteJobService.class.getName()))
+        .thenReturn(jobServiceMock);
+    connection.onServiceConnected(null, iBinderMock);
+
+    verify(jobServiceMock).start(bundleCaptor.capture(), jobCallbackCaptor.capture());
+
+    jobCallbackCaptor
+        .getValue()
+        .jobFinished(bundleCaptor.getValue(), JobService.RESULT_FAIL_NORETRY);
+
+    assertNull(ExecutionDelegator.getJobServiceConnection("service"));
+    assertEquals(JobService.RESULT_FAIL_NORETRY, receiver.lastResult);
+    assertTrue(connection.wasUnbound());
   }
 
   @Test
@@ -114,10 +155,10 @@ public class ExecutionDelegatorTest {
 
     executionDelegator.executeJob(jobInvocation);
 
-    assertTrue(connCaptor.getValue().wasUnbound());
-    verify(mockContext).unbindService(connCaptor.getValue());
+    assertFalse(connCaptor.getValue().wasUnbound());
+    verify(mockContext, never()).unbindService(connCaptor.getValue());
 
-    verify(mockContext)
+    verify(mockContext, never())
         .bindService(any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE));
   }
 
@@ -176,12 +217,13 @@ public class ExecutionDelegatorTest {
 
   private void verifyExecuteJob(JobInvocation input) throws Exception {
     reset(mockContext);
+    when(mockContext.getPackageName()).thenReturn("com.example.foo");
     receiver.lastResult = -1;
 
     receiver.setLatch(new CountDownLatch(1));
 
     when(mockContext.bindService(
-            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+            any(Intent.class), any(JobServiceConnection.class), eq(BIND_AUTO_CREATE)))
         .thenReturn(true);
 
     executionDelegator.executeJob(input);
@@ -194,14 +236,15 @@ public class ExecutionDelegatorTest {
     assertEquals(input.getService(), result.getComponent().getClassName());
     assertEquals(JobService.ACTION_EXECUTE, result.getAction());
 
-    final ServiceConnection connection = connCaptor.getValue();
+    final JobServiceConnection connection = connCaptor.getValue();
 
-    final SettableFuture<JobParameters> startedJobFuture = SettableFuture.create();
+    final AtomicReference<JobParameters> jobParametersAtomicReference = new AtomicReference<>();
     IRemoteJobService.Stub jobServiceBinder =
         new IRemoteJobService.Stub() {
           @Override
           public void start(Bundle invocationData, IJobCallback callback) {
-            startedJobFuture.set(GooglePlayReceiver.getJobCoder().decode(invocationData).build());
+            jobParametersAtomicReference.set(
+                GooglePlayReceiver.getJobCoder().decode(invocationData).build());
           }
 
           @Override
@@ -210,7 +253,9 @@ public class ExecutionDelegatorTest {
 
     connection.onServiceConnected(null, jobServiceBinder);
 
-    TestUtil.assertJobsEqual(input, startedJobFuture.get(0, TimeUnit.SECONDS));
+    TestUtil.assertJobsEqual(input, jobParametersAtomicReference.get());
+    // Clean up started job. Otherwise new job won't be started.
+    ExecutionDelegator.stopJob(input, false);
   }
 
   @Test
@@ -312,7 +357,7 @@ public class ExecutionDelegatorTest {
   }
 
   private static final class TestJobReceiver implements ExecutionDelegator.JobFinishedCallback {
-    int lastResult;
+    int lastResult = -1;
 
     private CountDownLatch latch;
 
