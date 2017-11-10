@@ -135,6 +135,40 @@ public class ExecutionDelegatorTest {
   }
 
   @Test
+  public void jobFinished() throws RemoteException {
+    JobInvocation jobInvocation =
+        new JobInvocation.Builder()
+            .setTag("tag")
+            .setService("service")
+            .setTrigger(Trigger.NOW)
+            .build();
+
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
+    executionDelegator.executeJob(jobInvocation);
+
+    verify(mockContext)
+        .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
+
+    JobServiceConnection connection = connCaptor.getValue();
+    when(iBinderMock.queryLocalInterface(IRemoteJobService.class.getName()))
+        .thenReturn(jobServiceMock);
+    connection.onServiceConnected(null, iBinderMock);
+
+    verify(jobServiceMock).start(bundleCaptor.capture(), jobCallbackCaptor.capture());
+
+    jobCallbackCaptor
+        .getValue()
+        .jobFinished(bundleCaptor.getValue(), JobService.RESULT_FAIL_NORETRY);
+
+    assertNull(ExecutionDelegator.getJobServiceConnection("service"));
+    assertEquals(JobService.RESULT_FAIL_NORETRY, receiver.lastResult);
+    assertTrue(connection.wasUnbound());
+  }
+
+  @Test
   public void testExecuteJob_sendsBroadcastWithJobAndMessage() throws Exception {
     for (JobInvocation input : TestUtil.getJobInvocationCombinations()) {
       verifyExecuteJob(input);

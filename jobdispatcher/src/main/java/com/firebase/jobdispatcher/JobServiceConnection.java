@@ -33,6 +33,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -205,5 +207,44 @@ class JobServiceConnection implements ServiceConnection {
     } catch (RemoteException e) {
       Log.e(TAG, "Error sending result for job " + job.getTag() + ": " + e);
     }
+  }
+
+  /** Removes provided {@link JobInvocation job} and unbinds itself if no other jobs are running. */
+  synchronized void onJobFinished(JobInvocation jobInvocation) {
+    jobStatuses.remove(jobInvocation);
+    if (jobStatuses.isEmpty()) {
+      unbind();
+    }
+  }
+
+  /** Returns {@code true} if the job was started. */
+  synchronized boolean startJob(JobInvocation jobInvocation) {
+    boolean connected = isConnected();
+    if (connected) {
+      // Need to stop running job
+      Boolean isRunning = jobStatuses.get(jobInvocation);
+      if (Boolean.TRUE.equals(isRunning)) {
+        Log.w(TAG, "Received an execution request for already running job " + jobInvocation);
+        stopJob(/* Do not send result because it is new execution request. */ false, jobInvocation);
+      }
+      try {
+        binder.start(encodeJob(jobInvocation), callback);
+      } catch (RemoteException e) {
+        Log.e(TAG, "Failed to start the job " + jobInvocation, e);
+        unbind();
+        return false;
+      }
+    }
+    jobStatuses.put(jobInvocation, connected);
+    return connected;
+  }
+
+  private static Bundle encodeJob(JobParameters job) {
+    return getJobCoder().encode(job, new Bundle());
+  }
+
+  @VisibleForTesting
+  synchronized boolean hasJobInvocation(JobInvocation jobInvocation) {
+    return jobStatuses.containsKey(jobInvocation);
   }
 }
