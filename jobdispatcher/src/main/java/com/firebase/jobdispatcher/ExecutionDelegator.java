@@ -34,7 +34,6 @@ import com.firebase.jobdispatcher.JobService.JobResult;
  * communication with those services.
  */
 /* package */ class ExecutionDelegator {
-  @VisibleForTesting static final int JOB_FINISHED = 1;
 
   static final String TAG = "FJD.ExternalReceiver";
 
@@ -42,11 +41,17 @@ import com.firebase.jobdispatcher.JobService.JobResult;
     void onJobFinished(@NonNull JobInvocation jobInvocation, @JobResult int result);
   }
 
-  /** A mapping of {@link JobInvocation} to (local) binder connections. Synchronized by itself. */
-  @VisibleForTesting
+  /** A mapping of service name to binder connections. */
   // @GuardedBy("serviceConnections")
-  static final SimpleArrayMap<JobInvocation, JobServiceConnection> serviceConnections =
+  private static final SimpleArrayMap<String, JobServiceConnection> serviceConnections =
       new SimpleArrayMap<>();
+
+  @VisibleForTesting
+  static JobServiceConnection getJobServiceConnection(String serviceName) {
+    synchronized (serviceConnections) {
+      return serviceConnections.get(serviceName);
+    }
+  }
 
   @VisibleForTesting
   static void cleanServiceConnections() {
@@ -87,21 +92,25 @@ import com.firebase.jobdispatcher.JobService.JobResult;
     }
 
     synchronized (serviceConnections) {
-      JobServiceConnection oldConnection = serviceConnections.get(jobInvocation);
-      if (oldConnection != null) {
-        if (!oldConnection.isConnected() && !oldConnection.wasUnbound()) {
+      JobServiceConnection jobServiceConnection =
+          serviceConnections.get(jobInvocation.getService());
+      if (jobServiceConnection != null && !jobServiceConnection.wasUnbound()) {
+        if (jobServiceConnection.hasJobInvocation(jobInvocation)
+            && !jobServiceConnection.isConnected()) {
           // Fresh connection. Not yet connected or not able to connect.
           // TODO(user) Handle invalid service when the connection can't be established.
           return;
         }
-        oldConnection.onStop(false /* Do not send result because it is new execution request. */);
+      } else {
+        jobServiceConnection = new JobServiceConnection(execCallback, context);
+        serviceConnections.put(jobInvocation.getService(), jobServiceConnection);
       }
-      JobServiceConnection conn = new JobServiceConnection(jobInvocation, execCallback, context);
-
-      serviceConnections.put(jobInvocation, conn);
-      if (!context.bindService(createBindIntent(jobInvocation), conn, BIND_AUTO_CREATE)) {
+      boolean wasConnected = jobServiceConnection.startJob(jobInvocation);
+      if (!wasConnected
+          && !context.bindService(
+              createBindIntent(jobInvocation), jobServiceConnection, BIND_AUTO_CREATE)) {
         Log.e(TAG, "Unable to bind to " + jobInvocation.getService());
-        conn.unbind();
+        jobServiceConnection.unbind();
       }
     }
   }
@@ -113,20 +122,29 @@ import com.firebase.jobdispatcher.JobService.JobResult;
     return execReq;
   }
 
+  /** Stops provided {@link JobInvocation job}. */
   static void stopJob(JobInvocation job, boolean needToSendResult) {
     synchronized (serviceConnections) {
-      JobServiceConnection jobServiceConnection = serviceConnections.remove(job);
+      JobServiceConnection jobServiceConnection = serviceConnections.get(job.getService());
       if (jobServiceConnection != null) {
-        jobServiceConnection.onStop(needToSendResult);
+        jobServiceConnection.onStop(job, needToSendResult);
+        if (jobServiceConnection.wasUnbound()) {
+          serviceConnections.remove(job.getService());
+        }
       }
     }
   }
 
   private void onJobFinishedMessage(JobInvocation jobInvocation, int result) {
+    // Need to release unused connection if it was not release previously.
     synchronized (serviceConnections) {
-      JobServiceConnection connection = serviceConnections.remove(jobInvocation);
-      if (connection != null) {
-        connection.unbind();
+      JobServiceConnection jobServiceConnection =
+          serviceConnections.get(jobInvocation.getService());
+      if (jobServiceConnection != null) {
+        jobServiceConnection.onJobFinished(jobInvocation);
+        if (jobServiceConnection.wasUnbound()) {
+          serviceConnections.remove(jobInvocation.getService());
+        }
       }
     }
 

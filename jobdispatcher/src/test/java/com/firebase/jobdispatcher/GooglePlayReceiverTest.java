@@ -16,15 +16,19 @@
 
 package com.firebase.jobdispatcher;
 
+import static android.content.Context.BIND_AUTO_CREATE;
 import static com.firebase.jobdispatcher.TestUtil.encodeContentUriJob;
 import static com.firebase.jobdispatcher.TestUtil.encodeRecurringContentUriJob;
 import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -32,6 +36,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Binder;
@@ -44,6 +49,7 @@ import android.provider.ContactsContract;
 import android.provider.ContactsContract.Contacts;
 import android.provider.MediaStore.Images.Media;
 import android.support.annotation.NonNull;
+import com.firebase.jobdispatcher.ExecutionDelegator.JobFinishedCallback;
 import com.firebase.jobdispatcher.GooglePlayReceiverTest.ShadowMessenger;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
 import com.firebase.jobdispatcher.TestUtil.InspectableBinder;
@@ -86,6 +92,7 @@ public class GooglePlayReceiverTest {
   private GooglePlayReceiver receiver;
 
   @Mock private Messenger messengerMock;
+  @Mock private Context contextMock;
   @Mock private IBinder binderMock;
   @Mock private JobCallback callbackMock;
   @Mock private ExecutionDelegator executionDelegatorMock;
@@ -93,6 +100,7 @@ public class GooglePlayReceiverTest {
   @Mock private JobServiceConnection jobServiceConnectionMock;
   @Mock private Driver driverMock;
   @Captor private ArgumentCaptor<Job> jobArgumentCaptor;
+  @Captor ArgumentCaptor<JobServiceConnection> jobServiceConnectionCaptor;
 
   private final Builder jobInvocationBuilder =
       new Builder()
@@ -107,6 +115,7 @@ public class GooglePlayReceiverTest {
     when(receiver.getExecutionDelegator()).thenReturn(executionDelegatorMock);
     receiver.setGooglePlayDriver(driverMock);
     receiver.setValidationEnforcer(new ValidationEnforcer(new NoopJobValidator()));
+    when(contextMock.getPackageName()).thenReturn("foo.bar.whatever");
   }
 
   @After
@@ -155,19 +164,20 @@ public class GooglePlayReceiverTest {
             .build();
 
     receiver.prepareJob(jobCallbackMock, bundle);
+    when(contextMock.bindService(
+            any(Intent.class), any(JobServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+    new ExecutionDelegator(contextMock, mock(JobFinishedCallback.class)).executeJob(invocation);
+    verify(contextMock)
+        .bindService(any(Intent.class), jobServiceConnectionCaptor.capture(), eq(BIND_AUTO_CREATE));
 
-    synchronized (ExecutionDelegator.serviceConnections) {
-      ExecutionDelegator.serviceConnections.put(invocation, jobServiceConnectionMock);
-    }
+    assertTrue(jobServiceConnectionCaptor.getValue().hasJobInvocation(invocation));
 
     GooglePlayReceiver.onSchedule(job);
-
-    verify(jobServiceConnectionMock).onStop(false);
-    synchronized (ExecutionDelegator.serviceConnections) {
-      assertTrue(
-          "JobServiceConnection should be removed.",
-          ExecutionDelegator.serviceConnections.isEmpty());
-    }
+    assertFalse(jobServiceConnectionCaptor.getValue().hasJobInvocation(invocation));
+    assertNull(
+        "JobServiceConnection should be removed.",
+        ExecutionDelegator.getJobServiceConnection(invocation.getService()));
   }
 
   @Test

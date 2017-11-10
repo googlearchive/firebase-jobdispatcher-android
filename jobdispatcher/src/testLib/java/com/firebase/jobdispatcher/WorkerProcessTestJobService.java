@@ -23,17 +23,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.util.Log;
 import com.google.common.util.concurrent.SettableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 /** A JobService that's configured via the manifest to run in a different process. */
 public class WorkerProcessTestJobService extends JobService {
-
+  public static final String TAG = "FJD.WorkerProcessJob";
   public static final String ACTION_JOBSERVICE_EVENT = "action_jobservice_event";
   public static final String EXTRA_EVENT_TYPE = "event";
   public static final String EXTRA_MORE_WORK_REMAINING = "more_work";
   public static final String EXTRA_BUNDLE_EXTRAS = "extras";
+  public static final String EXTRA_BUNDLE_TAG = "tag";
   public static final int EVENT_TYPE_ON_START_JOB = 1;
   public static final int EVENT_TYPE_ON_STOP_JOB = 2;
 
@@ -50,11 +52,13 @@ public class WorkerProcessTestJobService extends JobService {
 
   @Override
   public boolean onStartJob(JobParameters job) {
+    Log.i(TAG, "onStartJob " + job);
     return sendOrderedBroadcastAndGetResult(createIntentForEventType(job, EVENT_TYPE_ON_START_JOB));
   }
 
   @Override
   public boolean onStopJob(JobParameters job) {
+    Log.i(TAG, "onStopJob " + job);
     return sendOrderedBroadcastAndGetResult(createIntentForEventType(job, EVENT_TYPE_ON_STOP_JOB));
   }
 
@@ -88,6 +92,7 @@ public class WorkerProcessTestJobService extends JobService {
     return new Intent(ACTION_JOBSERVICE_EVENT)
         .putExtra(EXTRA_EVENT_TYPE, eventType)
         .putExtra(EXTRA_BUNDLE_EXTRAS, job.getExtras())
+        .putExtra(EXTRA_BUNDLE_TAG, job.getTag())
         .setPackage(getPackageName());
   }
 }
