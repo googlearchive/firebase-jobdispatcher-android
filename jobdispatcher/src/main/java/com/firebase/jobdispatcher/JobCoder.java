@@ -24,10 +24,12 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.Log;
 import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -35,14 +37,12 @@ import org.json.JSONObject;
 
 /** JobCoder is a tool to encode and decode JobSpecs from Bundles. */
 /* package */ final class JobCoder {
-  private final boolean includeExtras;
   private final String prefix;
 
   private static final String JSON_URI_FLAGS = "uri_flags";
   private static final String JSON_URIS = "uris";
 
-  JobCoder(String prefix, boolean includeExtras) {
-    this.includeExtras = includeExtras;
+  JobCoder(String prefix) {
     this.prefix = prefix;
   }
 
@@ -50,6 +50,11 @@ import org.json.JSONObject;
   Bundle encode(@NonNull JobParameters jobParameters, @NonNull Bundle data) {
     if (data == null) {
       throw new IllegalArgumentException("Unexpected null Bundle provided");
+    }
+
+    Bundle userExtras = jobParameters.getExtras();
+    if (userExtras != null) {
+      data.putAll(userExtras);
     }
 
     data.putInt(prefix + BundleProtocol.PACKED_PARAM_LIFETIME, jobParameters.getLifetime());
@@ -60,10 +65,6 @@ import org.json.JSONObject;
     data.putString(prefix + BundleProtocol.PACKED_PARAM_SERVICE, jobParameters.getService());
     data.putInt(
         prefix + BundleProtocol.PACKED_PARAM_CONSTRAINTS, compact(jobParameters.getConstraints()));
-
-    if (includeExtras) {
-      data.putBundle(prefix + BundleProtocol.PACKED_PARAM_EXTRAS, jobParameters.getExtras());
-    }
 
     encodeTrigger(jobParameters.getTrigger(), data);
     encodeRetryStrategy(jobParameters.getRetryStrategy(), data);
@@ -93,11 +94,12 @@ import org.json.JSONObject;
   }
 
   @Nullable
-  public JobInvocation.Builder decode(@NonNull Bundle data) {
-    if (data == null) {
+  public JobInvocation.Builder decode(@NonNull Bundle providedBundle) {
+    if (providedBundle == null) {
       throw new IllegalArgumentException("Unexpected null Bundle provided");
     }
 
+    Bundle data = new Bundle(providedBundle); // Copy to prevent modification
     boolean recur = data.getBoolean(prefix + BundleProtocol.PACKED_PARAM_RECURRING);
     boolean replaceCur = data.getBoolean(prefix + BundleProtocol.PACKED_PARAM_REPLACE_CURRENT);
     int lifetime = data.getInt(prefix + BundleProtocol.PACKED_PARAM_LIFETIME);
@@ -125,8 +127,20 @@ import org.json.JSONObject;
     builder.setConstraints(constraints);
     builder.setReplaceCurrent(replaceCur);
 
-    // repack the taskExtras
+    // remove any prefixed keys
+    if (!TextUtils.isEmpty(prefix)) {
+      Iterator<String> keyIterator = data.keySet().iterator();
+      while (keyIterator.hasNext()) {
+        String key = keyIterator.next();
+        if (key.startsWith(prefix)) {
+          keyIterator.remove();
+        }
+      }
+    }
+
+    // Assume anything that wasn't prefixed is a user-supplied extra
     builder.addExtras(data);
+
     return builder;
   }
 
