@@ -38,7 +38,6 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -50,7 +49,7 @@ public class TestUtil {
 
   static final ArrayList<Uri> URIS =
       new ArrayList<>(Arrays.asList(ContactsContract.AUTHORITY_URI, Media.EXTERNAL_CONTENT_URI));
-  static final JobCoder JOB_CODER = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+  static final JobCoder JOB_CODER = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX);
 
   private static final int[] LIFETIME_COMBINATIONS = {Lifetime.UNTIL_NEXT_BOOT, Lifetime.FOREVER};
 
@@ -89,7 +88,7 @@ public class TestUtil {
   }
 
   static List<List<Integer>> getAllConstraintCombinations() {
-    List<List<Integer>> combos = new LinkedList<>();
+    List<List<Integer>> combos = new ArrayList<>();
 
     combos.add(Collections.<Integer>emptyList());
     for (Integer cur : Constraint.ALL_CONSTRAINTS) {
@@ -160,7 +159,7 @@ public class TestUtil {
   }
 
   private static Bundle[] getBundleCombinations() {
-    List<Bundle> bundles = new LinkedList<>();
+    List<Bundle> bundles = new ArrayList<>();
     bundles.add(new Bundle());
 
     Bundle b = new Bundle();
@@ -302,7 +301,7 @@ public class TestUtil {
 
   /** A Binder implementation that tracks and exposes transaction arguments. */
   public static class InspectableBinder extends Binder {
-    private final List<TransactionArguments> transactionArguments = new LinkedList<>();
+    private final List<TransactionArguments> transactionArguments = new ArrayList<>();
 
     public InspectableBinder() {}
 

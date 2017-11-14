@@ -38,7 +38,7 @@ public final class Job implements JobParameters {
 
   private Job(Builder builder) {
     service = builder.serviceClassName;
-    extras = builder.extras;
+    extras = builder.extras == null ? null : new Bundle(builder.extras); // Make a copy
     tag = builder.tag;
     trigger = builder.trigger;
     retryStrategy = builder.retryStrategy;

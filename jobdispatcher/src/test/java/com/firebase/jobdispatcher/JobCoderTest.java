@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.TestUtil.assertBundlesEqual;
 import static com.firebase.jobdispatcher.TestUtil.encodeContentUriJob;
 import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
 import static org.junit.Assert.assertEquals;
@@ -39,7 +40,7 @@ import org.robolectric.annotation.Config;
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobCoderTest {
-  private final JobCoder coder = new JobCoder(PREFIX, true);
+  private final JobCoder coder = new JobCoder(PREFIX);
   private static final String PREFIX = "prefix";
   private Builder builder;
 
@@ -59,11 +60,23 @@ public class JobCoderTest {
   @Test
   public void testCodingIsLossless() {
     for (JobParameters input : TestUtil.getJobCombinations(builder)) {
-
-      JobParameters output = coder.decode(coder.encode(input, input.getExtras())).build();
-
-      TestUtil.assertJobsEqual(input, output);
+      TestUtil.assertJobsEqual(input, coder.decode(coder.encode(input, new Bundle())).build());
     }
+  }
+
+  @Test
+  public void testCodingForExtras() {
+    Bundle extras = new Bundle();
+    extras.putString("foo", "bar");
+    builder.setExtras(extras);
+
+    Bundle deserializedExtras =
+        coder
+            .decode(coder.encode(setValidBuilderDefaults(builder).build(), new Bundle()))
+            .build()
+            .getExtras();
+
+    assertBundlesEqual(extras, deserializedExtras);
   }
 
   @Test(expected = IllegalArgumentException.class)

@@ -53,7 +53,7 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
   private static final String ERROR_NO_DATA = "No data provided, terminating";
 
   private static final JobCoder prefixedCoder =
-      new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+      new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX);
 
   private final GooglePlayCallbackExtractor callbackExtractor = new GooglePlayCallbackExtractor();
 

@@ -144,7 +144,7 @@ public class GooglePlayReceiverTest {
   @Test
   public void onReschedule_stopJob() {
     Bundle bundle = TestUtil.getBundleForContentJobExecution();
-    JobCoder prefixedCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true);
+    JobCoder prefixedCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX);
     JobInvocation invocation = prefixedCoder.decodeIntentBundle(bundle);
 
     Job job =
@@ -348,8 +348,7 @@ public class GooglePlayReceiverTest {
         new Intent("com.google.android.gms.gcm.ACTION_TASK_READY")
             .putExtra(
                 "extras",
-                new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, true)
-                    .encode(job, new Bundle()))
+                new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX).encode(job, new Bundle()))
             .putExtra("callback", new InspectableBinder().toPendingCallback());
 
     assertResultWasStartNotSticky(receiver.onStartCommand(execIntent, 0, 101));

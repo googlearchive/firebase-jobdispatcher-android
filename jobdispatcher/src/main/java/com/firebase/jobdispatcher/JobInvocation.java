@@ -171,7 +171,7 @@ import com.firebase.jobdispatcher.Constraint.JobConstraint;
       return this;
     }
 
-    public Builder addExtras(@NonNull Bundle bundle) {
+    public Builder addExtras(Bundle bundle) {
       if (bundle != null) {
         extras.putAll(bundle);
       }
