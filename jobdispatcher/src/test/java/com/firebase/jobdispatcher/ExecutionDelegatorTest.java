@@ -43,6 +43,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -88,6 +89,11 @@ public class ExecutionDelegatorTest {
           @Override
           public void stop(Bundle invocationData, boolean needToSendResult) {}
         };
+  }
+
+  @After
+  public void tearDown() {
+    ExecutionDelegator.cleanServiceConnections();
   }
 
   @Test

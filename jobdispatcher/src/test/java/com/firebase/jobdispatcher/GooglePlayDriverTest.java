@@ -79,6 +79,7 @@ public class GooglePlayDriverTest {
   @After
   public void tearDown() {
     GooglePlayReceiver.clearCallbacks();
+    ExecutionDelegator.cleanServiceConnections();
   }
 
   @Test
