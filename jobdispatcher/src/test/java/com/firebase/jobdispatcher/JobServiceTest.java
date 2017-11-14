@@ -16,40 +16,49 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import android.content.Intent;
-import android.os.Handler;
-import android.os.HandlerThread;
+import android.os.Bundle;
 import android.os.IBinder;
-import android.os.Message;
+import android.os.Looper;
 import android.os.Parcel;
+import android.support.v4.util.Pair;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
 import com.google.android.gms.gcm.PendingCallback;
+import com.google.common.util.concurrent.SettableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 /** Tests for the {@link JobService} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
 public class JobServiceTest {
   private static CountDownLatch countDownLatch;
+
+  private final IJobCallback noopCallback =
+      new IJobCallback.Stub() {
+        @Override
+        public void jobFinished(Bundle invocationData, @JobService.JobResult int result) {}
+      };
 
   @Before
   public void setUp() throws Exception {}
@@ -148,14 +157,8 @@ public class JobServiceTest {
   }
 
   @Test
-  public void testOnStartCommand_handlesStartJob_validRequest() throws InterruptedException {
+  public void testOnStartCommand_handlesStartJob_validRequest() throws Exception {
     JobService service = spy(new ExampleJobService());
-
-    HandlerThread ht = new HandlerThread("handler");
-    ht.start();
-    Handler h = new Handler(ht.getLooper());
-
-    Intent executeJobIntent = new Intent(JobService.ACTION_EXECUTE);
 
     Job jobSpec =
         TestUtil.getBuilderWithNoopValidator()
@@ -168,15 +171,16 @@ public class JobServiceTest {
 
     countDownLatch = new CountDownLatch(1);
 
-    ((JobService.LocalBinder) service.onBind(executeJobIntent))
-        .getService()
-        .start(jobSpec, h.obtainMessage(ExecutionDelegator.JOB_FINISHED, jobSpec));
+    Bundle jobSpecData = getJobCoder().encode(jobSpec, new Bundle());
+    IRemoteJobService remoteJobService =
+        IRemoteJobService.Stub.asInterface(service.onBind(new Intent(JobService.ACTION_EXECUTE)));
+    remoteJobService.start(jobSpecData, noopCallback);
 
     assertTrue("Expected job to run to completion", countDownLatch.await(5, TimeUnit.SECONDS));
   }
 
   @Test
-  public void testOnStartCommand_handlesStartJob_doNotStartRunningJobAgain() {
+  public void testOnStartCommand_handlesStartJob_doNotStartRunningJobAgain() throws Exception {
     StoppableJobService service = new StoppableJobService(false);
 
     Job jobSpec =
@@ -186,8 +190,9 @@ public class JobServiceTest {
             .setTrigger(Trigger.NOW)
             .build();
 
-    ((JobService.LocalBinder) service.onBind(null)).getService().start(jobSpec, null);
-    ((JobService.LocalBinder) service.onBind(null)).getService().start(jobSpec, null);
+    Bundle jobSpecData = getJobCoder().encode(jobSpec, new Bundle());
+    IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, null);
+    IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, null);
 
     assertEquals(1, service.getNumberOfExecutionRequestsReceived());
   }
@@ -206,7 +211,7 @@ public class JobServiceTest {
   }
 
   @Test
-  public void stop_withCallback_retry() {
+  public void stop_withCallback_retry() throws Exception {
     JobService service = spy(new StoppableJobService(false));
 
     JobInvocation job =
@@ -216,18 +221,18 @@ public class JobServiceTest {
             .setService(StoppableJobService.class.getName())
             .build();
 
-    Handler handlerMock = mock(Handler.class);
-    Message message = Message.obtain(handlerMock);
-    service.start(job, message);
+    // start the service
+    FutureSettingJobCallback callback = new FutureSettingJobCallback();
+    service.start(job, callback);
 
     service.stop(job, true);
     verify(service).onStopJob(job);
-    verify(handlerMock).sendMessage(message);
-    assertEquals(JobService.RESULT_SUCCESS, message.arg1);
+
+    callback.verifyCalledWithJobAndResult(job, JobService.RESULT_SUCCESS);
   }
 
   @Test
-  public void stop_withCallback_done() {
+  public void stop_withCallback_done() throws Exception {
     JobService service = spy(new StoppableJobService(true));
 
     JobInvocation job =
@@ -237,18 +242,16 @@ public class JobServiceTest {
             .setService(StoppableJobService.class.getName())
             .build();
 
-    Handler handlerMock = mock(Handler.class);
-    Message message = Message.obtain(handlerMock);
-    service.start(job, message);
+    FutureSettingJobCallback callback = new FutureSettingJobCallback();
+    service.start(job, callback);
 
     service.stop(job, true);
     verify(service).onStopJob(job);
-    verify(handlerMock).sendMessage(message);
-    assertEquals(JobService.RESULT_FAIL_RETRY, message.arg1);
+    callback.verifyCalledWithJobAndResult(job, JobService.RESULT_FAIL_RETRY);
   }
 
   @Test
-  public void onStartJob_jobFinishedReschedule() {
+  public void onStartJob_jobFinishedReschedule() throws Exception {
     // Verify that a retry request from within onStartJob will cause the retry result to be sent
     // to the bouncer service's handler, regardless of what value is ultimately returned from
     // onStartJob.
@@ -273,17 +276,14 @@ public class JobServiceTest {
             .setService(reschedulingService.getClass())
             .setTrigger(Trigger.NOW)
             .build();
-    Handler mock = mock(Handler.class);
-    Message message = new Message();
-    message.setTarget(mock);
-    reschedulingService.start(jobSpec, message);
 
-    verify(mock).sendMessage(message);
-    assertEquals(JobService.RESULT_FAIL_RETRY, message.arg1);
+    FutureSettingJobCallback callback = new FutureSettingJobCallback();
+    reschedulingService.start(jobSpec, callback);
+    callback.verifyCalledWithJobAndResult(jobSpec, JobService.RESULT_FAIL_RETRY);
   }
 
   @Test
-  public void onStartJob_jobFinishedNotReschedule() {
+  public void onStartJob_jobFinishedNotReschedule() throws Exception {
     // Verify that a termination request from within onStartJob will cause the result to be sent
     // to the bouncer service's handler, regardless of what value is ultimately returned from
     // onStartJob.
@@ -307,13 +307,10 @@ public class JobServiceTest {
             .setService(reschedulingService.getClass())
             .setTrigger(Trigger.NOW)
             .build();
-    Handler mock = mock(Handler.class);
-    Message message = new Message();
-    message.setTarget(mock);
-    reschedulingService.start(jobSpec, message);
 
-    verify(mock).sendMessage(message);
-    assertEquals(JobService.RESULT_SUCCESS, message.arg1);
+    FutureSettingJobCallback callback = new FutureSettingJobCallback();
+    reschedulingService.start(jobSpec, callback);
+    callback.verifyCalledWithJobAndResult(jobSpec, JobService.RESULT_SUCCESS);
   }
 
   @Test
@@ -350,12 +347,53 @@ public class JobServiceTest {
         JobService.RESULT_FAIL_NORETRY);
   }
 
+  @Test
+  public void onStop_calledOnMainThread() throws Exception {
+    final SettableFuture<Looper> looperFuture = SettableFuture.create();
+    final JobService service =
+        new JobService() {
+          @Override
+          public boolean onStartJob(JobParameters job) {
+            return true; // more work to do
+          }
+
+          @Override
+          public boolean onStopJob(JobParameters job) {
+            looperFuture.set(Looper.myLooper());
+            return false;
+          }
+        };
+
+    final Job jobSpec =
+        TestUtil.getBuilderWithNoopValidator()
+            .setTag("tag")
+            .setService(service.getClass())
+            .setTrigger(Trigger.NOW)
+            .build();
+
+    service.start(jobSpec, noopCallback);
+
+    // call stopJob on a background thread and wait for it
+    Executors.newSingleThreadExecutor()
+        .submit(
+            new Runnable() {
+              @Override
+              public void run() {
+                service.stop(jobSpec, true);
+              }
+            })
+        .get(1, TimeUnit.SECONDS);
+
+    ShadowLooper.idleMainLooper();
+
+    assertEquals(
+        "onStopJob was not called on main thread",
+        Looper.getMainLooper(),
+        looperFuture.get(1, TimeUnit.SECONDS));
+  }
+
   private static void verifyOnUnbindCausesResult(JobService service, int expectedResult)
       throws Exception {
-    Handler mock = mock(Handler.class);
-    Message msg = new Message();
-    msg.setTarget(mock);
-
     Job jobSpec =
         TestUtil.getBuilderWithNoopValidator()
             .setTag("tag")
@@ -364,20 +402,48 @@ public class JobServiceTest {
             .build();
 
     // start the service
-    service.start(jobSpec, msg);
+    FutureSettingJobCallback callback = new FutureSettingJobCallback();
+    service.start(jobSpec, callback);
     // shouldn't have sent a result message yet (still doing background work)
-    verify(mock, never()).sendMessage(msg);
+    assertFalse(callback.getJobFinishedFuture().isDone());
     // manually trigger the onUnbind hook
     service.onUnbind(new Intent());
 
-    ArgumentCaptor<Message> msgCaptor = ArgumentCaptor.forClass(Message.class);
-    verify(mock).sendMessage(msgCaptor.capture());
-    assertEquals(expectedResult, msgCaptor.getValue().arg1);
+    callback.verifyCalledWithJobAndResult(jobSpec, expectedResult);
 
     // Calling jobFinished should not attempt to send a second message
-    reset(mock);
+    callback.reset();
     service.jobFinished(jobSpec, false);
-    verify(mock, never()).sendMessage(any(Message.class));
+    assertFalse(callback.getJobFinishedFuture().isDone());
+  }
+
+  private static class FutureSettingJobCallback extends IJobCallback.Stub {
+    SettableFuture<Pair<Bundle, Integer>> jobFinishedFuture = SettableFuture.create();
+
+    SettableFuture<Pair<Bundle, Integer>> getJobFinishedFuture() {
+      return jobFinishedFuture;
+    }
+
+    void reset() {
+      jobFinishedFuture = SettableFuture.create();
+    }
+
+    void verifyCalledWithJobAndResult(JobParameters job, int result) throws Exception {
+      Pair<Bundle, Integer> jobFinishedResult = getJobFinishedFuture().get(0, TimeUnit.SECONDS);
+      assertNotNull(jobFinishedResult);
+
+      JobCoder jc = getJobCoder();
+      assertEquals(
+          // re-encode so they're the same class
+          jc.decode(jc.encode(job, new Bundle())).build(),
+          jc.decode(jobFinishedResult.first).build());
+      assertEquals(result, (int) jobFinishedResult.second);
+    }
+
+    @Override
+    public void jobFinished(Bundle invocationData, @JobService.JobResult int result) {
+      jobFinishedFuture.set(Pair.create(invocationData, result));
+    }
   }
 
   /** A simple JobService that just counts down the {@link #countDownLatch}. */

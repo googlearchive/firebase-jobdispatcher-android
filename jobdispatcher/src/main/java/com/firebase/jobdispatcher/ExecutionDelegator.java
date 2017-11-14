@@ -17,26 +17,23 @@
 package com.firebase.jobdispatcher;
 
 import static android.content.Context.BIND_AUTO_CREATE;
+import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
+import android.os.Bundle;
 // import android.support.annotation.GuardedBy;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 import android.support.v4.util.SimpleArrayMap;
 import android.util.Log;
 import com.firebase.jobdispatcher.JobService.JobResult;
-import java.lang.ref.WeakReference;
 
 /**
  * ExecutionDelegator tracks local Binder connections to client JobServices and handles
  * communication with those services.
  */
 /* package */ class ExecutionDelegator {
-  @VisibleForTesting static final int JOB_FINISHED = 1;
 
   static final String TAG = "FJD.ExternalReceiver";
 
@@ -44,11 +41,17 @@ import java.lang.ref.WeakReference;
     void onJobFinished(@NonNull JobInvocation jobInvocation, @JobResult int result);
   }
 
-  /** A mapping of {@link JobInvocation} to (local) binder connections. Synchronized by itself. */
-  @VisibleForTesting
+  /** A mapping of service name to binder connections. */
   // @GuardedBy("serviceConnections")
-  static final SimpleArrayMap<JobInvocation, JobServiceConnection> serviceConnections =
+  private static final SimpleArrayMap<String, JobServiceConnection> serviceConnections =
       new SimpleArrayMap<>();
+
+  @VisibleForTesting
+  static JobServiceConnection getJobServiceConnection(String serviceName) {
+    synchronized (serviceConnections) {
+      return serviceConnections.get(serviceName);
+    }
+  }
 
   @VisibleForTesting
   static void cleanServiceConnections() {
@@ -57,9 +60,19 @@ import java.lang.ref.WeakReference;
     }
   }
 
-  @VisibleForTesting
-  final ResponseHandler responseHandler =
-      new ResponseHandler(Looper.getMainLooper(), new WeakReference<>(this));
+  private final IJobCallback execCallback =
+      new IJobCallback.Stub() {
+        @Override
+        public void jobFinished(Bundle invocationData, @JobService.JobResult int result) {
+          JobInvocation.Builder invocation = getJobCoder().decode(invocationData);
+          if (invocation == null) {
+            Log.wtf(TAG, "jobFinished: unknown invocation provided");
+            return;
+          }
+
+          ExecutionDelegator.this.onJobFinishedMessage(invocation.build(), result);
+        }
+      };
 
   private final Context context;
   private final JobFinishedCallback jobFinishedCallback;
@@ -79,23 +92,25 @@ import java.lang.ref.WeakReference;
     }
 
     synchronized (serviceConnections) {
-      JobServiceConnection oldConnection = serviceConnections.get(jobInvocation);
-      if (oldConnection != null) {
-        if (!oldConnection.isConnected() && !oldConnection.wasUnbound()) {
+      JobServiceConnection jobServiceConnection =
+          serviceConnections.get(jobInvocation.getService());
+      if (jobServiceConnection != null && !jobServiceConnection.wasUnbound()) {
+        if (jobServiceConnection.hasJobInvocation(jobInvocation)
+            && !jobServiceConnection.isConnected()) {
           // Fresh connection. Not yet connected or not able to connect.
           // TODO(user) Handle invalid service when the connection can't be established.
           return;
         }
-        oldConnection.onStop(false /* Do not send result because it is new execution request. */);
+      } else {
+        jobServiceConnection = new JobServiceConnection(execCallback, context);
+        serviceConnections.put(jobInvocation.getService(), jobServiceConnection);
       }
-      JobServiceConnection conn =
-          new JobServiceConnection(
-              jobInvocation, responseHandler.obtainMessage(JOB_FINISHED), context);
-
-      serviceConnections.put(jobInvocation, conn);
-      if (!context.bindService(createBindIntent(jobInvocation), conn, BIND_AUTO_CREATE)) {
+      boolean wasConnected = jobServiceConnection.startJob(jobInvocation);
+      if (!wasConnected
+          && !context.bindService(
+              createBindIntent(jobInvocation), jobServiceConnection, BIND_AUTO_CREATE)) {
         Log.e(TAG, "Unable to bind to " + jobInvocation.getService());
-        conn.unbind();
+        jobServiceConnection.unbind();
       }
     }
   }
@@ -107,62 +122,32 @@ import java.lang.ref.WeakReference;
     return execReq;
   }
 
+  /** Stops provided {@link JobInvocation job}. */
   static void stopJob(JobInvocation job, boolean needToSendResult) {
     synchronized (serviceConnections) {
-      JobServiceConnection jobServiceConnection = serviceConnections.remove(job);
+      JobServiceConnection jobServiceConnection = serviceConnections.get(job.getService());
       if (jobServiceConnection != null) {
-        jobServiceConnection.onStop(needToSendResult);
+        jobServiceConnection.onStop(job, needToSendResult);
+        if (jobServiceConnection.wasUnbound()) {
+          serviceConnections.remove(job.getService());
+        }
       }
     }
   }
 
   private void onJobFinishedMessage(JobInvocation jobInvocation, int result) {
+    // Need to release unused connection if it was not release previously.
     synchronized (serviceConnections) {
-      JobServiceConnection connection = serviceConnections.remove(jobInvocation);
-      if (connection != null) {
-        connection.unbind();
+      JobServiceConnection jobServiceConnection =
+          serviceConnections.get(jobInvocation.getService());
+      if (jobServiceConnection != null) {
+        jobServiceConnection.onJobFinished(jobInvocation);
+        if (jobServiceConnection.wasUnbound()) {
+          serviceConnections.remove(jobInvocation.getService());
+        }
       }
     }
 
     jobFinishedCallback.onJobFinished(jobInvocation, result);
-  }
-
-  @VisibleForTesting
-  static class ResponseHandler extends Handler {
-
-    /**
-     * We hold a WeakReference to the ExecutionDelegator because it holds a reference to a Service
-     * Context and Handlers are often kept in memory longer than you'd expect because any pending
-     * Messages can maintain references to them.
-     */
-    private final WeakReference<ExecutionDelegator> executionDelegatorReference;
-
-    ResponseHandler(Looper looper, WeakReference<ExecutionDelegator> executionDelegator) {
-      super(looper);
-      this.executionDelegatorReference = executionDelegator;
-    }
-
-    @Override
-    public void handleMessage(Message msg) {
-      switch (msg.what) {
-        case JOB_FINISHED:
-          if (msg.obj instanceof JobInvocation) {
-            ExecutionDelegator delegator = this.executionDelegatorReference.get();
-            if (delegator == null) {
-              Log.wtf(TAG, "handleMessage: service was unexpectedly GC'd, can't send job result");
-              return;
-            }
-
-            delegator.onJobFinishedMessage((JobInvocation) msg.obj, msg.arg1);
-            return;
-          }
-
-          Log.wtf(TAG, "handleMessage: unknown obj returned");
-          return;
-
-        default:
-          Log.wtf(TAG, "handleMessage: unknown message type received: " + msg.what);
-      }
-    }
   }
 }

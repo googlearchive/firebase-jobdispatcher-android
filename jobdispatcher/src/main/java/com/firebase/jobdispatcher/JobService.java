@@ -16,12 +16,16 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
+
 import android.app.Service;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.os.Binder;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
+import android.os.Looper;
+import android.os.RemoteException;
 // import android.support.annotation.GuardedBy;
 import android.support.annotation.IntDef;
 import android.support.annotation.MainThread;
@@ -77,6 +81,8 @@ public abstract class JobService extends Service {
   @VisibleForTesting
   static final String ACTION_EXECUTE = "com.firebase.jobdispatcher.ACTION_EXECUTE";
 
+  private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+
   /**
    * Correlates job tags (unique strings) with Messages, which are used to signal the completion of
    * a job.
@@ -84,7 +90,30 @@ public abstract class JobService extends Service {
   // @GuardedBy("runningJobs")
   private final SimpleArrayMap<String, JobCallback> runningJobs = new SimpleArrayMap<>(1);
 
-  private final LocalBinder binder = new LocalBinder();
+  private final IRemoteJobService.Stub binder =
+      new IRemoteJobService.Stub() {
+        @Override
+        public void start(Bundle invocationData, IJobCallback callback) {
+          JobInvocation.Builder invocation = getJobCoder().decode(invocationData);
+          if (invocation == null) {
+            Log.wtf(TAG, "start: unknown invocation provided");
+            return;
+          }
+
+          JobService.this.start(invocation.build(), callback);
+        }
+
+        @Override
+        public void stop(Bundle invocationData, boolean needToSendResult) {
+          JobInvocation.Builder invocation = getJobCoder().decode(invocationData);
+          if (invocation == null) {
+            Log.wtf(TAG, "stop: unknown invocation provided");
+            return;
+          }
+
+          JobService.this.stop(invocation.build(), needToSendResult);
+        }
+      };
 
   /**
    * The entry point to your Job. Implementations should offload work to another thread of execution
@@ -114,23 +143,34 @@ public abstract class JobService extends Service {
   @MainThread
   public abstract boolean onStopJob(JobParameters job);
 
-  @MainThread
-  void start(JobParameters job, Message msg) {
+  /**
+   * Asks the {@code job} to start running. Calls {@link #onStartJob} on the main thread. Once
+   * complete, the {@code msg} will be used to send the result back.
+   */
+  void start(final JobParameters job, IJobCallback callback) {
     synchronized (runningJobs) {
       if (runningJobs.containsKey(job.getTag())) {
         Log.w(
             TAG, String.format(Locale.US, "Job with tag = %s was already running.", job.getTag()));
         return;
       }
-      runningJobs.put(job.getTag(), new JobCallback(msg));
+      runningJobs.put(job.getTag(), new JobCallback(job, callback));
 
-      boolean moreWork = onStartJob(job);
-      if (!moreWork) {
-        JobCallback callback = runningJobs.remove(job.getTag());
-        if (callback != null) {
-          callback.sendResult(RESULT_SUCCESS);
-        }
-      }
+      mainHandler.post(
+          new Runnable() {
+            @Override
+            public void run() {
+              synchronized (runningJobs) {
+                boolean moreWork = onStartJob(job);
+                if (!moreWork) {
+                  JobCallback callback = runningJobs.remove(job.getTag());
+                  if (callback != null) {
+                    callback.sendResult(RESULT_SUCCESS);
+                  }
+                }
+              }
+            }
+          });
     }
   }
 
@@ -139,21 +179,26 @@ public abstract class JobService extends Service {
    *
    * <p>Sending results can be skipped if the call was initiated by a reschedule request.
    */
-  @MainThread
-  void stop(JobInvocation job, boolean needToSendResult) {
+  void stop(final JobParameters job, final boolean needToSendResult) {
     synchronized (runningJobs) {
-      JobCallback jobCallback = runningJobs.remove(job.getTag());
-
+      final JobCallback jobCallback = runningJobs.remove(job.getTag());
       if (jobCallback == null) {
         if (Log.isLoggable(TAG, Log.DEBUG)) {
           Log.d(TAG, "Provided job has already been executed.");
         }
         return;
       }
-      boolean shouldRetry = onStopJob(job);
-      if (needToSendResult) {
-        jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
-      }
+
+      mainHandler.post(
+          new Runnable() {
+            @Override
+            public void run() {
+              boolean shouldRetry = onStopJob(job);
+              if (needToSendResult) {
+                jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
+              }
+            }
+          });
     }
   }
 
@@ -194,12 +239,13 @@ public abstract class JobService extends Service {
   }
 
   @Override
+  @MainThread
   public final boolean onUnbind(Intent intent) {
     synchronized (runningJobs) {
       for (int i = runningJobs.size() - 1; i >= 0; i--) {
         JobCallback callback = runningJobs.remove(runningJobs.keyAt(i));
         if (callback != null) {
-          boolean shouldRetry = onStopJob((JobParameters) callback.message.obj);
+          boolean shouldRetry = onStopJob(callback.job);
           callback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_FAIL_NORETRY);
         }
       }
@@ -237,21 +283,20 @@ public abstract class JobService extends Service {
   public @interface JobResult {}
 
   private static final class JobCallback {
-    public final Message message;
+    final JobParameters job;
+    final IJobCallback remoteCallback;
 
-    private JobCallback(Message message) {
-      this.message = message;
+    private JobCallback(JobParameters job, IJobCallback callback) {
+      this.job = job;
+      this.remoteCallback = callback;
     }
 
     void sendResult(@JobResult int result) {
-      message.arg1 = result;
-      message.sendToTarget();
-    }
-  }
-
-  class LocalBinder extends Binder {
-    JobService getService() {
-      return JobService.this;
+      try {
+        remoteCallback.jobFinished(getJobCoder().encode(job, new Bundle()), result);
+      } catch (RemoteException remoteException) {
+        Log.e(TAG, "Failed to send result to driver", remoteException);
+      }
     }
   }
 }

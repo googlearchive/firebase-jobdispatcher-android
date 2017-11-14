@@ -23,6 +23,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import java.util.HashSet;
@@ -125,9 +127,7 @@ public class ExecutionDelegatorAndroidTest {
     executionDelegator.executeJob(jobInvocation);
     assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
-    synchronized (ExecutionDelegator.serviceConnections) {
-      ExecutionDelegator.serviceConnections.get(jobInvocation).unbind();
-    }
+    ExecutionDelegator.getJobServiceConnection(jobInvocation.getService()).unbind();
 
     assertTrue("Job should be stopped.", stopLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
   }
@@ -182,9 +182,8 @@ public class ExecutionDelegatorAndroidTest {
 
     assertTrue("First job should be stopped.", stopLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
-    synchronized (ExecutionDelegator.serviceConnections) {
-      assertFalse(ExecutionDelegator.serviceConnections.get(secondJobInvocation).wasUnbound());
-    }
+    assertFalse(
+        ExecutionDelegator.getJobServiceConnection(secondJobInvocation.getService()).wasUnbound());
 
     startLatch = new CountDownLatch(1);
     executionDelegator.executeJob(jobInvocation);
@@ -195,11 +194,10 @@ public class ExecutionDelegatorAndroidTest {
 
   private void verifyStopRequestWasProcessed(boolean withResult) throws InterruptedException {
     ExecutionDelegator.stopJob(jobInvocation, withResult);
-
-    CountDownLatch latch = new CountDownLatch(1);
-    executionDelegator.responseHandler.post(() -> latch.countDown());
-    assertTrue(
-        "All messages need to be processed.", latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    // Idle the main looper twice; once to process the call to onStopJob and once to process the
+    // corresponding jobFinishedCallback that sets the finishedJobInvocation variable.
+    idleMainLooper();
+    idleMainLooper();
 
     if (withResult) {
       assertEquals(jobInvocation, finishedJobInvocation);
@@ -208,5 +206,12 @@ public class ExecutionDelegatorAndroidTest {
       assertNull(finishedJobInvocation);
       assertEquals(-1, jobResult);
     }
+  }
+
+  private static void idleMainLooper() throws InterruptedException {
+    CountDownLatch latch = new CountDownLatch(1);
+    new Handler(Looper.getMainLooper()).post(latch::countDown);
+    assertTrue(
+        "Looper didn't run posted runnable.", latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
   }
 }

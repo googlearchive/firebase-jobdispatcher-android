@@ -22,11 +22,20 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <instrumentation
-        android:targetPackage="com.firebase.jobdispatcher"
-        android:name="android.test.InstrumentationTestRunner" />
+        android:name="android.test.InstrumentationTestRunner"
+        android:targetPackage="com.firebase.jobdispatcher"/>
 
     <application>
-        <service android:exported="false" android:name=".TestJobService">
+        <service
+            android:name=".TestJobService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
+            </intent-filter>
+        </service>
+        <service android:name=".WorkerProcessTestJobService"
+            android:process=":worker"
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
             </intent-filter>

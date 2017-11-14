@@ -281,10 +281,20 @@ public class GooglePlayJobWriterTest {
   @Test
   public void testWriteToBundle_extras() {
     Bundle extras = new Bundle();
+    extras.putString("bar", "foo");
+    extras.putInt("an_int", 1);
+    extras.putBoolean("a bool", true);
 
     Bundle result =
-        writer.writeToBundle(initializeDefaultBuilder().setExtras(extras).build(), new Bundle());
+        writer
+            .writeToBundle(initializeDefaultBuilder().setExtras(extras).build(), new Bundle())
+            .getBundle("extras");
 
-    assertEquals("extras", extras, result.getBundle("extras"));
+    // Can't use assertBundlesEqual because we write non-user metadata to the extras Bundle, so
+    // there'll always be unexpected values. Instead, check that all the user-provided extras are
+    // there.
+    for (String key : extras.keySet()) {
+      assertEquals('"' + key + '"' + " mismatch", extras.get(key), result.get(key));
+    }
   }
 }

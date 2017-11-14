@@ -55,7 +55,7 @@ import java.lang.annotation.RetentionPolicy;
   @VisibleForTesting /* package */ static final int LEGACY_NETWORK_CONNECTED = 0;
   @VisibleForTesting /* package */ static final int LEGACY_NETWORK_ANY = 2;
 
-  private final JobCoder jobCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX, false);
+  private final JobCoder jobCoder = new JobCoder(BundleProtocol.PACKED_PARAM_BUNDLE_PREFIX);
 
   private static void writeExecutionWindowTriggerToBundle(
       JobParameters job, Bundle b, JobTrigger.ExecutionWindowTrigger trigger) {
@@ -105,12 +105,12 @@ import java.lang.annotation.RetentionPolicy;
     writeConstraintsToBundle(job, b);
     writeRetryStrategyToBundle(job, b);
 
-    // Embed the job spec (minus extras) into the extras (under a prefix)
-    Bundle extras = job.getExtras();
-    if (extras == null) {
-      extras = new Bundle();
+    // Embed the job spec into the extras (under a prefix).
+    Bundle userExtras = job.getExtras();
+    if (userExtras == null) {
+      userExtras = new Bundle();
     }
-    b.putBundle(REQUEST_PARAM_EXTRAS, jobCoder.encode(job, extras));
+    b.putBundle(REQUEST_PARAM_EXTRAS, jobCoder.encode(job, userExtras));
 
     return b;
   }
