@@ -21,6 +21,7 @@
     <uses-sdk android:minSdkVersion="14" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+
     <instrumentation
         android:name="android.test.InstrumentationTestRunner"
         android:targetPackage="com.firebase.jobdispatcher"/>
