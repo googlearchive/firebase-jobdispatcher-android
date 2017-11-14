@@ -121,6 +121,7 @@ public class GooglePlayReceiverTest {
   @After
   public void tearDown() {
     GooglePlayReceiver.clearCallbacks();
+    ExecutionDelegator.cleanServiceConnections();
   }
 
   @Test
