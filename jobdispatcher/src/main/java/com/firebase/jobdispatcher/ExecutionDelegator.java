@@ -124,11 +124,14 @@ import com.firebase.jobdispatcher.JobService.JobResult;
 
   /** Stops provided {@link JobInvocation job}. */
   static void stopJob(JobInvocation job, boolean needToSendResult) {
+    JobServiceConnection jobServiceConnection;
     synchronized (serviceConnections) {
-      JobServiceConnection jobServiceConnection = serviceConnections.get(job.getService());
-      if (jobServiceConnection != null) {
-        jobServiceConnection.onStop(job, needToSendResult);
-        if (jobServiceConnection.wasUnbound()) {
+      jobServiceConnection = serviceConnections.get(job.getService());
+    }
+    if (jobServiceConnection != null) {
+      jobServiceConnection.onStop(job, needToSendResult);
+      if (jobServiceConnection.wasUnbound()) {
+        synchronized (serviceConnections) {
           serviceConnections.remove(job.getService());
         }
       }
@@ -137,17 +140,18 @@ import com.firebase.jobdispatcher.JobService.JobResult;
 
   private void onJobFinishedMessage(JobInvocation jobInvocation, int result) {
     // Need to release unused connection if it was not release previously.
+    JobServiceConnection jobServiceConnection;
     synchronized (serviceConnections) {
-      JobServiceConnection jobServiceConnection =
-          serviceConnections.get(jobInvocation.getService());
-      if (jobServiceConnection != null) {
-        jobServiceConnection.onJobFinished(jobInvocation);
-        if (jobServiceConnection.wasUnbound()) {
+      jobServiceConnection = serviceConnections.get(jobInvocation.getService());
+    }
+    if (jobServiceConnection != null) {
+      jobServiceConnection.onJobFinished(jobInvocation);
+      if (jobServiceConnection.wasUnbound()) {
+        synchronized (serviceConnections) {
           serviceConnections.remove(jobInvocation.getService());
         }
       }
     }
-
     jobFinishedCallback.onJobFinished(jobInvocation, result);
   }
 }
