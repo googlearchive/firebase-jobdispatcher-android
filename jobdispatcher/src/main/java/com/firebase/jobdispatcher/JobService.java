@@ -180,26 +180,26 @@ public abstract class JobService extends Service {
    * <p>Sending results can be skipped if the call was initiated by a reschedule request.
    */
   void stop(final JobParameters job, final boolean needToSendResult) {
+    final JobCallback jobCallback;
     synchronized (runningJobs) {
-      final JobCallback jobCallback = runningJobs.remove(job.getTag());
-      if (jobCallback == null) {
-        if (Log.isLoggable(TAG, Log.DEBUG)) {
-          Log.d(TAG, "Provided job has already been executed.");
-        }
-        return;
-      }
-
-      mainHandler.post(
-          new Runnable() {
-            @Override
-            public void run() {
-              boolean shouldRetry = onStopJob(job);
-              if (needToSendResult) {
-                jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
-              }
-            }
-          });
+      jobCallback = runningJobs.remove(job.getTag());
     }
+    if (jobCallback == null) {
+      if (Log.isLoggable(TAG, Log.DEBUG)) {
+        Log.d(TAG, "Provided job has already been executed.");
+      }
+      return;
+    }
+    mainHandler.post(
+        new Runnable() {
+          @Override
+          public void run() {
+            boolean shouldRetry = onStopJob(job);
+            if (needToSendResult) {
+              jobCallback.sendResult(shouldRetry ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
+            }
+          }
+        });
   }
 
   /**
@@ -216,12 +216,12 @@ public abstract class JobService extends Service {
       return;
     }
 
+    JobCallback jobCallback;
     synchronized (runningJobs) {
-      JobCallback jobCallback = runningJobs.remove(job.getTag());
-
-      if (jobCallback != null) {
-        jobCallback.sendResult(needsReschedule ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
-      }
+      jobCallback = runningJobs.remove(job.getTag());
+    }
+    if (jobCallback != null) {
+      jobCallback.sendResult(needsReschedule ? RESULT_FAIL_RETRY : RESULT_SUCCESS);
     }
   }
 
