@@ -35,6 +35,10 @@ android {
         test        { java.srcDir("src/testLib") } // Robolectric tests
         androidTest { java.srcDir("src/testLib") } // Android (e2e) tests
     }
+
+    lintOptions {
+        abortOnError false
+    }
 }
 
 dependencies {
