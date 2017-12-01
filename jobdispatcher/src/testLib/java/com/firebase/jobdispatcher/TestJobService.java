@@ -18,6 +18,8 @@ package com.firebase.jobdispatcher;
 
 // import android.support.annotation.GuardedBy;
 
+import android.support.annotation.NonNull;
+
 /** A very simple JobService that can be configured for individual tests. */
 public class TestJobService extends JobService {
 
@@ -62,14 +64,14 @@ public class TestJobService extends JobService {
   }
 
   @Override
-  public boolean onStartJob(JobParameters job) {
+  public boolean onStartJob(@NonNull JobParameters job) {
     synchronized (lock) {
       return currentProxy.onStartJob(job);
     }
   }
 
   @Override
-  public boolean onStopJob(JobParameters job) {
+  public boolean onStopJob(@NonNull JobParameters job) {
     synchronized (lock) {
       return currentProxy.onStopJob(job);
     }

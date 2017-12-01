@@ -18,8 +18,10 @@ package com.firebase.jobdispatcher;
 
 import android.os.AsyncTask;
 import android.support.annotation.CallSuper;
-// import android.support.annotation.GuardedBy;
+import android.support.annotation.NonNull;
 import android.support.v4.util.SimpleArrayMap;
+
+// import android.support.annotation.GuardedBy;
 
 /**
  * SimpleJobService provides a simple way of doing background work in a JobService.
@@ -32,7 +34,7 @@ public abstract class SimpleJobService extends JobService {
 
   @CallSuper
   @Override
-  public boolean onStartJob(JobParameters job) {
+  public boolean onStartJob(@NonNull JobParameters job) {
     AsyncJobTask async = new AsyncJobTask(this, job);
 
     synchronized (runningJobs) {
@@ -46,7 +48,7 @@ public abstract class SimpleJobService extends JobService {
 
   @CallSuper
   @Override
-  public boolean onStopJob(JobParameters job) {
+  public boolean onStopJob(@NonNull JobParameters job) {
     synchronized (runningJobs) {
       AsyncJobTask async = runningJobs.remove(job);
       if (async != null) {
@@ -67,7 +69,7 @@ public abstract class SimpleJobService extends JobService {
   }
 
   @JobResult
-  public abstract int onRunJob(JobParameters job);
+  public abstract int onRunJob(@NonNull JobParameters job);
 
   private static class AsyncJobTask extends AsyncTask<Void, Void, Integer> {
     private final SimpleJobService jobService;

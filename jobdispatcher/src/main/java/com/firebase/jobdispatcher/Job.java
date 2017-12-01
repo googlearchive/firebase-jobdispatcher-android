@@ -36,7 +36,7 @@ public final class Job implements JobParameters {
   private final boolean replaceCurrent;
   private final Bundle extras;
 
-  private Job(Builder builder) {
+  private Job(@NonNull Builder builder) {
     service = builder.serviceClassName;
     extras = builder.extras == null ? null : new Bundle(builder.extras); // Make a copy
     tag = builder.tag;
@@ -132,11 +132,11 @@ public final class Job implements JobParameters {
     private boolean replaceCurrent = false;
     private boolean recurring = false;
 
-    Builder(ValidationEnforcer validator) {
+    Builder(@NonNull ValidationEnforcer validator) {
       this.validator = validator;
     }
 
-    Builder(ValidationEnforcer validator, JobParameters job) {
+    Builder(@NonNull ValidationEnforcer validator, JobParameters job) {
       this.validator = validator;
 
       tag = job.getTag();
@@ -150,6 +150,7 @@ public final class Job implements JobParameters {
     }
 
     /** Adds the provided constraint to the current list of runtime constraints. */
+    @NonNull
     public Builder addConstraint(@JobConstraint int constraint) {
       // Create a new, longer constraints array
       int[] newConstraints = new int[constraints == null ? 1 : constraints.length + 1];
@@ -168,6 +169,7 @@ public final class Job implements JobParameters {
     }
 
     /** Sets whether this Job should replace pre-existing Jobs with the same tag. */
+    @NonNull
     public Builder setReplaceCurrent(boolean replaceCurrent) {
       this.replaceCurrent = replaceCurrent;
 
@@ -179,6 +181,7 @@ public final class Job implements JobParameters {
      *
      * @throws ValidationEnforcer.ValidationException
      */
+    @NonNull
     public Job build() {
       validator.ensureValid(this);
 
@@ -193,7 +196,8 @@ public final class Job implements JobParameters {
     }
 
     /** Sets the backing JobService class for the Job. See {@link #getService()}. */
-    public Builder setService(Class<? extends JobService> serviceClass) {
+    @NonNull
+    public Builder setService(@NonNull Class<? extends JobService> serviceClass) {
       serviceClassName = serviceClass == null ? null : serviceClass.getName();
 
       return this;
@@ -204,7 +208,8 @@ public final class Job implements JobParameters {
      *
      * <p>Should not be exposed, for internal use only.
      */
-    Builder setServiceName(String serviceClassName) {
+    @NonNull
+    Builder setServiceName(@NonNull String serviceClassName) {
       this.serviceClassName = serviceClassName;
 
       return this;
@@ -218,7 +223,8 @@ public final class Job implements JobParameters {
     }
 
     /** Sets the unique String tag used to identify the Job. See {@link #getTag()}. */
-    public Builder setTag(String tag) {
+    @NonNull
+    public Builder setTag(@NonNull String tag) {
       this.tag = tag;
 
       return this;
@@ -232,7 +238,8 @@ public final class Job implements JobParameters {
     }
 
     /** Sets the Trigger used for the Job. See {@link #getTrigger()}. */
-    public Builder setTrigger(JobTrigger trigger) {
+    @NonNull
+    public Builder setTrigger(@NonNull JobTrigger trigger) {
       this.trigger = trigger;
 
       return this;
@@ -246,6 +253,7 @@ public final class Job implements JobParameters {
     }
 
     /** Sets the Job's lifetime, or how long it should persist. See {@link #getLifetime()}. */
+    @NonNull
     public Builder setLifetime(@Lifetime.LifetimeConstant int lifetime) {
       this.lifetime = lifetime;
 
@@ -259,6 +267,7 @@ public final class Job implements JobParameters {
     }
 
     /** Sets whether the job should recur. The default is false. */
+    @NonNull
     public Builder setRecurring(boolean recurring) {
       this.recurring = recurring;
 
@@ -267,13 +276,15 @@ public final class Job implements JobParameters {
 
     /** {@inheritDoc} */
     @Override
+    @NonNull
     @JobConstraint
     public int[] getConstraints() {
       return constraints == null ? new int[] {} : constraints;
     }
 
     /** Sets the Job's runtime constraints. See {@link #getConstraints()}. */
-    public Builder setConstraints(@JobConstraint int... constraints) {
+    @NonNull
+    public Builder setConstraints(@Nullable @JobConstraint int... constraints) {
       this.constraints = constraints;
 
       return this;
@@ -287,7 +298,8 @@ public final class Job implements JobParameters {
     }
 
     /** Sets the user-defined extras associated with the Job. See {@link #getExtras()}. */
-    public Builder setExtras(Bundle extras) {
+    @NonNull
+    public Builder setExtras(@Nullable Bundle extras) {
       this.extras = extras;
 
       return this;
@@ -301,7 +313,8 @@ public final class Job implements JobParameters {
     }
 
     /** Set the RetryStrategy used for the Job. See {@link #getRetryStrategy()}. */
-    public Builder setRetryStrategy(RetryStrategy retryStrategy) {
+    @NonNull
+    public Builder setRetryStrategy(@NonNull RetryStrategy retryStrategy) {
       this.retryStrategy = retryStrategy;
 
       return this;

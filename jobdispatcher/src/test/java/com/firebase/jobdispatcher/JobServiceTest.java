@@ -16,30 +16,16 @@
 
 package com.firebase.jobdispatcher;
 
-import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Parcel;
+import android.support.annotation.NonNull;
 import android.support.v4.util.Pair;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
 import com.google.android.gms.gcm.PendingCallback;
 import com.google.common.util.concurrent.SettableFuture;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,6 +33,15 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /** Tests for the {@link JobService} class. */
 @RunWith(RobolectricTestRunner.class)
@@ -61,15 +56,15 @@ public class JobServiceTest {
       };
 
   @Before
-  public void setUp() throws Exception {}
+  public void setUp() {}
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
     countDownLatch = null;
   }
 
   @Test
-  public void testOnStartCommand_handlesNullIntent() throws Exception {
+  public void testOnStartCommand_handlesNullIntent() {
     JobService service = spy(new ExampleJobService());
     int startId = 7;
 
@@ -83,7 +78,7 @@ public class JobServiceTest {
   }
 
   @Test
-  public void testOnStartCommand_handlesNullAction() throws Exception {
+  public void testOnStartCommand_handlesNullAction() {
     JobService service = spy(new ExampleJobService());
     int startId = 7;
 
@@ -94,7 +89,7 @@ public class JobServiceTest {
   }
 
   @Test
-  public void testOnStartCommand_handlesEmptyAction() throws Exception {
+  public void testOnStartCommand_handlesEmptyAction() {
     JobService service = spy(new ExampleJobService());
     int startId = 7;
 
@@ -105,7 +100,7 @@ public class JobServiceTest {
   }
 
   @Test
-  public void testOnStartCommand_handlesUnknownAction() throws Exception {
+  public void testOnStartCommand_handlesUnknownAction() {
     JobService service = spy(new ExampleJobService());
     int startId = 7;
 
@@ -258,14 +253,14 @@ public class JobServiceTest {
     JobService reschedulingService =
         new JobService() {
           @Override
-          public boolean onStartJob(JobParameters job) {
+          public boolean onStartJob(@NonNull JobParameters job) {
             // Reschedules job.
             jobFinished(job, true /* retry this job */);
             return false;
           }
 
           @Override
-          public boolean onStopJob(JobParameters job) {
+          public boolean onStopJob(@NonNull JobParameters job) {
             return false;
           }
         };
@@ -290,13 +285,13 @@ public class JobServiceTest {
     JobService reschedulingService =
         new JobService() {
           @Override
-          public boolean onStartJob(JobParameters job) {
+          public boolean onStartJob(@NonNull JobParameters job) {
             jobFinished(job, false /* don't retry this job */);
             return false;
           }
 
           @Override
-          public boolean onStopJob(JobParameters job) {
+          public boolean onStopJob(@NonNull JobParameters job) {
             return false;
           }
         };
@@ -318,12 +313,12 @@ public class JobServiceTest {
     verifyOnUnbindCausesResult(
         new JobService() {
           @Override
-          public boolean onStartJob(JobParameters job) {
+          public boolean onStartJob(@NonNull JobParameters job) {
             return true; // More work to do in background
           }
 
           @Override
-          public boolean onStopJob(JobParameters job) {
+          public boolean onStopJob(@NonNull JobParameters job) {
             return true; // Still doing background work
           }
         },
@@ -335,12 +330,12 @@ public class JobServiceTest {
     verifyOnUnbindCausesResult(
         new JobService() {
           @Override
-          public boolean onStartJob(JobParameters job) {
+          public boolean onStartJob(@NonNull JobParameters job) {
             return true; // more work to do in background
           }
 
           @Override
-          public boolean onStopJob(JobParameters job) {
+          public boolean onStopJob(@NonNull JobParameters job) {
             return false; // Done with background work
           }
         },
@@ -353,12 +348,12 @@ public class JobServiceTest {
     final JobService service =
         new JobService() {
           @Override
-          public boolean onStartJob(JobParameters job) {
+          public boolean onStartJob(@NonNull JobParameters job) {
             return true; // more work to do
           }
 
           @Override
-          public boolean onStopJob(JobParameters job) {
+          public boolean onStopJob(@NonNull JobParameters job) {
             looperFuture.set(Looper.myLooper());
             return false;
           }
@@ -449,13 +444,13 @@ public class JobServiceTest {
   /** A simple JobService that just counts down the {@link #countDownLatch}. */
   public static class ExampleJobService extends JobService {
     @Override
-    public boolean onStartJob(JobParameters job) {
+    public boolean onStartJob(@NonNull JobParameters job) {
       countDownLatch.countDown();
       return false;
     }
 
     @Override
-    public boolean onStopJob(JobParameters job) {
+    public boolean onStopJob(@NonNull JobParameters job) {
       return false;
     }
   }
@@ -476,13 +471,13 @@ public class JobServiceTest {
     }
 
     @Override
-    public boolean onStartJob(JobParameters job) {
+    public boolean onStartJob(@NonNull JobParameters job) {
       amountOfExecutionRequestReceived.incrementAndGet();
       return true;
     }
 
     @Override
-    public boolean onStopJob(JobParameters job) {
+    public boolean onStopJob(@NonNull JobParameters job) {
       return shouldReschedule;
     }
   }

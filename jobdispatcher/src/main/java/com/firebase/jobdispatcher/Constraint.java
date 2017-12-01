@@ -18,6 +18,7 @@ package com.firebase.jobdispatcher;
 
 import android.support.annotation.IntDef;
 import android.support.annotation.VisibleForTesting;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -49,8 +50,9 @@ public final class Constraint {
     ON_ANY_NETWORK, ON_UNMETERED_NETWORK, DEVICE_CHARGING, DEVICE_IDLE
   };
 
-  /** Constraint shouldn't ever be instantiated. */
-  private Constraint() {}
+  private Constraint() {
+      throw new AssertionError("No instance for you!");
+  }
 
   /** A tooling type-hint for any of the valid constraint values. */
   @IntDef(

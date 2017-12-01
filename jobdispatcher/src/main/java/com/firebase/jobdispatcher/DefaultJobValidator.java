@@ -16,10 +16,6 @@
 
 package com.firebase.jobdispatcher;
 
-import static com.firebase.jobdispatcher.GooglePlayReceiver.TAG;
-import static com.firebase.jobdispatcher.RetryStrategy.RETRY_POLICY_EXPONENTIAL;
-import static com.firebase.jobdispatcher.RetryStrategy.RETRY_POLICY_LINEAR;
-
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -31,10 +27,15 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+
+import static com.firebase.jobdispatcher.GooglePlayReceiver.TAG;
+import static com.firebase.jobdispatcher.RetryStrategy.RETRY_POLICY_EXPONENTIAL;
+import static com.firebase.jobdispatcher.RetryStrategy.RETRY_POLICY_LINEAR;
 
 /**
  * Validates Jobs according to some safe standards.
@@ -58,11 +59,11 @@ public class DefaultJobValidator implements JobValidator {
   /** Private ref to the Context. Necessary to check that the manifest is configured correctly. */
   private final Context context;
 
-  public DefaultJobValidator(Context context) {
+  public DefaultJobValidator(@NonNull Context context) {
     this.context = context;
   }
 
-  /** @see {@link #MAX_EXTRAS_SIZE_BYTES}. */
+  /** @see #MAX_EXTRAS_SIZE_BYTES */
   private static int measureBundleSize(Bundle extras) {
     Parcel p = Parcel.obtain();
     extras.writeToParcel(p, 0);
@@ -117,10 +118,10 @@ public class DefaultJobValidator implements JobValidator {
   @Nullable
   @Override
   @CallSuper
-  public List<String> validate(JobParameters job) {
-    List<String> errors = null;
+  public List<String> validate(@NonNull JobParameters job) {
+    List<String> errors;
 
-    errors = mergeErrorLists(errors, validate(job.getTrigger()));
+    errors = mergeErrorLists(null, validate(job.getTrigger()));
     errors = mergeErrorLists(errors, validate(job.getRetryStrategy()));
 
     if (job.isRecurring() && job.getTrigger() == Trigger.NOW) {
@@ -145,13 +146,11 @@ public class DefaultJobValidator implements JobValidator {
    *
    * <p>Note that a Trigger that passes validation here is not necessarily valid in all permutations
    * of a JobParameters. For example, an Immediate is never valid for a recurring job.
-   *
-   * @param trigger
    */
   @Nullable
   @Override
   @CallSuper
-  public List<String> validate(JobTrigger trigger) {
+  public List<String> validate(@NonNull JobTrigger trigger) {
     if (trigger != Trigger.NOW
         && !(trigger instanceof JobTrigger.ExecutionWindowTrigger)
         && !(trigger instanceof JobTrigger.ContentUriTrigger)) {
@@ -168,8 +167,8 @@ public class DefaultJobValidator implements JobValidator {
   @Nullable
   @Override
   @CallSuper
-  public List<String> validate(RetryStrategy retryStrategy) {
-    List<String> errors = null;
+  public List<String> validate(@NonNull RetryStrategy retryStrategy) {
+    List<String> errors;
 
     int policy = retryStrategy.getPolicy();
     int initial = retryStrategy.getInitialBackoff();
@@ -178,7 +177,7 @@ public class DefaultJobValidator implements JobValidator {
     errors =
         addErrorsIf(
             policy != RETRY_POLICY_EXPONENTIAL && policy != RETRY_POLICY_LINEAR,
-            errors,
+            null,
             "Unknown retry policy provided");
     errors =
         addErrorsIf(
@@ -193,7 +192,7 @@ public class DefaultJobValidator implements JobValidator {
   }
 
   @Nullable
-  private static List<String> validateForPersistence(Bundle extras) {
+  private static List<String> validateForPersistence(@Nullable Bundle extras) {
     List<String> errors = null;
 
     if (extras != null) {
@@ -207,7 +206,7 @@ public class DefaultJobValidator implements JobValidator {
   }
 
   @Nullable
-  private static List<String> validateForTransport(Bundle extras) {
+  private static List<String> validateForTransport(@Nullable Bundle extras) {
     if (extras == null) {
       return null;
     }
@@ -226,7 +225,7 @@ public class DefaultJobValidator implements JobValidator {
   }
 
   @Nullable
-  private static String validateExtrasType(Bundle extras, String key) {
+  private static String validateExtrasType(@NonNull Bundle extras, @NonNull String key) {
     Object o = extras.get(key);
 
     if (o == null

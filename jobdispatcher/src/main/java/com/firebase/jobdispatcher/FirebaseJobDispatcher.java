@@ -19,6 +19,7 @@ package com.firebase.jobdispatcher;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import com.firebase.jobdispatcher.RetryStrategy.RetryPolicy;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -65,7 +66,7 @@ public final class FirebaseJobDispatcher {
   private final RetryStrategy.Builder retryStrategyBuilder;
 
   /** Instantiates a new FirebaseJobDispatcher using the provided Driver. */
-  public FirebaseJobDispatcher(Driver driver) {
+  public FirebaseJobDispatcher(@NonNull Driver driver) {
     this.driver = driver;
     validator = new ValidationEnforcer(driver.getValidator());
     retryStrategyBuilder = new RetryStrategy.Builder(validator);
@@ -118,7 +119,7 @@ public final class FirebaseJobDispatcher {
    *
    * @throws ScheduleFailedException
    */
-  public void mustSchedule(Job job) {
+  public void mustSchedule(@NonNull Job job) {
     if (schedule(job) != SCHEDULE_RESULT_SUCCESS) {
       throw new ScheduleFailedException();
     }
