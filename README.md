@@ -201,7 +201,7 @@ See the [CONTRIBUTING.md](CONTRIBUTING.md) file.
 This library is actively supported by Google engineers. If you encounter any
 problems, please create an issue in our [tracker][].
 
-# License
+## License
 
 Apache, see the [LICENSE](LICENSE) file.
 
