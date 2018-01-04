@@ -95,7 +95,7 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
     try {
       callback.jobFinished(result);
     } catch (Throwable e) {
-      Log.e(TAG, "Encountered error running callback", e.getCause());
+      Log.e(TAG, "Encountered error running callback: " + e.getMessage());
     }
   }
 
