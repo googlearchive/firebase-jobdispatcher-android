@@ -18,10 +18,10 @@ android {
 }
 
 dependencies {
-    compile project(path: ':jobdispatcher')
+    implementation project(path: ':jobdispatcher')
 
-    compile "com.android.support:appcompat-v7:${project.ext.supportLibraryVersion}"
-    compile "com.android.support:support-v4:${project.ext.supportLibraryVersion}"
-    compile "com.android.support:recyclerview-v7:${project.ext.supportLibraryVersion}"
-    compile "com.android.support:design:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:appcompat-v7:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:support-v4:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:recyclerview-v7:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:design:${project.ext.supportLibraryVersion}"
 }
