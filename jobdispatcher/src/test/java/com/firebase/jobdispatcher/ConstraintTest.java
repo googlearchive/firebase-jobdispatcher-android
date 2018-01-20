@@ -16,16 +16,15 @@
 
 package com.firebase.jobdispatcher;
 
+import static org.junit.Assert.assertEquals;
+
 import android.text.TextUtils;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
-
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
 
 /** Tests for the {@link Constraint} class. */
 @RunWith(RobolectricTestRunner.class)

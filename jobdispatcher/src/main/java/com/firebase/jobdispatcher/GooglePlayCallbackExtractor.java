@@ -24,7 +24,6 @@ import android.os.Parcelable;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.util.Pair;
-
 import java.util.ArrayList;
 
 /**

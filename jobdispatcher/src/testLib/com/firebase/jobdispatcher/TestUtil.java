@@ -16,6 +16,13 @@
 
 package com.firebase.jobdispatcher;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
@@ -27,20 +34,12 @@ import com.firebase.jobdispatcher.Job.Builder;
 import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
 import com.firebase.jobdispatcher.ObservedUri.Flags;
 import com.google.android.gms.gcm.PendingCallback;
-
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /** Provides common utilities helpful for testing. */
 public class TestUtil {

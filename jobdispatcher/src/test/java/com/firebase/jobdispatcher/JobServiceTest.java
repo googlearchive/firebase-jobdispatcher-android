@@ -37,6 +37,10 @@ import android.support.v4.util.Pair;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
 import com.google.android.gms.gcm.PendingCallback;
 import com.google.common.util.concurrent.SettableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,10 +48,6 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** Tests for the {@link JobService} class. */
 @RunWith(RobolectricTestRunner.class)
