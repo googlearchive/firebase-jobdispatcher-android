@@ -19,7 +19,6 @@ package com.firebase.jobdispatcher;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
-
 import java.util.List;
 
 /** Wraps a JobValidator and provides helpful validation utilities. */

@@ -16,6 +16,8 @@
 
 package com.firebase.jobdispatcher;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -24,11 +26,8 @@ import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import com.google.common.util.concurrent.SettableFuture;
-
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 /** A JobService that's configured via the manifest to run in a different process. */
 public class WorkerProcessTestJobService extends JobService {

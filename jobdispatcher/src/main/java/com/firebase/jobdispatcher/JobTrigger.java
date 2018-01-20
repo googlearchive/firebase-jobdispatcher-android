@@ -17,7 +17,6 @@
 package com.firebase.jobdispatcher;
 
 import android.support.annotation.NonNull;
-
 import java.util.List;
 
 /** Contains all supported triggers. */

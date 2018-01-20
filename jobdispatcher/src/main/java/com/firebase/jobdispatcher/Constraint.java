@@ -18,7 +18,6 @@ package com.firebase.jobdispatcher;
 
 import android.support.annotation.IntDef;
 import android.support.annotation.VisibleForTesting;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -51,7 +50,7 @@ public final class Constraint {
   };
 
   private Constraint() {
-      throw new AssertionError("No instance for you!");
+    throw new AssertionError("No instance for you!");
   }
 
   /** A tooling type-hint for any of the valid constraint values. */

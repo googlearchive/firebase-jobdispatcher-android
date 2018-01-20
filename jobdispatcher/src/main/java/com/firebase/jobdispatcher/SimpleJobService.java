@@ -21,8 +21,6 @@ import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.v4.util.SimpleArrayMap;
 
-// import android.support.annotation.GuardedBy;
-
 /**
  * SimpleJobService provides a simple way of doing background work in a JobService.
  *

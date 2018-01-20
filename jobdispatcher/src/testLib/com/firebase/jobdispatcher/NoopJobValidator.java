@@ -18,7 +18,6 @@ package com.firebase.jobdispatcher;
 
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-
 import java.util.List;
 
 /** A very simple Validator that thinks that everything is ok. Used for testing. */

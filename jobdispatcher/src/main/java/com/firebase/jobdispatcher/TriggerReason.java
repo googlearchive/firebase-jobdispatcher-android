@@ -18,7 +18,6 @@ package com.firebase.jobdispatcher;
 
 import android.net.Uri;
 import android.support.annotation.NonNull;
-
 import java.util.List;
 
 /** The class contains a summary of the events which caused the job to be executed. */

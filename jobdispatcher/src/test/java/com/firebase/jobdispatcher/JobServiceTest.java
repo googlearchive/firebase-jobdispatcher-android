@@ -16,6 +16,17 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -33,15 +44,10 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 /** Tests for the {@link JobService} class. */
 @RunWith(RobolectricTestRunner.class)

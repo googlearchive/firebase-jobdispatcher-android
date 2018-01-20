@@ -16,23 +16,28 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
+
 import android.app.Service;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.os.*;
-import android.support.annotation.*;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.RemoteException;
+import android.support.annotation.IntDef;
+import android.support.annotation.MainThread;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.annotation.VisibleForTesting;
 import android.support.v4.util.SimpleArrayMap;
 import android.util.Log;
-
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Locale;
-
-import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
-
-// import android.support.annotation.GuardedBy;
 
 /**
  * JobService is the fundamental unit of work used in the JobDispatcher.
