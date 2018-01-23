@@ -33,7 +33,7 @@ public class ConstraintTest {
 
   /** Just to get 100% coverage. */
   @Test
-  public void testPrivateConstructor() {
+  public void testPrivateConstructor() throws Exception {
     TestUtil.assertHasSinglePrivateUnusableConstructor(Constraint.class);
   }
 
