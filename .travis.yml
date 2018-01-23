@@ -32,6 +32,7 @@ android:
     - tools
     - tools
 
+# Download emulator images: https://developer.android.com/studio/command-line/sdkmanager.html
 before_script: >
   echo y | ${ANDROID_HOME}tools/bin/sdkmanager --channel=3
   "system-images;android-16;default;armeabi-v7a" "system-images;android-17;default;armeabi-v7a"
