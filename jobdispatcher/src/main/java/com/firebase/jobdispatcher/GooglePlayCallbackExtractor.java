@@ -21,6 +21,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
+// import android.support.annotation.GuardedBy;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.util.Pair;
@@ -187,7 +188,8 @@ import java.util.ArrayList;
     }
 
     // Older platforms require readValue
-    Object entryKeyObj = serialized.readValue(FirebaseJobDispatcher.class.getClassLoader());
+    @SuppressLint("ParcelClassLoader") // We're just reading a string
+    Object entryKeyObj = serialized.readValue(null /* Use the system ClassLoader */);
     if (!(entryKeyObj instanceof String)) {
       // Should never happen (Bundle keys are always Strings)
       Log.w(TAG, ERROR_INVALID_CALLBACK);
