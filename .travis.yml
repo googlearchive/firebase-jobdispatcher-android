@@ -10,22 +10,6 @@ env:
     global:
         - ADB_INSTALL_TIMEOUT=10 # Default is 2 minutes, bump to 10
 
-android:
-    components:
-        - tools
-        - platform-tools
-        - android-25
-        - build-tools-25.0.0
-
-        - extra-android-m2repository
-        - extra-google-m2repository
-
-        - sys-img-armeabi-v7a-android-16
-        - sys-img-armeabi-v7a-android-17
-        - sys-img-armeabi-v7a-android-18
-        - sys-img-armeabi-v7a-android-19
-        - sys-img-armeabi-v7a-android-21
-
 # "avoid uploading the cache after every build"
 before_cache:
     - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
@@ -36,6 +20,24 @@ cache:
         - $HOME/.gradle/caches/
         - $HOME/.gradle/wrapper/
         - $HOME/.android/build-cache
+
+before_install:
+  - mkdir "$ANDROID_HOME/licenses" || true
+  - echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e" > "$ANDROID_HOME/licenses/android-sdk-license"
+  - echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+
+android:
+  components:
+    # https://github.com/travis-ci/travis-ci/issues/6040#issuecomment-219367943
+    - tools
+    - tools
+
+# Download emulator images: https://developer.android.com/studio/command-line/sdkmanager.html
+before_script: >
+  echo y | ${ANDROID_HOME}tools/bin/sdkmanager --channel=3
+  "system-images;android-16;default;armeabi-v7a" "system-images;android-17;default;armeabi-v7a"
+  "system-images;android-18;default;armeabi-v7a" "system-images;android-19;default;armeabi-v7a"
+  "system-images;android-21;default;armeabi-v7a"
 
 script:
     # Build the library + run unit tests, run device tests, build the test app

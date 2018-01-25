@@ -6,7 +6,6 @@ apply from: "coverage.gradle"
 
 android {
     compileSdkVersion project.ext.compileSdk
-    buildToolsVersion project.ext.buildtools
 
     defaultConfig {
         minSdkVersion project.ext.minSdk
@@ -23,6 +22,7 @@ android {
         debug {
             testCoverageEnabled true
         }
+
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt')
@@ -35,30 +35,33 @@ android {
         test        { java.srcDir("src/testLib") } // Robolectric tests
         androidTest { java.srcDir("src/testLib") } // Android (e2e) tests
     }
+
+    lintOptions {
+        abortOnError false
+    }
 }
 
 dependencies {
     // The main library only depends on the Android support lib
-    compile "com.android.support:support-compat:${project.ext.supportLibraryVersion}"
-    // compile "com.android.support:support-annotations:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:support-compat:${project.ext.supportLibraryVersion}"
 
     def junit = 'junit:junit:4.12'
-    def robolectric = 'org.robolectric:robolectric:3.3.2'
-    def guava = 'com.google.guava:guava:23.2-android'
+    def robolectric = 'org.robolectric:robolectric:3.6.1'
+    def guava = 'com.google.guava:guava:23.6-android'
 
     // The common test library uses JUnit
-    testLibCompile junit
+    testLibImplementation junit
 
     // The unit tests are written using JUnit, Robolectric, Mockito, and Guava
-    testCompile junit
-    testCompile robolectric
-    testCompile guava
-    testCompile 'org.mockito:mockito-core:2.2.5'
+    testImplementation junit
+    testImplementation robolectric
+    testImplementation guava
+    testImplementation 'org.mockito:mockito-core:2.13.0'
 
     // The Android (e2e) tests are written using JUnit, the test support lib, and Guava
-    androidTestCompile junit
-    androidTestCompile guava
-    androidTestCompile 'com.android.support.test:runner:0.5'
+    androidTestImplementation junit
+    androidTestImplementation guava
+    androidTestImplementation 'com.android.support.test:runner:1.0.1'
 }
 
 task javadocs(type: Javadoc) {
@@ -127,7 +130,7 @@ publishing {
                 artifact sourcesJar
                 artifact javadocsJar
 
-                // Define the POM file programatically
+                // Define the POM file programmatically
                 pom.withXml {
                     def n = asNode()
 
@@ -162,18 +165,22 @@ publishing {
                         depsNode = n.appendNode("dependencies")
                     }
 
-                    def addDep = {
+                    configurations.api.allDependencies.each {
                         def dependencyNode = depsNode.appendNode('dependency')
                         dependencyNode.appendNode('groupId', it.group)
                         dependencyNode.appendNode('artifactId', it.name)
                         dependencyNode.appendNode('version', it.version)
                         dependencyNode.appendNode('type', 'aar')
+                        dependencyNode.appendNode('scope', 'compile')
                     }
-
-                    // add deps that everyone has
-                    configurations.compile.allDependencies.each addDep
-                    // add config specific deps
-                    configurations["releaseCompile"].allDependencies.each addDep
+                    configurations.implementation.allDependencies.each {
+                        def dependencyNode = depsNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.group)
+                        dependencyNode.appendNode('artifactId', it.name)
+                        dependencyNode.appendNode('version', it.version)
+                        dependencyNode.appendNode('type', 'aar')
+                        dependencyNode.appendNode('scope', 'runtime')
+                    }
                 }
             }
         }

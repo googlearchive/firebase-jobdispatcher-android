@@ -18,7 +18,6 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.firebase.jobdispatcher">
 
-    <uses-sdk android:minSdkVersion="14" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <instrumentation
@@ -33,6 +32,7 @@
                 <action android:name="com.firebase.jobdispatcher.ACTION_EXECUTE"/>
             </intent-filter>
         </service>
+
         <service android:name=".WorkerProcessTestJobService"
             android:process=":worker"
             android:exported="false">
@@ -41,4 +41,5 @@
             </intent-filter>
         </service>
     </application>
+
 </manifest>

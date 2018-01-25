@@ -2,37 +2,22 @@ apply from: 'common/constants.gradle'
 
 buildscript {
     repositories {
+        google()
         jcenter()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:2.3.1'
-        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7'
-        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.4.1'
+        classpath 'com.android.tools.build:gradle:3.0.1'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.0'
     }
 }
 
 allprojects { project ->
     repositories {
+        google()
         jcenter()
-        maven {
-            url "https://maven.google.com"
-        }
     }
 
     project.apply from: "${rootDir}/common/constants.gradle"
-}
-
-task clean(type: Delete) {
-    delete rootProject.buildDir
-}
-
-task wrapper(type: Wrapper) {
-    // The combination of JUnit, Gradle, and Robolectric + Jacoco for code
-    // coverage is broken for Jacoco [v7.3.x, v7.5.x]. 7.2 works, but doesn't
-    // have great support for running on later versions of Android. 7.6 works,
-    // but requires Gradle 2.13+.
-    //
-    // See: https://github.com/jacoco/jacoco/pull/288
-    gradleVersion = '3.3'
 }
