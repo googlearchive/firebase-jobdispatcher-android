@@ -64,12 +64,12 @@ Play services installed.
 Library                    | Minimum API | Requires Google Play   | Service API<sup>[1](#fn1)</sup> | Custom retry strategies
 -------------------------- | ----------- | ---------------------- | ------------------------------- | -----------------------
 Framework [JobScheduler][] | 21          | No                     | JobScheduler                    | Yes
-Firebase JobDispatcher     | 9           | Yes                    | JobScheduler                    | Yes
+Firebase JobDispatcher     | 14          | Yes                    | JobScheduler                    | Yes
 [evernote/android-job][]   | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes
 
-<a name="fn1">1</a>: Refers to the methods that need to be implemented in the
+<sup><a name="fn1">1</a></sup> Refers to the methods that need to be implemented in the
 Service subclass.<br>
-<a name="fn2">2</a>: Uses AlarmManager to support API levels <= 21 if Google
+<sup><a name="fn2">2</a></sup> Uses AlarmManager to support API levels <= 21 if Google
 Play services is unavailable.<br>
 
 ## Getting started
@@ -78,8 +78,8 @@ Play services is unavailable.<br>
 
 Add the following to your `build.gradle`'s dependencies section:
 
-```
-compile 'com.firebase:firebase-jobdispatcher:0.8.5'
+```groovy
+implementation 'com.firebase:firebase-jobdispatcher:0.8.5'
 ```
 
 ### Usage
@@ -201,7 +201,7 @@ See the [CONTRIBUTING.md](CONTRIBUTING.md) file.
 This library is actively supported by Google engineers. If you encounter any
 problems, please create an issue in our [tracker][].
 
-# License
+## License
 
 Apache, see the [LICENSE](LICENSE) file.
 
