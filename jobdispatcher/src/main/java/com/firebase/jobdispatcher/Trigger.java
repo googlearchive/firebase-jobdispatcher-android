@@ -43,6 +43,7 @@ public final class Trigger {
    *     Calculated in the same way as {@code windowStart}.
    * @throws IllegalArgumentException if the provided parameters are too restrictive.
    */
+  @NonNull
   public static JobTrigger.ExecutionWindowTrigger executionWindow(int windowStart, int windowEnd) {
     if (windowStart < 0) {
       throw new IllegalArgumentException("Window start can't be less than 0");
@@ -60,6 +61,7 @@ public final class Trigger {
    *     corresponding to any of provided URIs, is updated.
    * @throws IllegalArgumentException if provided list of URIs is null or empty.
    */
+  @NonNull
   public static JobTrigger.ContentUriTrigger contentUriTrigger(@NonNull List<ObservedUri> uris) {
     if (uris == null || uris.isEmpty()) {
       throw new IllegalArgumentException("Uris must not be null or empty.");

@@ -25,47 +25,40 @@ import java.util.List;
 public class ValidationEnforcer implements JobValidator {
   private final JobValidator validator;
 
-  public ValidationEnforcer(JobValidator validator) {
+  public ValidationEnforcer(@NonNull JobValidator validator) {
     this.validator = validator;
   }
 
-  /** {@inheritDoc} */
   @Nullable
   @Override
-  public List<String> validate(JobParameters job) {
+  public List<String> validate(@NonNull JobParameters job) {
     return validator.validate(job);
   }
 
-  /**
-   * {@inheritDoc}
-   *
-   * @param trigger
-   */
   @Nullable
   @Override
-  public List<String> validate(JobTrigger trigger) {
+  public List<String> validate(@NonNull JobTrigger trigger) {
     return validator.validate(trigger);
   }
 
-  /** {@inheritDoc} */
   @Nullable
   @Override
-  public List<String> validate(RetryStrategy retryStrategy) {
+  public List<String> validate(@NonNull RetryStrategy retryStrategy) {
     return validator.validate(retryStrategy);
   }
 
   /** Indicates whether the provided JobParameters is valid. */
-  public final boolean isValid(JobParameters job) {
+  public final boolean isValid(@NonNull JobParameters job) {
     return validate(job) == null;
   }
 
   /** Indicates whether the provided JobTrigger is valid. */
-  public final boolean isValid(JobTrigger trigger) {
+  public final boolean isValid(@NonNull JobTrigger trigger) {
     return validate(trigger) == null;
   }
 
   /** Indicates whether the provided RetryStrategy is valid. */
-  public final boolean isValid(RetryStrategy retryStrategy) {
+  public final boolean isValid(@NonNull RetryStrategy retryStrategy) {
     return validate(retryStrategy) == null;
   }
 
@@ -74,7 +67,7 @@ public class ValidationEnforcer implements JobValidator {
    *
    * @throws ValidationException
    */
-  public final void ensureValid(JobParameters job) {
+  public final void ensureValid(@NonNull JobParameters job) {
     ensureNoErrors(validate(job));
   }
 
@@ -83,7 +76,7 @@ public class ValidationEnforcer implements JobValidator {
    *
    * @throws ValidationException
    */
-  public final void ensureValid(JobTrigger trigger) {
+  public final void ensureValid(@NonNull JobTrigger trigger) {
     ensureNoErrors(validate(trigger));
   }
 
@@ -92,7 +85,7 @@ public class ValidationEnforcer implements JobValidator {
    *
    * @throws ValidationException
    */
-  public final void ensureValid(RetryStrategy retryStrategy) {
+  public final void ensureValid(@NonNull RetryStrategy retryStrategy) {
     ensureNoErrors(validate(retryStrategy));
   }
 
@@ -106,11 +99,12 @@ public class ValidationEnforcer implements JobValidator {
   public static final class ValidationException extends RuntimeException {
     private final List<String> errors;
 
-    public ValidationException(String msg, @NonNull List<String> errors) {
+    public ValidationException(@NonNull String msg, @NonNull List<String> errors) {
       super(msg + ": " + TextUtils.join("\n  - ", errors));
       this.errors = errors;
     }
 
+    @NonNull
     public List<String> getErrors() {
       return errors;
     }

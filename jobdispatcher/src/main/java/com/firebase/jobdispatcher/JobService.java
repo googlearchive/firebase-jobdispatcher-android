@@ -129,7 +129,7 @@ public abstract class JobService extends Service {
    *     job was completed.
    */
   @MainThread
-  public abstract boolean onStartJob(JobParameters job);
+  public abstract boolean onStartJob(@NonNull JobParameters job);
 
   /**
    * Called when the scheduling engine has decided to interrupt the execution of a running job, most
@@ -141,7 +141,7 @@ public abstract class JobService extends Service {
    * @see RetryStrategy
    */
   @MainThread
-  public abstract boolean onStopJob(JobParameters job);
+  public abstract boolean onStopJob(@NonNull JobParameters job);
 
   /**
    * Asks the {@code job} to start running. Calls {@link #onStartJob} on the main thread. Once

@@ -17,6 +17,7 @@
 package com.firebase.jobdispatcher;
 
 import android.support.annotation.IntDef;
+import android.support.annotation.NonNull;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -86,6 +87,7 @@ public final class RetryStrategy {
       this.validator = validator;
     }
 
+    @NonNull
     public RetryStrategy build(@RetryPolicy int policy, int initialBackoff, int maxBackoff) {
       RetryStrategy rs = new RetryStrategy(policy, initialBackoff, maxBackoff);
       validator.ensureValid(rs);
