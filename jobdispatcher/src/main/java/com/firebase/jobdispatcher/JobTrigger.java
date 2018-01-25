@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+import android.support.annotation.NonNull;
 import java.util.List;
 
 /** Contains all supported triggers. */
@@ -57,10 +58,11 @@ public class JobTrigger {
   public static final class ContentUriTrigger extends JobTrigger {
     private final List<ObservedUri> uris;
 
-    /* package */ ContentUriTrigger(List<ObservedUri> uris) {
+    /* package */ ContentUriTrigger(@NonNull List<ObservedUri> uris) {
       this.uris = uris;
     }
 
+    @NonNull
     public List<ObservedUri> getUris() {
       return uris;
     }

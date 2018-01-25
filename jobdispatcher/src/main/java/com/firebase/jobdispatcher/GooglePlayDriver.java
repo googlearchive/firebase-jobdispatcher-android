@@ -67,7 +67,7 @@ public final class GooglePlayDriver implements Driver {
   private final boolean available = true;
 
   /** Instantiates a new GooglePlayDriver. */
-  public GooglePlayDriver(Context context) {
+  public GooglePlayDriver(@NonNull Context context) {
     this.context = context;
     token = PendingIntent.getBroadcast(context, 0, new Intent(), 0);
     writer = new GooglePlayJobWriter();

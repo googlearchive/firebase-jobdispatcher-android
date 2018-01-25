@@ -17,16 +17,18 @@
 package com.firebase.jobdispatcher;
 
 import android.net.Uri;
+import android.support.annotation.NonNull;
 import java.util.List;
 
 /** The class contains a summary of the events which caused the job to be executed. */
 public class TriggerReason {
   private final List<Uri> triggeredContentUris;
 
-  TriggerReason(List<Uri> mTriggeredContentUris) {
+  TriggerReason(@NonNull List<Uri> mTriggeredContentUris) {
     this.triggeredContentUris = mTriggeredContentUris;
   }
 
+  @NonNull
   public List<Uri> getTriggeredContentUris() {
     return triggeredContentUris;
   }

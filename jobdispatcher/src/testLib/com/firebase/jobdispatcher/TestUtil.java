@@ -36,6 +36,7 @@ import com.firebase.jobdispatcher.JobTrigger.ContentUriTrigger;
 import com.firebase.jobdispatcher.ObservedUri.Flags;
 import com.google.android.gms.gcm.PendingCallback;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -88,6 +89,15 @@ public class TestUtil {
 
     constructor.setAccessible(true);
     constructor.newInstance();
+  }
+
+  public static void assertHasSinglePrivateUnusableConstructor(Class<?> cls) throws Exception {
+    try {
+      assertHasSinglePrivateConstructor(cls);
+      throw new AssertionError("Constructor didn't blow up");
+    } catch (InvocationTargetException e) {
+      // Good
+    }
   }
 
   static List<List<Integer>> getAllConstraintCombinations() {

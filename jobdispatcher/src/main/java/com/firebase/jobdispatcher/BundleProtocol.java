@@ -26,7 +26,6 @@ final class BundleProtocol {
   static final String PACKED_PARAM_RECURRING = "recurring";
   static final String PACKED_PARAM_SERVICE = "service";
   static final String PACKED_PARAM_TAG = "tag";
-  static final String PACKED_PARAM_EXTRAS = "extras";
   static final String PACKED_PARAM_TRIGGER_TYPE = "trigger_type";
   static final String PACKED_PARAM_TRIGGER_WINDOW_END = "window_end";
   static final String PACKED_PARAM_TRIGGER_WINDOW_START = "window_start";
@@ -44,5 +43,7 @@ final class BundleProtocol {
   static final String PACKED_PARAM_TRIGGERED_URIS = "triggered_uris";
   static final String PACKED_PARAM_OBSERVED_URI = "observed_uris";
 
-  BundleProtocol() {}
+  private BundleProtocol() {
+     throw new AssertionError("No instance for you!");
+  }
 }
