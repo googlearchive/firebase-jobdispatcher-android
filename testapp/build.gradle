@@ -2,7 +2,6 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion project.ext.compileSdk
-    buildToolsVersion project.ext.buildtools
 
     defaultConfig {
         applicationId "com.firebase.jobdispatcher.testapp"
@@ -13,24 +12,16 @@ android {
         versionName project.ext.version
     }
 
-    buildTypes {
-        release {
-            minifyEnabled false
-            //proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-
     dataBinding {
         enabled = true
     }
 }
 
 dependencies {
-    testCompile 'junit:junit:4.12'
+    implementation project(path: ':jobdispatcher')
 
-    compile project(path: ':jobdispatcher')
-    compile "com.android.support:appcompat-v7:${project.ext.supportLibraryVersion}"
-    compile "com.android.support:support-v4:${project.ext.supportLibraryVersion}"
-    compile "com.android.support:recyclerview-v7:${project.ext.supportLibraryVersion}"
-    compile "com.android.support:design:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:appcompat-v7:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:support-v4:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:recyclerview-v7:${project.ext.supportLibraryVersion}"
+    implementation "com.android.support:design:${project.ext.supportLibraryVersion}"
 }
