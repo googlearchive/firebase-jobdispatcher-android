@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import java.util.List;
 
@@ -24,19 +25,19 @@ class NoopJobValidator implements JobValidator {
 
   @Nullable
   @Override
-  public List<String> validate(JobParameters job) {
+  public List<String> validate(@NonNull JobParameters job) {
     return null;
   }
 
   @Nullable
   @Override
-  public List<String> validate(JobTrigger trigger) {
+  public List<String> validate(@NonNull JobTrigger trigger) {
     return null;
   }
 
   @Nullable
   @Override
-  public List<String> validate(RetryStrategy retryStrategy) {
+  public List<String> validate(@NonNull RetryStrategy retryStrategy) {
     return null;
   }
 }

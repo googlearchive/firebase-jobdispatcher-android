@@ -38,7 +38,7 @@ public final class ObservedUri {
      * Triggers if any descendants of the given URI change. Corresponds to the {@code
      * notifyForDescendants} of {@link android.content.ContentResolver#registerContentObserver}.
      */
-    int FLAG_NOTIFY_FOR_DESCENDANTS = 1 << 0;
+    int FLAG_NOTIFY_FOR_DESCENDANTS = 1;
   }
 
   /**
@@ -55,6 +55,7 @@ public final class ObservedUri {
     this.flags = flags;
   }
 
+  @NonNull
   public Uri getUri() {
     return uri;
   }

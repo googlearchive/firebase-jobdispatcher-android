@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import java.util.List;
 
@@ -26,17 +27,15 @@ import java.util.List;
 public interface JobValidator {
   /** Returns a List of error messages, or null if the JobParameters is valid. */
   @Nullable
-  List<String> validate(JobParameters job);
+  List<String> validate(@NonNull JobParameters job);
 
   /**
    * Returns a List of error messages, or null if the Trigger is valid.
-   *
-   * @param trigger
    */
   @Nullable
-  List<String> validate(JobTrigger trigger);
+  List<String> validate(@NonNull JobTrigger trigger);
 
   /** Returns a List of error messages, or null if the RetryStrategy is valid. */
   @Nullable
-  List<String> validate(RetryStrategy retryStrategy);
+  List<String> validate(@NonNull RetryStrategy retryStrategy);
 }

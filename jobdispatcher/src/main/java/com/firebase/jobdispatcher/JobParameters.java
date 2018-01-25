@@ -51,6 +51,7 @@ public interface JobParameters {
    * and all the runtime constraints are satisfied.
    */
   @JobConstraint
+  @Nullable
   int[] getConstraints();
 
   /** The optional set of user-supplied extras associated with this Job. */

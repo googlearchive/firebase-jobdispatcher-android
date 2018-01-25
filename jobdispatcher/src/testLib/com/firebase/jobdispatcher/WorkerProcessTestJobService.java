@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import com.google.common.util.concurrent.SettableFuture;
 import java.util.concurrent.ExecutionException;
@@ -51,13 +52,13 @@ public class WorkerProcessTestJobService extends JobService {
   }
 
   @Override
-  public boolean onStartJob(JobParameters job) {
+  public boolean onStartJob(@NonNull JobParameters job) {
     Log.i(TAG, "onStartJob " + job);
     return sendOrderedBroadcastAndGetResult(createIntentForEventType(job, EVENT_TYPE_ON_START_JOB));
   }
 
   @Override
-  public boolean onStopJob(JobParameters job) {
+  public boolean onStopJob(@NonNull JobParameters job) {
     Log.i(TAG, "onStopJob " + job);
     return sendOrderedBroadcastAndGetResult(createIntentForEventType(job, EVENT_TYPE_ON_STOP_JOB));
   }
