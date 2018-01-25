@@ -188,6 +188,7 @@ import java.util.ArrayList;
     }
 
     // Older platforms require readValue
+    @SuppressLint("ParcelClassLoader") // We're just reading a string
     Object entryKeyObj = serialized.readValue(null /* Use the system ClassLoader */);
     if (!(entryKeyObj instanceof String)) {
       // Should never happen (Bundle keys are always Strings)

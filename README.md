@@ -64,7 +64,7 @@ Play services installed.
 Library                    | Minimum API | Requires Google Play   | Service API<sup>[1](#fn1)</sup> | Custom retry strategies
 -------------------------- | ----------- | ---------------------- | ------------------------------- | -----------------------
 Framework [JobScheduler][] | 21          | No                     | JobScheduler                    | Yes
-Firebase JobDispatcher     | 9           | Yes                    | JobScheduler                    | Yes
+Firebase JobDispatcher     | 14          | Yes                    | JobScheduler                    | Yes
 [evernote/android-job][]   | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes
 
 <sup><a name="fn1">1</a></sup> Refers to the methods that need to be implemented in the
