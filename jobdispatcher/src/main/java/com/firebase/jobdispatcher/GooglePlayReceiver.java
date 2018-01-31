@@ -95,7 +95,7 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
     try {
       callback.jobFinished(result);
     } catch (Throwable e) {
-      Log.e(TAG, "Encountered error running callback", e.getCause());
+      Log.e(TAG, "Encountered error running callback: " + e.getMessage());
     }
   }
 
@@ -222,29 +222,31 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
 
   @Override
   public void onJobFinished(@NonNull JobInvocation js, @JobResult int result) {
-    synchronized (callbacks) {
-      try {
+    try {
+      JobCallback callback;
+      synchronized (callbacks) {
         SimpleArrayMap<String, JobCallback> map = callbacks.get(js.getService());
         if (map == null) {
           return;
         }
-        JobCallback callback = map.remove(js.getTag());
+        callback = map.remove(js.getTag());
         if (callback == null) {
           return;
         }
         if (map.isEmpty()) {
           callbacks.remove(js.getService());
         }
-
-        if (needsToBeRescheduled(js, result)) {
-          reschedule(js);
-        } else {
-          if (Log.isLoggable(TAG, Log.VERBOSE)) {
-            Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
-          }
-          sendResultSafely(callback, result);
+      }
+      if (needsToBeRescheduled(js, result)) {
+        reschedule(js);
+      } else {
+        if (Log.isLoggable(TAG, Log.VERBOSE)) {
+          Log.v(TAG, "sending jobFinished for " + js.getTag() + " = " + result);
         }
-      } finally {
+        sendResultSafely(callback, result);
+      }
+    } finally {
+      synchronized (callbacks) {
         if (callbacks.isEmpty()) {
           // Safe to call stopSelf, even if we're being bound to
           stopSelf(latestStartId);
@@ -294,13 +296,13 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
       if (jobCallback == null) { // not running
         return;
       }
-      JobInvocation key =
-          new JobInvocation.Builder()
-              .setTag(job.getTag())
-              .setService(job.getService())
-              .setTrigger(job.getTrigger())
-              .build();
-      ExecutionDelegator.stopJob(key, false /* must not send the result */);
     }
+    JobInvocation key =
+        new JobInvocation.Builder()
+            .setTag(job.getTag())
+            .setService(job.getService())
+            .setTrigger(job.getTrigger())
+            .build();
+    ExecutionDelegator.stopJob(key, false /* must not send the result */);
   }
 }
