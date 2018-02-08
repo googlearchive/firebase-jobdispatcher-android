@@ -45,7 +45,7 @@ import org.junit.runner.RunWith;
  * available.
  */
 @RunWith(AndroidJUnit4.class)
-public final class EndToEndTest {
+public final class EndToEndAndroidTest {
   private Context appContext;
   private FirebaseJobDispatcher dispatcher;
 

@@ -45,19 +45,22 @@ dependencies {
     def junit = 'junit:junit:4.12'
     def robolectric = 'org.robolectric:robolectric:3.3.2'
     def guava = 'com.google.guava:guava:23.2-android'
+    def truth = 'com.google.truth:truth:0.39'
 
     // The common test library uses JUnit
     testLibCompile junit
 
-    // The unit tests are written using JUnit, Robolectric, Mockito, and Guava
+    // Unit tests (using Robolectric)
     testCompile junit
     testCompile robolectric
     testCompile guava
+    testCompile truth
     testCompile 'org.mockito:mockito-core:2.2.5'
 
-    // The Android (e2e) tests are written using JUnit, the test support lib, and Guava
+    // Android (e2e) tests
     androidTestCompile junit
     androidTestCompile guava
+    androidTestCompile truth
     androidTestCompile 'com.android.support.test:runner:0.5'
 }
 
