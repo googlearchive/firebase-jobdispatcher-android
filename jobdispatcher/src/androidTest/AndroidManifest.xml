@@ -29,6 +29,8 @@
         android:targetPackage="com.firebase.jobdispatcher"/>
 
     <application>
+        <uses-library android:name="android.test.runner" />
+
         <service
             android:name=".TestJobService"
             android:exported="false">
