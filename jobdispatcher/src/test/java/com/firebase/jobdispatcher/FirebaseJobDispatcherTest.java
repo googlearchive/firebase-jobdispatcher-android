@@ -194,8 +194,9 @@ public class FirebaseJobDispatcherTest {
 
     try {
       dispatcher.newRetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 30, 30);
-    } catch (Exception unused) {
-      fail("Expected initial backoff == 30s not to fail using custom validator");
+    } catch (Exception e) {
+      throw new AssertionError(
+          "Expected initial backoff == 30s not to fail using custom validator", e);
     }
   }
 
