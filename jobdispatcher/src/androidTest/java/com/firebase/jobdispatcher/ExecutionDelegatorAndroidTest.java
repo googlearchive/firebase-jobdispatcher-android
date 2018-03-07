@@ -18,19 +18,18 @@ package com.firebase.jobdispatcher;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
+import com.google.common.util.concurrent.SettableFuture;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,10 +38,10 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class ExecutionDelegatorAndroidTest {
 
-  private static final int TIMEOUT_SECONDS = 10;
+  private static final int TIMEOUT_SECONDS = 5;
 
   private Context appContext;
-  private JobInvocation finishedJobInvocation;
+  private SettableFuture<JobInvocation> finishedJobInvocationFuture;
   private int jobResult;
   private ExecutionDelegator executionDelegator;
   private final JobInvocation jobInvocation =
@@ -58,14 +57,14 @@ public class ExecutionDelegatorAndroidTest {
   public void setUp() {
     appContext = InstrumentationRegistry.getTargetContext();
     TestJobService.reset();
-    finishedJobInvocation = null;
+    finishedJobInvocationFuture = SettableFuture.create();
     jobResult = -1;
     executionDelegator =
         new ExecutionDelegator(
             appContext,
             /* jobFinishedCallback= */ (jobInvocation, result) -> {
-              finishedJobInvocation = jobInvocation;
               jobResult = result;
+              finishedJobInvocationFuture.set(jobInvocation);
             });
     startLatch = new CountDownLatch(1);
     stopLatch = new CountDownLatch(1);
@@ -99,7 +98,7 @@ public class ExecutionDelegatorAndroidTest {
   }
 
   @Test
-  public void execute() throws InterruptedException {
+  public void execute() throws Exception {
     executionDelegator.executeJob(jobInvocation);
     assertTrue(
         "Latch wasn't counted down as expected",
@@ -107,23 +106,23 @@ public class ExecutionDelegatorAndroidTest {
   }
 
   @Test
-  public void executeAndStopWithResult() throws InterruptedException {
+  public void executeAndStopWithResult() throws Exception {
     executionDelegator.executeJob(jobInvocation);
     assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
-    verifyStopRequestWasProcessed(true);
+    verifyStopRequestWasProcessedWithResult();
   }
 
   @Test
-  public void executeAndStopWithoutResult() throws InterruptedException {
+  public void executeAndStopWithoutResult() throws Exception {
     executionDelegator.executeJob(jobInvocation);
     assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
-    verifyStopRequestWasProcessed(false);
+    verifyStopRequestWasProcessedWithoutResult();
   }
 
   @Test
-  public void execute_unbind_jobStopped() throws InterruptedException {
+  public void execute_unbind_jobStopped() throws Exception {
     executionDelegator.executeJob(jobInvocation);
     assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
@@ -133,7 +132,7 @@ public class ExecutionDelegatorAndroidTest {
   }
 
   @Test
-  public void execute_twice_stopAndRestart() throws InterruptedException {
+  public void execute_twice_stopAndRestart() throws Exception {
     executionDelegator.executeJob(jobInvocation);
     assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
@@ -146,11 +145,11 @@ public class ExecutionDelegatorAndroidTest {
   }
 
   @Test
-  public void execute_afterStopWithResult_jobServiceStartedAgain() throws InterruptedException {
+  public void execute_afterStopWithResult_jobServiceStartedAgain() throws Exception {
     executionDelegator.executeJob(jobInvocation);
     assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
 
-    verifyStopRequestWasProcessed(true);
+    verifyStopRequestWasProcessedWithResult();
 
     ExecutionDelegator.stopJob(jobInvocation, true);
     ExecutionDelegator.stopJob(jobInvocation, true); // should not throw when called again
@@ -162,7 +161,7 @@ public class ExecutionDelegatorAndroidTest {
   }
 
   @Test
-  public void executeTwoJobs_stopFirst_secondStays() throws InterruptedException {
+  public void executeTwoJobs_stopFirst_secondStays() throws Exception {
     JobInvocation secondJobInvocation =
         new JobInvocation.Builder()
             .setTag("secondJob")
@@ -192,26 +191,28 @@ public class ExecutionDelegatorAndroidTest {
         startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
   }
 
-  private void verifyStopRequestWasProcessed(boolean withResult) throws InterruptedException {
-    ExecutionDelegator.stopJob(jobInvocation, withResult);
-    // Idle the main looper twice; once to process the call to onStopJob and once to process the
-    // corresponding jobFinishedCallback that sets the finishedJobInvocation variable.
-    idleMainLooper();
-    idleMainLooper();
+  private void verifyStopRequestWasProcessedWithResult() throws Exception {
+    ExecutionDelegator.stopJob(jobInvocation, /* needToSendResult= */ true);
 
-    if (withResult) {
+    try {
+      JobInvocation finishedJobInvocation =
+          finishedJobInvocationFuture.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+
       assertEquals(jobInvocation, finishedJobInvocation);
       assertEquals(JobService.RESULT_SUCCESS, jobResult);
-    } else {
-      assertNull(finishedJobInvocation);
-      assertEquals(-1, jobResult);
+    } catch (TimeoutException e) {
+      throw new AssertionError("Timed out waiting for finishedJobInvocationFuture to be set", e);
     }
   }
 
-  private static void idleMainLooper() throws InterruptedException {
-    CountDownLatch latch = new CountDownLatch(1);
-    new Handler(Looper.getMainLooper()).post(latch::countDown);
-    assertTrue(
-        "Looper didn't run posted runnable.", latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+  private void verifyStopRequestWasProcessedWithoutResult() throws Exception {
+    ExecutionDelegator.stopJob(jobInvocation, /* needToSendResult= */ false);
+
+    try {
+      finishedJobInvocationFuture.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      fail("finishedJobInvocationFuture was unexpectedly set");
+    } catch (TimeoutException expected) {
+      assertEquals(-1, jobResult);
+    }
   }
 }
