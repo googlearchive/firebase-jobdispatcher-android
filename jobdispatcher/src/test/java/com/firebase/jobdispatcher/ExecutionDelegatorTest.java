@@ -18,6 +18,7 @@ package com.firebase.jobdispatcher;
 
 import static android.content.Context.BIND_AUTO_CREATE;
 import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -71,14 +72,16 @@ public class ExecutionDelegatorTest {
   @Mock private Context mockContext;
   @Mock private IRemoteJobService jobServiceMock;
   @Mock private IBinder iBinderMock;
+  @Mock ConstraintChecker constraintChecker;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
     when(mockContext.getPackageName()).thenReturn("com.example.foo");
+    when(constraintChecker.areConstraintsSatisfied(any(JobInvocation.class))).thenReturn(true);
 
     receiver = new TestJobReceiver();
-    executionDelegator = new ExecutionDelegator(mockContext, receiver);
+    executionDelegator = new ExecutionDelegator(mockContext, receiver, constraintChecker);
     ExecutionDelegator.cleanServiceConnections();
 
     noopBinder =
@@ -135,6 +138,28 @@ public class ExecutionDelegatorTest {
     for (JobInvocation input : TestUtil.getJobInvocationCombinations()) {
       verifyExecuteJob(input);
     }
+  }
+
+  @Test
+  public void executeJob_constraintsUnsatisfied_schedulesJobRetry() throws RemoteException {
+    // Simulate job constraints not being met.
+    JobInvocation jobInvocation =
+        new JobInvocation.Builder()
+            .setTag("tag")
+            .setService("service")
+            .setTrigger(Trigger.NOW)
+            .build();
+    when(constraintChecker.areConstraintsSatisfied(eq(jobInvocation))).thenReturn(false);
+
+    executionDelegator.executeJob(jobInvocation);
+
+    // Confirm that service not bound
+    verify(mockContext, never())
+        .bindService(any(Intent.class), any(JobServiceConnection.class), anyInt());
+    assertThat(ExecutionDelegator.getJobServiceConnection("service")).isNull();
+
+    // Verify that job is set for a retry later.
+    assertThat(receiver.lastResult).isEqualTo(JobService.RESULT_FAIL_RETRY);
   }
 
   @Test

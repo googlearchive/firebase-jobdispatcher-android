@@ -58,6 +58,7 @@ public class GooglePlayDriverTest {
   @Mock private Context mMockContext;
   @Mock private JobCallback jobCallbackMock;
   @Mock private JobFinishedCallback callbackMock;
+  @Mock private ConstraintChecker constraintCheckerMock;
   @Captor ArgumentCaptor<JobServiceConnection> serviceConnectionCaptor;
 
   private TestJobDriver driver;
@@ -74,6 +75,7 @@ public class GooglePlayDriverTest {
     dispatcher = new FirebaseJobDispatcher(driver);
 
     when(mMockContext.getPackageName()).thenReturn("foo.bar.whatever");
+    when(constraintCheckerMock.areConstraintsSatisfied(any(JobInvocation.class))).thenReturn(true);
   }
 
   @After
@@ -171,7 +173,8 @@ public class GooglePlayDriverTest {
     when(mMockContext.bindService(
             any(Intent.class), serviceConnectionCaptor.capture(), eq(BIND_AUTO_CREATE)))
         .thenReturn(true);
-    new ExecutionDelegator(mMockContext, callbackMock).executeJob(invocation);
+    new ExecutionDelegator(mMockContext, callbackMock, constraintCheckerMock)
+        .executeJob(invocation);
 
     Job job =
         TestUtil.getBuilderWithNoopValidator()

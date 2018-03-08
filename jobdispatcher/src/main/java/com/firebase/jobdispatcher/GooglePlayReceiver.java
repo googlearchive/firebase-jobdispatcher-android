@@ -151,7 +151,8 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
 
   /* package */ synchronized ExecutionDelegator getExecutionDelegator() {
     if (executionDelegator == null) {
-      executionDelegator = new ExecutionDelegator(this, this);
+      executionDelegator =
+          new ExecutionDelegator(this, this, new ConstraintChecker(getApplicationContext()));
     }
     return executionDelegator;
   }

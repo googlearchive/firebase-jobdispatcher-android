@@ -67,6 +67,7 @@ public class GooglePlayMessageHandlerTest {
   @Captor private ArgumentCaptor<Bundle> bundleCaptor;
   @Mock private IRemoteJobService jobServiceMock;
   @Mock private IBinder iBinderMock;
+  @Mock private ConstraintChecker constraintCheckerMock;
 
   ExecutionDelegator executionDelegator;
 
@@ -76,7 +77,10 @@ public class GooglePlayMessageHandlerTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     handler = new GooglePlayMessageHandler(looper, receiverMock);
-    executionDelegator = new ExecutionDelegator(contextMock, jobFinishedCallbackMock);
+
+    when(constraintCheckerMock.areConstraintsSatisfied(any(JobInvocation.class))).thenReturn(true);
+    executionDelegator =
+        new ExecutionDelegator(contextMock, jobFinishedCallbackMock, constraintCheckerMock);
     when(receiverMock.getExecutionDelegator()).thenReturn(executionDelegator);
     when(receiverMock.getApplicationContext()).thenReturn(contextMock);
     when(contextMock.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(appOpsManager);

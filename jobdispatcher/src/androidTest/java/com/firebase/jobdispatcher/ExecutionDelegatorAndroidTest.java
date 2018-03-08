@@ -59,13 +59,15 @@ public class ExecutionDelegatorAndroidTest {
     TestJobService.reset();
     finishedJobInvocationFuture = SettableFuture.create();
     jobResult = -1;
+    ConstraintChecker constraintChecker = new ConstraintChecker(appContext);
     executionDelegator =
         new ExecutionDelegator(
             appContext,
             /* jobFinishedCallback= */ (jobInvocation, result) -> {
               jobResult = result;
               finishedJobInvocationFuture.set(jobInvocation);
-            });
+            },
+            constraintChecker);
     startLatch = new CountDownLatch(1);
     stopLatch = new CountDownLatch(1);
 

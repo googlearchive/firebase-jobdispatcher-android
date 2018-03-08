@@ -76,19 +76,40 @@ import com.firebase.jobdispatcher.JobService.JobResult;
 
   private final Context context;
   private final JobFinishedCallback jobFinishedCallback;
+  private final ConstraintChecker constraintChecker;
 
-  ExecutionDelegator(Context context, JobFinishedCallback jobFinishedCallback) {
+  ExecutionDelegator(
+      Context context,
+      JobFinishedCallback jobFinishedCallback,
+      ConstraintChecker constraintChecker) {
     this.context = context;
     this.jobFinishedCallback = jobFinishedCallback;
+    this.constraintChecker = constraintChecker;
   }
 
   /**
    * Executes the provided {@code jobInvocation} by kicking off the creation of a new Binder
    * connection to the Service.
+   *
+   * <p>Note job is not executed if its constraints are still unsatisfied. E.g. disconnected network
+   * connection for network-constrained jobs. In this case, job is failed but set to retry if
+   * eligible using the {@code JobService.RESULT_FAIL_RETRY} code.
    */
   void executeJob(JobInvocation jobInvocation) {
     if (jobInvocation == null) {
       return;
+    }
+
+    // Check job constraints satisfied prior to starting job.
+    if (!constraintChecker.areConstraintsSatisfied(jobInvocation)) {
+      if (Log.isLoggable(TAG, Log.DEBUG)) {
+        Log.d(TAG, "Not executing job because constraints still unmet. Job: " + jobInvocation);
+      }
+      jobFinishedCallback.onJobFinished(jobInvocation, JobService.RESULT_FAIL_RETRY);
+      return;
+    }
+    if (Log.isLoggable(TAG, Log.DEBUG)) {
+      Log.d(TAG, "Proceeding to execute job because constraints met. Job: " + jobInvocation);
     }
 
     synchronized (serviceConnections) {
