@@ -143,54 +143,54 @@ import org.json.JSONObject;
       return new JobInvocation(this);
     }
 
-    public Builder setTag(@NonNull String mTag) {
-      this.tag = mTag;
+    Builder setTag(@NonNull String tag) {
+      this.tag = tag;
       return this;
     }
 
-    public Builder setService(@NonNull String mService) {
-      this.service = mService;
+    Builder setService(@NonNull String service) {
+      this.service = service;
       return this;
     }
 
-    public Builder setTrigger(@NonNull JobTrigger mTrigger) {
-      this.trigger = mTrigger;
+    Builder setTrigger(@NonNull JobTrigger trigger) {
+      this.trigger = trigger;
       return this;
     }
 
-    public Builder setRecurring(boolean mRecurring) {
-      this.recurring = mRecurring;
+    Builder setRecurring(boolean recurring) {
+      this.recurring = recurring;
       return this;
     }
 
-    public Builder setLifetime(@Lifetime.LifetimeConstant int mLifetime) {
-      this.lifetime = mLifetime;
+    Builder setLifetime(@Lifetime.LifetimeConstant int lifetime) {
+      this.lifetime = lifetime;
       return this;
     }
 
-    public Builder setConstraints(@JobConstraint @NonNull int[] mConstraints) {
-      this.constraints = mConstraints;
+    Builder setConstraints(@JobConstraint int... constraints) {
+      this.constraints = constraints;
       return this;
     }
 
-    public Builder addExtras(Bundle bundle) {
+    Builder addExtras(Bundle bundle) {
       if (bundle != null) {
         extras.putAll(bundle);
       }
       return this;
     }
 
-    public Builder setRetryStrategy(RetryStrategy mRetryStrategy) {
-      this.retryStrategy = mRetryStrategy;
+    Builder setRetryStrategy(RetryStrategy retryStrategy) {
+      this.retryStrategy = retryStrategy;
       return this;
     }
 
-    public Builder setReplaceCurrent(boolean mReplaceCurrent) {
-      this.replaceCurrent = mReplaceCurrent;
+    Builder setReplaceCurrent(boolean replaceCurrent) {
+      this.replaceCurrent = replaceCurrent;
       return this;
     }
 
-    public Builder setTriggerReason(TriggerReason triggerReason) {
+    Builder setTriggerReason(TriggerReason triggerReason) {
       this.triggerReason = triggerReason;
       return this;
     }
