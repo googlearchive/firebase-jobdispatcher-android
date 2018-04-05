@@ -18,6 +18,7 @@ package com.firebase.jobdispatcher;
 
 import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
 import static com.firebase.jobdispatcher.TestUtil.flushExecutorService;
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -38,6 +39,8 @@ import android.support.v4.util.Pair;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
 import com.google.android.gms.gcm.PendingCallback;
 import com.google.common.util.concurrent.SettableFuture;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -49,10 +52,16 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
+import org.robolectric.shadows.ShadowSystemClock;
 
 /** Tests for the {@link JobService} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(
+  constants = BuildConfig.class,
+  manifest = Config.NONE,
+  sdk = 23,
+  shadows = {ShadowSystemClock.class}
+)
 public class JobServiceTest {
 
   private static final int TIMEOUT_MS = 3_000;
@@ -181,8 +190,7 @@ public class JobServiceTest {
         IRemoteJobService.Stub.asInterface(service.onBind(new Intent(JobService.ACTION_EXECUTE)));
     remoteJobService.start(jobSpecData, noopCallback);
 
-    flushExecutorService(service.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(service);
 
     assertTrue("Expected job to run to completion", countDownLatch.await(5, TimeUnit.SECONDS));
   }
@@ -202,8 +210,7 @@ public class JobServiceTest {
     IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, null);
     IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, null);
 
-    flushExecutorService(service.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(service);
 
     assertEquals(1, service.getNumberOfStartRequestsReceived());
   }
@@ -221,8 +228,7 @@ public class JobServiceTest {
     IRemoteJobService.Stub.asInterface(service.onBind(null))
         .stop(getJobCoder().encode(job, new Bundle()), true);
 
-    flushExecutorService(service.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(service);
 
     verify(service, never()).onStopJob(job);
   }
@@ -245,8 +251,7 @@ public class JobServiceTest {
     IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, callback);
     IRemoteJobService.Stub.asInterface(service.onBind(null)).stop(jobSpecData, true);
 
-    flushExecutorService(service.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(service);
 
     assertEquals(1, service.getNumberOfStopRequestsReceived());
     callback.verifyCalledWithJobAndResult(job, JobService.RESULT_SUCCESS);
@@ -269,8 +274,7 @@ public class JobServiceTest {
     IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, callback);
     IRemoteJobService.Stub.asInterface(service.onBind(null)).stop(jobSpecData, true);
 
-    flushExecutorService(service.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(service);
 
     assertEquals(1, service.getNumberOfStopRequestsReceived());
     callback.verifyCalledWithJobAndResult(job, JobService.RESULT_FAIL_RETRY);
@@ -307,8 +311,7 @@ public class JobServiceTest {
     IRemoteJobService.Stub.asInterface(reschedulingService.onBind(null))
         .start(getJobCoder().encode(jobSpec, new Bundle()), callback);
 
-    flushExecutorService(reschedulingService.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(reschedulingService);
 
     callback.verifyCalledWithJobAndResult(jobSpec, JobService.RESULT_FAIL_RETRY);
   }
@@ -343,8 +346,7 @@ public class JobServiceTest {
     IRemoteJobService.Stub.asInterface(reschedulingService.onBind(null))
         .start(getJobCoder().encode(jobSpec, new Bundle()), callback);
 
-    flushExecutorService(reschedulingService.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(reschedulingService);
 
     callback.verifyCalledWithJobAndResult(jobSpec, JobService.RESULT_SUCCESS);
   }
@@ -425,13 +427,75 @@ public class JobServiceTest {
             })
         .get(1, TimeUnit.SECONDS);
 
-    flushExecutorService(service.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(service);
 
     assertEquals(
         "onStopJob was not called on main thread",
         Looper.getMainLooper(),
         looperFuture.get(1, TimeUnit.SECONDS));
+  }
+
+  @Test
+  public void dump_noTasksStarted() throws Exception {
+    assertThat(dump(new ExampleJobService())).isEqualTo("No running jobs\n");
+  }
+
+  @Test
+  public void dump_oneRunningJob() throws Exception {
+    countDownLatch = new CountDownLatch(1);
+    JobService service =
+        new JobService() {
+          @Override
+          public boolean onStartJob(JobParameters job) {
+            countDownLatch.countDown();
+            return true; // more work to do
+          }
+
+          @Override
+          public boolean onStopJob(JobParameters job) {
+            return false;
+          }
+        };
+
+    Job jobSpec =
+        TestUtil.getBuilderWithNoopValidator()
+            .setTag("one_running_job")
+            .setService(service.getClass())
+            .setTrigger(Trigger.NOW)
+            .build();
+
+    Bundle jobSpecData = getJobCoder().encode(jobSpec, new Bundle());
+    FutureSettingJobCallback callback = new FutureSettingJobCallback();
+    IRemoteJobService stub = IRemoteJobService.Stub.asInterface(service.onBind(null));
+
+    ShadowSystemClock.setCurrentTimeMillis(10_000L);
+    // Start the job
+    stub.start(jobSpecData, callback);
+    flush(service);
+
+    // Make sure it was started
+    assertThat(countDownLatch.await(1, TimeUnit.SECONDS)).isTrue();
+    // Fast forward 30s
+    ShadowSystemClock.setCurrentTimeMillis(40_000L);
+
+    assertThat(dump(service))
+        .isEqualTo("Running jobs:\n    * \"one_running_job\" has been running for 00:30\n");
+
+    stub.stop(jobSpecData, /* needToSendResult= */ false);
+    flush(service);
+
+    assertThat(dump(service)).isEqualTo("No running jobs\n");
+  }
+
+  private static String dump(JobService service) throws Exception {
+    StringWriter sw = new StringWriter();
+    service.dumpImpl(new PrintWriter(sw));
+    return sw.toString();
+  }
+
+  private static void flush(JobService jobService) throws Exception {
+    flushExecutorService(jobService.backgroundExecutor);
+    ShadowLooper.idleMainLooper();
   }
 
   private static void verifyOnUnbindCausesResult(JobService service, int expectedResult)
@@ -453,8 +517,7 @@ public class JobServiceTest {
     // manually trigger the onUnbind hook
     service.onUnbind(new Intent());
 
-    flushExecutorService(service.backgroundExecutor);
-    ShadowLooper.idleMainLooper();
+    flush(service);
 
     callback.verifyCalledWithJobAndResult(jobSpec, expectedResult);
 

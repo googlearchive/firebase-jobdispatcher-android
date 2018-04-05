@@ -17,6 +17,7 @@
 package com.firebase.jobdispatcher;
 
 import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import android.app.Service;
@@ -27,6 +28,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.RemoteException;
+import android.os.SystemClock;
 import android.support.annotation.AnyThread;
 import android.support.annotation.BinderThread;
 // import android.support.annotation.GuardedBy;
@@ -37,6 +39,7 @@ import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.support.annotation.WorkerThread;
 import android.support.v4.util.SimpleArrayMap;
+import android.text.format.DateUtils;
 import android.util.Log;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -46,6 +49,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import org.json.JSONObject;
 
 /**
  * JobService is the fundamental unit of work used in the JobDispatcher.
@@ -192,7 +196,7 @@ public abstract class JobService extends Service {
             TAG, String.format(Locale.US, "Job with tag = %s was already running.", job.getTag()));
         return;
       }
-      runningJobs.put(job.getTag(), new JobCallback(job, callback));
+      runningJobs.put(job.getTag(), new JobCallback(job, callback, SystemClock.elapsedRealtime()));
     }
 
     // onStartJob needs to be called on the main thread
@@ -340,9 +344,40 @@ public abstract class JobService extends Service {
   @MainThread
   public final void onStart(Intent intent, int startId) {}
 
+  /**
+   * Package-private alias for {@link #dump(FileDescriptor, PrintWriter, String[])}.
+   *
+   * <p>The {@link #dump(FileDescriptor, PrintWriter, String[])} method is protected. This
+   * implementation method is marked package-private to facilitate testing.
+   */
+  @VisibleForTesting
+  final void dumpImpl(PrintWriter writer) {
+    synchronized (runningJobs) {
+      if (runningJobs.isEmpty()) {
+        writer.println("No running jobs");
+        return;
+      }
+
+      long now = SystemClock.elapsedRealtime();
+
+      writer.println("Running jobs:");
+      for (int i = 0; i < runningJobs.size(); i++) {
+        JobCallback callback = runningJobs.get(runningJobs.keyAt(i));
+
+        // Add sanitized quotes around the tag to make this easier to parse for robots
+        String name = JSONObject.quote(callback.job.getTag());
+        // Produces strings like "02:30"
+        String duration =
+            DateUtils.formatElapsedTime(MILLISECONDS.toSeconds(now - callback.startedAtElapsed));
+
+        writer.println("    * " + name + " has been running for " + duration);
+      }
+    }
+  }
+
   @Override
   protected final void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
-    super.dump(fd, writer, args);
+    dumpImpl(writer);
   }
 
   @Override
@@ -360,10 +395,12 @@ public abstract class JobService extends Service {
   private static final class JobCallback {
     final JobParameters job;
     final IJobCallback remoteCallback;
+    final long startedAtElapsed;
 
-    private JobCallback(JobParameters job, IJobCallback callback) {
+    private JobCallback(JobParameters job, IJobCallback callback, long startedAtElapsed) {
       this.job = job;
       this.remoteCallback = callback;
+      this.startedAtElapsed = startedAtElapsed;
     }
 
     void sendResult(@JobResult int result) {
