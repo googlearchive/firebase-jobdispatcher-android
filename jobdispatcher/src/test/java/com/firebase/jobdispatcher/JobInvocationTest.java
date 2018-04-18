@@ -32,7 +32,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests for the {@link JobInvocation} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class JobInvocationTest {
   private Builder builder;
 

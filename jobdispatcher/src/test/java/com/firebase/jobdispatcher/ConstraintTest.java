@@ -28,7 +28,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests for the {@link Constraint} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class ConstraintTest {
 
   /** Just to get 100% coverage. */

@@ -52,7 +52,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests {@link GooglePlayMessageHandler}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@Config(manifest = Config.NONE, sdk = 21)
 public class GooglePlayMessageHandlerTest {
 
   @Mock Looper looper;

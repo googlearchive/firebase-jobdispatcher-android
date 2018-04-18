@@ -33,7 +33,7 @@ import org.robolectric.shadows.ShadowNetworkInfo;
 
 /** Tests for the {@link com.firebase.jobdispatcher.ConstraintChecker} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE)
+@Config(manifest = Config.NONE)
 public final class ConstraintCheckerTest {
 
   private static final String JOB_TAG = "JobTag";

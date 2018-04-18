@@ -58,7 +58,7 @@ import org.robolectric.annotation.Config;
 /** Tests for the {@link ExecutionDelegator}. */
 @SuppressWarnings("WrongConstant")
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@Config(manifest = Config.NONE, sdk = 21)
 public class ExecutionDelegatorTest {
 
   private TestJobReceiver receiver;

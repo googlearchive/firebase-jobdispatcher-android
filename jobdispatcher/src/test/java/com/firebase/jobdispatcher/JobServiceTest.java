@@ -57,7 +57,6 @@ import org.robolectric.shadows.ShadowSystemClock;
 /** Tests for the {@link JobService} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(
-  constants = BuildConfig.class,
   manifest = Config.NONE,
   sdk = 23,
   shadows = {ShadowSystemClock.class}

@@ -38,7 +38,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests for the {@link JobCoder} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class JobCoderTest {
   private final JobCoder coder = new JobCoder(PREFIX);
   private static final String PREFIX = "prefix";

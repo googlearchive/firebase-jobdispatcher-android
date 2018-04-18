@@ -53,7 +53,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests for the {@link GooglePlayDriver} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class GooglePlayDriverTest {
   @Mock private Context mMockContext;
   @Mock private JobCallback jobCallbackMock;

@@ -73,7 +73,6 @@ import org.robolectric.annotation.Implements;
 /** Tests for the {@link GooglePlayReceiver} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(
-  constants = BuildConfig.class,
   manifest = Config.NONE,
   sdk = 21,
   shadows = {ShadowMessenger.class}

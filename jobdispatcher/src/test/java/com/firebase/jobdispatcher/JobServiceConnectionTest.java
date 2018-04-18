@@ -45,7 +45,7 @@ import org.robolectric.annotation.Config;
 
 /** Test for {@link JobServiceConnection}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class JobServiceConnectionTest {
 
   JobInvocation job =

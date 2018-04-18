@@ -47,7 +47,6 @@ import org.robolectric.shadows.ShadowParcel;
 /** Tests for the {@link GooglePlayCallbackExtractor} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(
-  constants = BuildConfig.class,
   manifest = Config.NONE,
   sdk = 23,
   shadows = {ExtendedShadowParcel.class}
