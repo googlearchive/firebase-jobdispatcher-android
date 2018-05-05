@@ -460,28 +460,28 @@ public abstract class JobService extends Service {
     @NonNull private final JobService jobService;
 
     /**
-     * Set for {@link CALL_ON_START_JOB}, {@link CALL_ON_STOP_JOB}, {@link
-     * HANDLE_START_JOB_REQUEST}, {@link HANDLE_STOP_JOB_REQUEST}, and {@link
-     * REMOVE_AND_FINISH_JOB_WITH_RESULT}.
+     * Set for {@link #CALL_ON_START_JOB}, {@link #CALL_ON_STOP_JOB}, {@link
+     * #HANDLE_START_JOB_REQUEST}, {@link #HANDLE_STOP_JOB_REQUEST}, and {@link
+     * #REMOVE_AND_FINISH_JOB_WITH_RESULT}.
      */
     @Nullable private final JobParameters jobParameters;
 
-    /** Set for {@link HANDLE_START_JOB_REQUEST}. */
+    /** Set for {@link #HANDLE_START_JOB_REQUEST}. */
     @Nullable private final IJobCallback remoteJobCallback;
 
-    /** Set for {@link CALL_ON_STOP_JOB} and {@link FINISH_JOB_WITH_RESULT}. */
+    /** Set for {@link #CALL_ON_STOP_JOB} and {@link #FINISH_JOB_WITH_RESULT}. */
     @Nullable private final JobCallback jobCallback;
 
     /**
-     * Set for {@link CALL_ON_STOP_JOB}, {@link FINISH_JOB_WITH_RESULT}, and {@link
-     * REMOVE_AND_FINISH_JOB_WITH_RESULT}.
+     * Set for {@link #CALL_ON_STOP_JOB}, {@link #FINISH_JOB_WITH_RESULT}, and {@link
+     * #REMOVE_AND_FINISH_JOB_WITH_RESULT}.
      */
     @JobResult private final int terminatingResult;
 
     /**
      * Boolean value whose meaning changes depending on the {@link #workType}.
      *
-     * <p>Set for {@link HANDLE_STOP_JOB_REQUEST} and {@link CALL_ON_STOP_JOB}.
+     * <p>Set for {@link #HANDLE_STOP_JOB_REQUEST} and {@link #CALL_ON_STOP_JOB}.
      */
     private final boolean boolValue;
 

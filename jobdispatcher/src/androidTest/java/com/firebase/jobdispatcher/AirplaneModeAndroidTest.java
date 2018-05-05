@@ -77,13 +77,13 @@ public final class AirplaneModeAndroidTest {
     TestJobService.setProxy(
         new TestJobService.JobServiceProxy() {
           @Override
-          public boolean onStartJob(JobParameters params) {
+          public boolean onStartJob(JobService jobService, JobParameters params) {
             jobStartedFuture.set(null);
             return false;
           }
 
           @Override
-          public boolean onStopJob(JobParameters params) {
+          public boolean onStopJob(JobService jobService, JobParameters params) {
             return false;
           }
         });

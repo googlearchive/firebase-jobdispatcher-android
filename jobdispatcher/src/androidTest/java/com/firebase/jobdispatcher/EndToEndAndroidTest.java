@@ -70,13 +70,13 @@ public final class EndToEndAndroidTest {
     TestJobService.setProxy(
         new TestJobService.JobServiceProxy() {
           @Override
-          public boolean onStartJob(JobParameters params) {
-            bundleFuture.set(params.getExtras());
+          public boolean onStartJob(JobService jobService, JobParameters job) {
+            bundleFuture.set(job.getExtras());
             return false;
           }
 
           @Override
-          public boolean onStopJob(JobParameters params) {
+          public boolean onStopJob(JobService jobService, JobParameters job) {
             return false;
           }
         });
@@ -107,15 +107,15 @@ public final class EndToEndAndroidTest {
     TestJobService.setProxy(
         new TestJobService.JobServiceProxy() {
           @Override
-          public boolean onStartJob(JobParameters params) {
-            startedJobs.add(params.getTag());
+          public boolean onStartJob(JobService jobService, JobParameters job) {
+            startedJobs.add(job.getTag());
             startLatch.countDown();
             return true;
           }
 
           @Override
-          public boolean onStopJob(JobParameters params) {
-            stoppedJobs.add(params.getTag());
+          public boolean onStopJob(JobService jobService, JobParameters job) {
+            stoppedJobs.add(job.getTag());
             stopLatch.countDown();
             return false;
           }

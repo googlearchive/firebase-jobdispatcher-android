@@ -124,22 +124,28 @@ public class GooglePlayMessageHandlerTest {
 
   @Test
   public void handleMessage_startExecution() throws Exception {
-    Message message = Message.obtain();
-    message.what = GooglePlayMessageHandler.MSG_START_EXEC;
+    Message startExecutionMsg = Message.obtain();
+    startExecutionMsg.what = GooglePlayMessageHandler.MSG_START_EXEC;
     Bundle data = new Bundle();
     data.putString(REQUEST_PARAM_TAG, "TAG");
-    message.setData(data);
-    message.replyTo = messengerMock;
+    startExecutionMsg.setData(data);
+    startExecutionMsg.replyTo = messengerMock;
+
     JobInvocation jobInvocation =
         new Builder()
             .setTag("tag")
             .setService(TestJobService.class.getName())
             .setTrigger(Trigger.NOW)
             .build();
+
     when(receiverMock.prepareJob(any(GooglePlayMessengerCallback.class), eq(data)))
         .thenReturn(jobInvocation);
 
-    handler.handleMessage(message);
+    when(contextMock.bindService(
+            any(Intent.class), any(JobServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
+    handler.handleMessage(startExecutionMsg);
     verify(contextMock)
         .bindService(any(Intent.class), jobServiceConnectionCaptor.capture(), eq(BIND_AUTO_CREATE));
     assertTrue(jobServiceConnectionCaptor.getValue().hasJobInvocation(jobInvocation));

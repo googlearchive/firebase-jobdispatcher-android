@@ -16,19 +16,24 @@
 
 package com.firebase.jobdispatcher;
 
+import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assertWithMessage;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
+import com.firebase.jobdispatcher.TestJobService.JobServiceProxy;
 import com.google.common.util.concurrent.SettableFuture;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.junit.Before;
 import org.junit.Test;
@@ -78,7 +83,7 @@ public class ExecutionDelegatorAndroidTest {
           Set<String> runningJobs = new HashSet<>();
 
           @Override
-          public boolean onStartJob(JobParameters params) {
+          public boolean onStartJob(JobService jobService, JobParameters params) {
             if (runningJobs.add(params.getTag())) {
               startLatch.countDown();
             } else {
@@ -88,7 +93,7 @@ public class ExecutionDelegatorAndroidTest {
           }
 
           @Override
-          public boolean onStopJob(JobParameters params) {
+          public boolean onStopJob(JobService jobService, JobParameters params) {
             if (runningJobs.remove(params.getTag())) {
               stopLatch.countDown();
             } else {
@@ -102,15 +107,13 @@ public class ExecutionDelegatorAndroidTest {
   @Test
   public void execute() throws Exception {
     executionDelegator.executeJob(jobInvocation);
-    assertTrue(
-        "Latch wasn't counted down as expected",
-        startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Latch wasn't counted down as expected", startLatch.await(TIMEOUT_SECONDS, SECONDS));
   }
 
   @Test
   public void executeAndStopWithResult() throws Exception {
     executionDelegator.executeJob(jobInvocation);
-    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
 
     verifyStopRequestWasProcessedWithResult();
   }
@@ -118,7 +121,7 @@ public class ExecutionDelegatorAndroidTest {
   @Test
   public void executeAndStopWithoutResult() throws Exception {
     executionDelegator.executeJob(jobInvocation);
-    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
 
     verifyStopRequestWasProcessedWithoutResult();
   }
@@ -126,30 +129,30 @@ public class ExecutionDelegatorAndroidTest {
   @Test
   public void execute_unbind_jobStopped() throws Exception {
     executionDelegator.executeJob(jobInvocation);
-    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
 
     ExecutionDelegator.getJobServiceConnection(jobInvocation.getService()).unbind();
 
-    assertTrue("Job should be stopped.", stopLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Job should be stopped.", stopLatch.await(TIMEOUT_SECONDS, SECONDS));
   }
 
   @Test
   public void execute_twice_stopAndRestart() throws Exception {
     executionDelegator.executeJob(jobInvocation);
-    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
 
     startLatch = new CountDownLatch(1);
 
     executionDelegator.executeJob(jobInvocation);
 
-    assertTrue("First job should be stopped.", stopLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
-    assertTrue("Job should be started again.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("First job should be stopped.", stopLatch.await(TIMEOUT_SECONDS, SECONDS));
+    assertTrue("Job should be started again.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
   }
 
   @Test
   public void execute_afterStopWithResult_jobServiceStartedAgain() throws Exception {
     executionDelegator.executeJob(jobInvocation);
-    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Job should be started.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
 
     verifyStopRequestWasProcessedWithResult();
 
@@ -159,7 +162,7 @@ public class ExecutionDelegatorAndroidTest {
     startLatch = new CountDownLatch(1);
 
     executionDelegator.executeJob(jobInvocation);
-    assertTrue("Job should be started again.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Job should be started again.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
   }
 
   @Test
@@ -172,16 +175,15 @@ public class ExecutionDelegatorAndroidTest {
             .build();
 
     executionDelegator.executeJob(jobInvocation);
-    assertTrue("First job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("First job should be started.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
 
     startLatch = new CountDownLatch(1);
     executionDelegator.executeJob(secondJobInvocation);
-    assertTrue(
-        "Second job should be started.", startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("Second job should be started.", startLatch.await(TIMEOUT_SECONDS, SECONDS));
 
     ExecutionDelegator.stopJob(jobInvocation, false);
 
-    assertTrue("First job should be stopped.", stopLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    assertTrue("First job should be stopped.", stopLatch.await(TIMEOUT_SECONDS, SECONDS));
 
     assertFalse(
         ExecutionDelegator.getJobServiceConnection(secondJobInvocation.getService()).wasUnbound());
@@ -190,7 +192,81 @@ public class ExecutionDelegatorAndroidTest {
     executionDelegator.executeJob(jobInvocation);
     assertTrue(
         "First job should be started again because it was stopped.",
-        startLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+        startLatch.await(TIMEOUT_SECONDS, SECONDS));
+  }
+
+  @Test
+  public void executeTwoJobs_unbindsWhenDone() throws Exception {
+    JobInvocation.Builder jobBuilder =
+        new JobInvocation.Builder()
+            .setService(TestJobService.class.getName())
+            .setTrigger(Trigger.NOW);
+
+    JobInvocation jobOne = jobBuilder.setTag("one").build();
+    JobInvocation jobTwo = jobBuilder.setTag("two").build();
+
+    SettableFuture<JobService> jobServiceFuture = SettableFuture.create();
+    TestJobService.setProxy(
+        new JobServiceProxy() {
+          @Override
+          public boolean onStartJob(JobService jobService, JobParameters job) {
+            jobServiceFuture.set(jobService);
+            return true; // more work to do
+          }
+
+          @Override
+          public boolean onStopJob(JobService jobService, JobParameters job) {
+            return true; // more work to do
+          }
+        });
+
+    CountDownLatch latch = new CountDownLatch(2);
+
+    ExecutionDelegator delegator =
+        new ExecutionDelegator(
+            appContext,
+            /* jobFinishedCallback= */ (jobInvocation, result) -> latch.countDown(),
+            new ConstraintChecker(appContext));
+
+    delegator.executeJob(jobOne);
+    delegator.executeJob(jobTwo);
+
+    JobService jobService = jobServiceFuture.get(1, SECONDS);
+
+    JobServiceConnection connection =
+        ExecutionDelegator.getJobServiceConnection(TestJobService.class.getName());
+
+    assertThat(connection.isConnected()).isTrue();
+    jobService.jobFinished(jobOne, /* needsReschedule= */ true);
+    jobService.jobFinished(jobTwo, /* needsReschedule= */ true);
+
+    assertWithMessage("Timed out waiting for callback to be called")
+        .that(latch.await(1, SECONDS))
+        .isTrue();
+
+    assertThat(connection.isConnected()).isFalse();
+    assertThat(connection.wasUnbound()).isTrue();
+    assertThat(ExecutionDelegator.getJobServiceConnection(TestJobService.class.getName())).isNull();
+  }
+
+  @Test
+  public void handlesMissingJobService() throws Exception {
+    // disable the component without shutting the app down
+    appContext
+        .getPackageManager()
+        .setComponentEnabledSetting(
+            new ComponentName(appContext, TestJobService.class),
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+            PackageManager.DONT_KILL_APP);
+
+    // try to execute the job
+    executionDelegator.executeJob(jobInvocation);
+
+    assertThat(finishedJobInvocationFuture.get(1, SECONDS)).isEqualTo(jobInvocation);
+    assertThat(jobResult).isEqualTo(JobService.RESULT_FAIL_RETRY);
+
+    // Make sure we unbound correctly
+    assertThat(ExecutionDelegator.getJobServiceConnection(TestJobService.class.getName())).isNull();
   }
 
   private void verifyStopRequestWasProcessedWithResult() throws Exception {
@@ -198,7 +274,7 @@ public class ExecutionDelegatorAndroidTest {
 
     try {
       JobInvocation finishedJobInvocation =
-          finishedJobInvocationFuture.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+          finishedJobInvocationFuture.get(TIMEOUT_SECONDS, SECONDS);
 
       assertEquals(jobInvocation, finishedJobInvocation);
       assertEquals(JobService.RESULT_SUCCESS, jobResult);
@@ -211,7 +287,7 @@ public class ExecutionDelegatorAndroidTest {
     ExecutionDelegator.stopJob(jobInvocation, /* needToSendResult= */ false);
 
     try {
-      finishedJobInvocationFuture.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      finishedJobInvocationFuture.get(TIMEOUT_SECONDS, SECONDS);
       fail("finishedJobInvocationFuture was unexpectedly set");
     } catch (TimeoutException expected) {
       assertEquals(-1, jobResult);
