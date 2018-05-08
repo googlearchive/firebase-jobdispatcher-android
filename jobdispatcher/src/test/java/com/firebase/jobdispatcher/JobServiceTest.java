@@ -57,10 +57,9 @@ import org.robolectric.shadows.ShadowSystemClock;
 /** Tests for the {@link JobService} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(
-  manifest = Config.NONE,
-  sdk = 23,
-  shadows = {ShadowSystemClock.class}
-)
+    manifest = Config.NONE,
+    sdk = 23,
+    shadows = {ShadowSystemClock.class})
 public class JobServiceTest {
 
   private static final int TIMEOUT_MS = 3_000;

@@ -16,9 +16,11 @@
 
 package com.firebase.jobdispatcher;
 
+import static android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET;
 import static com.google.common.truth.Truth.assertThat;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static junit.framework.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import android.app.UiAutomation;
 import android.content.BroadcastReceiver;
@@ -28,6 +30,8 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkInfo;
+import android.net.NetworkRequest;
+import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
@@ -54,7 +58,7 @@ public final class AirplaneModeAndroidTest {
   /** Log tag. */
   private static final String TAG = "FJD_TEST";
   /** How long we're willing to wait for the network to change state. */
-  private static final int NETWORK_STATE_CHANGE_TIMEOUT_SECONDS = 15;
+  private static final int NETWORK_STATE_CHANGE_TIMEOUT_SECONDS = 20;
   /** How long we're willing to wait for a job to run after it becomes eligible. */
   private static final int EXECUTE_JOB_TIMEOUT_SECONDS = 30;
 
@@ -68,6 +72,10 @@ public final class AirplaneModeAndroidTest {
 
   @Before
   public void setUp() {
+    assumeTrue(
+        getClass().getSimpleName() + " requires API level 21+ to run",
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP);
+
     testContext = InstrumentationRegistry.getContext();
     appContext = InstrumentationRegistry.getTargetContext();
     uiAutomation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
@@ -91,7 +99,7 @@ public final class AirplaneModeAndroidTest {
 
   @After
   public void tearDown() throws Exception {
-    disableAirplaneMode();
+    setAirplaneModeEnabled(false);
   }
 
   @Test
@@ -146,7 +154,12 @@ public final class AirplaneModeAndroidTest {
 
     dispatcher.mustSchedule(job);
 
-    jobStartedFuture.get(EXECUTE_JOB_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    try {
+      jobStartedFuture.get(EXECUTE_JOB_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      throw new AssertionError(
+          "Timed out waiting for job with no network constraints to run in airplane mode", e);
+    }
   }
 
   private void verifyJobDoesntRunInAirplaneMode(Job job) throws Exception {
@@ -155,7 +168,7 @@ public final class AirplaneModeAndroidTest {
     dispatcher.mustSchedule(job);
     try {
       jobStartedFuture.get(EXECUTE_JOB_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-      fail("Shouldn't have run task with network constraints while in airplane mode");
+      fail("Shouldn't have run job with network constraints while in airplane mode");
     } catch (TimeoutException e) {
       // expected
     }
@@ -169,7 +182,7 @@ public final class AirplaneModeAndroidTest {
         | InterruptedException
         | TimeoutException e) {
       throw new AssertionError(
-          "Should have run task with network constraints once airplane mode was disabled", e);
+          "Should have run job with network constraints once airplane mode was disabled", e);
     }
   }
 
@@ -184,6 +197,8 @@ public final class AirplaneModeAndroidTest {
   }
 
   private void setAirplaneModeEnabled(boolean enabled) throws Exception {
+    Log.i(TAG, "Setting airplane mode to " + enabled);
+
     String value = String.valueOf(enabled ? 1 : 0);
 
     // Update the setting
@@ -230,28 +245,24 @@ public final class AirplaneModeAndroidTest {
   private void waitForSomeNetworkToConnect() throws Exception {
     final SettableFuture<Void> future = SettableFuture.create();
 
-    BroadcastReceiver receiver =
-        new BroadcastReceiver() {
+    ConnectivityManager.NetworkCallback cb =
+        new ConnectivityManager.NetworkCallback() {
           @Override
-          public void onReceive(Context ctx, Intent intent) {
-            Network[] networks = connManager.getAllNetworks();
-            for (Network network : networks) {
-              NetworkInfo info = connManager.getNetworkInfo(network);
-              if (info.isConnected()) {
-                future.set(null);
-                return;
-              }
+          public void onAvailable(Network network) {
+            NetworkInfo netInfo = connManager.getNetworkInfo(network);
+            if (netInfo != null && netInfo.isConnected()) {
+              future.set(null);
             }
           }
         };
 
-    testContext.registerReceiver(
-        receiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+    connManager.requestNetwork(
+        new NetworkRequest.Builder().addCapability(NET_CAPABILITY_INTERNET).build(), cb);
 
     try {
       future.get(NETWORK_STATE_CHANGE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     } finally {
-      testContext.unregisterReceiver(receiver);
+      connManager.unregisterNetworkCallback(cb);
     }
   }
 
