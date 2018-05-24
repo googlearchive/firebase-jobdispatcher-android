@@ -19,12 +19,16 @@
     package="com.firebase.jobdispatcher">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
 
     <instrumentation
         android:name="android.test.InstrumentationTestRunner"
         android:targetPackage="com.firebase.jobdispatcher"/>
 
     <application>
+        <uses-library android:name="android.test.runner" />
+
         <service
             android:name=".TestJobService"
             android:exported="false">

@@ -18,6 +18,7 @@ package com.firebase.jobdispatcher;
 
 import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
 import static com.firebase.jobdispatcher.TestUtil.assertBundlesEqual;
+import static com.google.common.truth.Truth.assertThat;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -35,6 +36,8 @@ import android.os.RemoteException;
 import android.support.v4.util.Pair;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
 import com.google.common.base.Optional;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -45,7 +48,7 @@ import org.robolectric.annotation.Config;
 
 /** Test for {@link JobServiceConnection}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class JobServiceConnectionTest {
 
   JobInvocation job =
@@ -265,5 +268,32 @@ public class JobServiceConnectionTest {
 
     connection.onServiceConnected(null, binderMock);
     assertTrue(connection.wasUnbound());
+  }
+
+  @Test
+  public void finishesJobsQueuedAfterUnbind() throws Exception {
+    final Queue<Pair<Bundle, Integer>> callbackResults = new ArrayDeque<>();
+    noopCallback =
+        new IJobCallback.Stub() {
+          @Override
+          public void jobFinished(Bundle invocationData, @JobService.JobResult int result) {
+            callbackResults.offer(Pair.create(invocationData, result));
+          }
+        };
+
+    connection = new JobServiceConnection(noopCallback, contextMock);
+    connection.onServiceConnected(null, binderMock);
+    connection.onServiceDisconnected(null);
+
+    assertThat(callbackResults).isEmpty();
+
+    // If the job is queued after the connection has been unbound (regardless of reason) then we
+    // should NOT start it and should instead send a retry message via the callback
+    connection.startJob(job);
+
+    assertThat(callbackResults).hasSize(1);
+    Pair<Bundle, Integer> result = callbackResults.poll();
+    assertBundlesEqual(jobData, result.first);
+    assertThat(result.second).isEqualTo(Integer.valueOf(JobService.RESULT_FAIL_RETRY));
   }
 }

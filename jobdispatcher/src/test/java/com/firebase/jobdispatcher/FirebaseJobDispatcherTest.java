@@ -41,7 +41,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests for the {@link FirebaseJobDispatcher} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class FirebaseJobDispatcherTest {
 
   @Rule public ExpectedException expectedException = ExpectedException.none();
@@ -194,8 +194,9 @@ public class FirebaseJobDispatcherTest {
 
     try {
       dispatcher.newRetryStrategy(RetryStrategy.RETRY_POLICY_EXPONENTIAL, 30, 30);
-    } catch (Exception unused) {
-      fail("Expected initial backoff == 30s not to fail using custom validator");
+    } catch (Exception e) {
+      throw new AssertionError(
+          "Expected initial backoff == 30s not to fail using custom validator", e);
     }
   }
 

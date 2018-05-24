@@ -33,7 +33,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests {@link GooglePlayMessengerCallback}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@Config(manifest = Config.NONE, sdk = 21)
 public class GooglePlayMessengerCallbackTest {
 
   @Mock Messenger messengerMock;

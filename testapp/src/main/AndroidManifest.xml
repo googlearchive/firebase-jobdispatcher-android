@@ -17,8 +17,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.firebase.jobdispatcher.testapp">
 
-    <uses-sdk android:minSdkVersion="14"/>
+    <uses-sdk android:minSdkVersion="14" android:targetSdkVersion="27" />
+
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="false"

@@ -25,8 +25,13 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Pair;
+import com.firebase.jobdispatcher.GooglePlayCallbackExtractorTest.ExtendedShadowParcel;
 import com.firebase.jobdispatcher.TestUtil.InspectableBinder;
 import com.firebase.jobdispatcher.TestUtil.TransactionArguments;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,16 +39,47 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.Implementation;
+import org.robolectric.annotation.Implements;
+import org.robolectric.annotation.RealObject;
+import org.robolectric.shadows.ShadowParcel;
 
 /** Tests for the {@link GooglePlayCallbackExtractor} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(
-  constants = BuildConfig.class,
   manifest = Config.NONE,
   sdk = 23,
   shadows = {ExtendedShadowParcel.class}
 )
 public final class GooglePlayCallbackExtractorTest {
+  /**
+   * ShadowParcel doesn't correctly handle {@link Parcel#writeStrongBinder(IBinder)} or {@link
+   * Parcel#readStrongBinder()}, so we shim a simple implementation that uses an in-memory map to
+   * read and write Binder objects.
+   */
+  @Implements(Parcel.class)
+  public static class ExtendedShadowParcel extends ShadowParcel {
+    @RealObject private Parcel realObject;
+
+    // Map each IBinder to an integer, and use the super's int-writing capability to fake Binder
+    // read/writes.
+    private final AtomicInteger nextBinderId = new AtomicInteger(1);
+    private final Map<Integer, IBinder> binderMap =
+        Collections.synchronizedMap(new HashMap<Integer, IBinder>());
+
+    @Implementation
+    public void writeStrongBinder(IBinder binder) {
+      int id = nextBinderId.getAndIncrement();
+      binderMap.put(id, binder);
+      realObject.writeInt(id);
+    }
+
+    @Implementation
+    public IBinder readStrongBinder() {
+      return binderMap.get(realObject.readInt());
+    }
+  }
+
   @Mock private IBinder binder;
 
   private GooglePlayCallbackExtractor extractor;

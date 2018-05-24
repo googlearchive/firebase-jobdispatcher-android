@@ -17,6 +17,8 @@
 package com.firebase.jobdispatcher;
 
 import static com.firebase.jobdispatcher.GooglePlayReceiver.getJobCoder;
+import static com.firebase.jobdispatcher.TestUtil.flushExecutorService;
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -32,11 +34,14 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Parcel;
+import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import android.support.v4.util.Pair;
 import com.firebase.jobdispatcher.JobInvocation.Builder;
 import com.google.android.gms.gcm.PendingCallback;
 import com.google.common.util.concurrent.SettableFuture;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -48,11 +53,18 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
+import org.robolectric.shadows.ShadowSystemClock;
 
 /** Tests for the {@link JobService} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(
+    manifest = Config.NONE,
+    sdk = 23,
+    shadows = {ShadowSystemClock.class})
 public class JobServiceTest {
+
+  private static final int TIMEOUT_MS = 3_000;
+
   private static CountDownLatch countDownLatch;
 
   private final IJobCallback noopCallback =
@@ -177,12 +189,14 @@ public class JobServiceTest {
         IRemoteJobService.Stub.asInterface(service.onBind(new Intent(JobService.ACTION_EXECUTE)));
     remoteJobService.start(jobSpecData, noopCallback);
 
+    flush(service);
+
     assertTrue("Expected job to run to completion", countDownLatch.await(5, TimeUnit.SECONDS));
   }
 
   @Test
   public void testOnStartCommand_handlesStartJob_doNotStartRunningJobAgain() throws Exception {
-    StoppableJobService service = new StoppableJobService(false);
+    StoppableJobService service = new StoppableJobService(/* shouldReschedule= */ false);
 
     Job jobSpec =
         TestUtil.getBuilderWithNoopValidator()
@@ -195,25 +209,32 @@ public class JobServiceTest {
     IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, null);
     IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, null);
 
-    assertEquals(1, service.getNumberOfExecutionRequestsReceived());
+    flush(service);
+
+    assertEquals(1, service.getNumberOfStartRequestsReceived());
   }
 
   @Test
-  public void stop_noCallback_finished() {
-    JobService service = spy(new StoppableJobService(false));
+  public void stop_noCallback_finished() throws Exception {
+    JobService service = spy(new StoppableJobService(/* shouldReschedule= */ false));
     JobInvocation job =
         new Builder()
             .setTag("Tag")
             .setTrigger(Trigger.NOW)
             .setService(StoppableJobService.class.getName())
             .build();
-    service.stop(job, true);
+
+    IRemoteJobService.Stub.asInterface(service.onBind(null))
+        .stop(getJobCoder().encode(job, new Bundle()), true);
+
+    flush(service);
+
     verify(service, never()).onStopJob(job);
   }
 
   @Test
   public void stop_withCallback_retry() throws Exception {
-    JobService service = spy(new StoppableJobService(false));
+    StoppableJobService service = spy(new StoppableJobService(/* shouldReschedule= */ false));
 
     JobInvocation job =
         new Builder()
@@ -222,19 +243,22 @@ public class JobServiceTest {
             .setService(StoppableJobService.class.getName())
             .build();
 
-    // start the service
+    Bundle jobSpecData = getJobCoder().encode(job, new Bundle());
     FutureSettingJobCallback callback = new FutureSettingJobCallback();
-    service.start(job, callback);
 
-    service.stop(job, true);
-    verify(service).onStopJob(job);
+    // start the service
+    IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, callback);
+    IRemoteJobService.Stub.asInterface(service.onBind(null)).stop(jobSpecData, true);
 
+    flush(service);
+
+    assertEquals(1, service.getNumberOfStopRequestsReceived());
     callback.verifyCalledWithJobAndResult(job, JobService.RESULT_SUCCESS);
   }
 
   @Test
   public void stop_withCallback_done() throws Exception {
-    JobService service = spy(new StoppableJobService(true));
+    StoppableJobService service = spy(new StoppableJobService(/* shouldReschedule= */ true));
 
     JobInvocation job =
         new Builder()
@@ -243,11 +267,15 @@ public class JobServiceTest {
             .setService(StoppableJobService.class.getName())
             .build();
 
+    Bundle jobSpecData = getJobCoder().encode(job, new Bundle());
     FutureSettingJobCallback callback = new FutureSettingJobCallback();
-    service.start(job, callback);
 
-    service.stop(job, true);
-    verify(service).onStopJob(job);
+    IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, callback);
+    IRemoteJobService.Stub.asInterface(service.onBind(null)).stop(jobSpecData, true);
+
+    flush(service);
+
+    assertEquals(1, service.getNumberOfStopRequestsReceived());
     callback.verifyCalledWithJobAndResult(job, JobService.RESULT_FAIL_RETRY);
   }
 
@@ -279,7 +307,11 @@ public class JobServiceTest {
             .build();
 
     FutureSettingJobCallback callback = new FutureSettingJobCallback();
-    reschedulingService.start(jobSpec, callback);
+    IRemoteJobService.Stub.asInterface(reschedulingService.onBind(null))
+        .start(getJobCoder().encode(jobSpec, new Bundle()), callback);
+
+    flush(reschedulingService);
+
     callback.verifyCalledWithJobAndResult(jobSpec, JobService.RESULT_FAIL_RETRY);
   }
 
@@ -310,7 +342,11 @@ public class JobServiceTest {
             .build();
 
     FutureSettingJobCallback callback = new FutureSettingJobCallback();
-    reschedulingService.start(jobSpec, callback);
+    IRemoteJobService.Stub.asInterface(reschedulingService.onBind(null))
+        .start(getJobCoder().encode(jobSpec, new Bundle()), callback);
+
+    flush(reschedulingService);
+
     callback.verifyCalledWithJobAndResult(jobSpec, JobService.RESULT_SUCCESS);
   }
 
@@ -365,14 +401,15 @@ public class JobServiceTest {
           }
         };
 
-    final Job jobSpec =
+    Job jobSpec =
         TestUtil.getBuilderWithNoopValidator()
             .setTag("tag")
             .setService(service.getClass())
             .setTrigger(Trigger.NOW)
             .build();
 
-    service.start(jobSpec, noopCallback);
+    final Bundle jobSpecData = getJobCoder().encode(jobSpec, new Bundle());
+    IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, noopCallback);
 
     // call stopJob on a background thread and wait for it
     Executors.newSingleThreadExecutor()
@@ -380,17 +417,84 @@ public class JobServiceTest {
             new Runnable() {
               @Override
               public void run() {
-                service.stop(jobSpec, true);
+                try {
+                  IRemoteJobService.Stub.asInterface(service.onBind(null)).stop(jobSpecData, true);
+                } catch (RemoteException e) {
+                  throw new AssertionError("calling stop on binder unexpectedly failed", e);
+                }
               }
             })
         .get(1, TimeUnit.SECONDS);
 
-    ShadowLooper.idleMainLooper();
+    flush(service);
 
     assertEquals(
         "onStopJob was not called on main thread",
         Looper.getMainLooper(),
         looperFuture.get(1, TimeUnit.SECONDS));
+  }
+
+  @Test
+  public void dump_noTasksStarted() throws Exception {
+    assertThat(dump(new ExampleJobService())).isEqualTo("No running jobs\n");
+  }
+
+  @Test
+  public void dump_oneRunningJob() throws Exception {
+    countDownLatch = new CountDownLatch(1);
+    JobService service =
+        new JobService() {
+          @Override
+          public boolean onStartJob(JobParameters job) {
+            countDownLatch.countDown();
+            return true; // more work to do
+          }
+
+          @Override
+          public boolean onStopJob(JobParameters job) {
+            return false;
+          }
+        };
+
+    Job jobSpec =
+        TestUtil.getBuilderWithNoopValidator()
+            .setTag("one_running_job")
+            .setService(service.getClass())
+            .setTrigger(Trigger.NOW)
+            .build();
+
+    Bundle jobSpecData = getJobCoder().encode(jobSpec, new Bundle());
+    FutureSettingJobCallback callback = new FutureSettingJobCallback();
+    IRemoteJobService stub = IRemoteJobService.Stub.asInterface(service.onBind(null));
+
+    ShadowSystemClock.setCurrentTimeMillis(10_000L);
+    // Start the job
+    stub.start(jobSpecData, callback);
+    flush(service);
+
+    // Make sure it was started
+    assertThat(countDownLatch.await(1, TimeUnit.SECONDS)).isTrue();
+    // Fast forward 30s
+    ShadowSystemClock.setCurrentTimeMillis(40_000L);
+
+    assertThat(dump(service))
+        .isEqualTo("Running jobs:\n    * \"one_running_job\" has been running for 00:30\n");
+
+    stub.stop(jobSpecData, /* needToSendResult= */ false);
+    flush(service);
+
+    assertThat(dump(service)).isEqualTo("No running jobs\n");
+  }
+
+  private static String dump(JobService service) throws Exception {
+    StringWriter sw = new StringWriter();
+    service.dumpImpl(new PrintWriter(sw));
+    return sw.toString();
+  }
+
+  private static void flush(JobService jobService) throws Exception {
+    flushExecutorService(jobService.backgroundExecutor);
+    ShadowLooper.idleMainLooper();
   }
 
   private static void verifyOnUnbindCausesResult(JobService service, int expectedResult)
@@ -402,13 +506,17 @@ public class JobServiceTest {
             .setTrigger(Trigger.NOW)
             .build();
 
-    // start the service
+    Bundle jobSpecData = getJobCoder().encode(jobSpec, new Bundle());
     FutureSettingJobCallback callback = new FutureSettingJobCallback();
-    service.start(jobSpec, callback);
+
+    // start the service
+    IRemoteJobService.Stub.asInterface(service.onBind(null)).start(jobSpecData, callback);
     // shouldn't have sent a result message yet (still doing background work)
     assertFalse(callback.getJobFinishedFuture().isDone());
     // manually trigger the onUnbind hook
     service.onUnbind(new Intent());
+
+    flush(service);
 
     callback.verifyCalledWithJobAndResult(jobSpec, expectedResult);
 
@@ -430,7 +538,8 @@ public class JobServiceTest {
     }
 
     void verifyCalledWithJobAndResult(JobParameters job, int result) throws Exception {
-      Pair<Bundle, Integer> jobFinishedResult = getJobFinishedFuture().get(0, TimeUnit.SECONDS);
+      Pair<Bundle, Integer> jobFinishedResult =
+          getJobFinishedFuture().get(TIMEOUT_MS, TimeUnit.MILLISECONDS);
       assertNotNull(jobFinishedResult);
 
       JobCoder jc = getJobCoder();
@@ -465,12 +574,8 @@ public class JobServiceTest {
   public static class StoppableJobService extends JobService {
 
     private final boolean shouldReschedule;
-
-    public int getNumberOfExecutionRequestsReceived() {
-      return amountOfExecutionRequestReceived.get();
-    }
-
-    private final AtomicInteger amountOfExecutionRequestReceived = new AtomicInteger();
+    private final AtomicInteger numberOfStartRequestsReceived = new AtomicInteger();
+    private final AtomicInteger numberOfStopRequestsReceived = new AtomicInteger();
 
     public StoppableJobService(boolean shouldReschedule) {
       this.shouldReschedule = shouldReschedule;
@@ -478,13 +583,22 @@ public class JobServiceTest {
 
     @Override
     public boolean onStartJob(@NonNull JobParameters job) {
-      amountOfExecutionRequestReceived.incrementAndGet();
+      numberOfStartRequestsReceived.incrementAndGet();
       return true;
     }
 
     @Override
     public boolean onStopJob(@NonNull JobParameters job) {
+      numberOfStopRequestsReceived.incrementAndGet();
       return shouldReschedule;
+    }
+
+    public int getNumberOfStartRequestsReceived() {
+      return numberOfStartRequestsReceived.get();
+    }
+
+    public int getNumberOfStopRequestsReceived() {
+      return numberOfStopRequestsReceived.get();
     }
   }
 }

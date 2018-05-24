@@ -17,6 +17,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.firebase.jobdispatcher">
 
+    <!-- Access to network state permission is used by ConstraintChecker to determine
+       whether network constraints for jobs have been satisfied prior to executing them. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application>
         <!-- Receives GooglePlay execution requests and forwards them to the
              appropriate internal service. -->

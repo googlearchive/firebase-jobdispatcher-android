@@ -53,7 +53,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests for the {@link DefaultJobValidator}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class DefaultJobValidatorTest {
 
   @Mock private Context mockContext;

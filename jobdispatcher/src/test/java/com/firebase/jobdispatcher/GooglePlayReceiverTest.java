@@ -65,6 +65,7 @@ import org.mockito.Captor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.Implements;
@@ -72,11 +73,9 @@ import org.robolectric.annotation.Implements;
 /** Tests for the {@link GooglePlayReceiver} class. */
 @RunWith(RobolectricTestRunner.class)
 @Config(
-  constants = BuildConfig.class,
-  manifest = Config.NONE,
-  sdk = 21,
-  shadows = {ShadowMessenger.class}
-)
+    manifest = Config.NONE,
+    sdk = 21,
+    shadows = {ShadowMessenger.class})
 public class GooglePlayReceiverTest {
 
   /**
@@ -99,6 +98,7 @@ public class GooglePlayReceiverTest {
   @Mock private JobCallback jobCallbackMock;
   @Mock private JobServiceConnection jobServiceConnectionMock;
   @Mock private Driver driverMock;
+  @Mock private ConstraintChecker contraintCheckerMock;
   @Captor private ArgumentCaptor<Job> jobArgumentCaptor;
   @Captor ArgumentCaptor<JobServiceConnection> jobServiceConnectionCaptor;
 
@@ -111,7 +111,9 @@ public class GooglePlayReceiverTest {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    receiver = spy(new GooglePlayReceiver());
+
+    receiver = spy(Robolectric.buildService(GooglePlayReceiver.class).create().get());
+    when(contraintCheckerMock.areConstraintsSatisfied(any(JobInvocation.class))).thenReturn(true);
     when(receiver.getExecutionDelegator()).thenReturn(executionDelegatorMock);
     receiver.setGooglePlayDriver(driverMock);
     receiver.setValidationEnforcer(new ValidationEnforcer(new NoopJobValidator()));
@@ -168,7 +170,8 @@ public class GooglePlayReceiverTest {
     when(contextMock.bindService(
             any(Intent.class), any(JobServiceConnection.class), eq(BIND_AUTO_CREATE)))
         .thenReturn(true);
-    new ExecutionDelegator(contextMock, mock(JobFinishedCallback.class)).executeJob(invocation);
+    new ExecutionDelegator(contextMock, mock(JobFinishedCallback.class), contraintCheckerMock)
+        .executeJob(invocation);
     verify(contextMock)
         .bindService(any(Intent.class), jobServiceConnectionCaptor.capture(), eq(BIND_AUTO_CREATE));
 

@@ -18,6 +18,7 @@ package com.firebase.jobdispatcher;
 
 import static android.content.Context.BIND_AUTO_CREATE;
 import static com.firebase.jobdispatcher.TestUtil.getContentUriTrigger;
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -27,6 +28,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
@@ -57,7 +59,7 @@ import org.robolectric.annotation.Config;
 /** Tests for the {@link ExecutionDelegator}. */
 @SuppressWarnings("WrongConstant")
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@Config(manifest = Config.NONE, sdk = 21)
 public class ExecutionDelegatorTest {
 
   private TestJobReceiver receiver;
@@ -71,14 +73,16 @@ public class ExecutionDelegatorTest {
   @Mock private Context mockContext;
   @Mock private IRemoteJobService jobServiceMock;
   @Mock private IBinder iBinderMock;
+  @Mock ConstraintChecker constraintChecker;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
     when(mockContext.getPackageName()).thenReturn("com.example.foo");
+    when(constraintChecker.areConstraintsSatisfied(any(JobInvocation.class))).thenReturn(true);
 
     receiver = new TestJobReceiver();
-    executionDelegator = new ExecutionDelegator(mockContext, receiver);
+    executionDelegator = new ExecutionDelegator(mockContext, receiver, constraintChecker);
     ExecutionDelegator.cleanServiceConnections();
 
     noopBinder =
@@ -134,7 +138,33 @@ public class ExecutionDelegatorTest {
   public void testExecuteJob_sendsBroadcastWithJobAndMessage() throws Exception {
     for (JobInvocation input : TestUtil.getJobInvocationCombinations()) {
       verifyExecuteJob(input);
+
+      // Reset mocks for the next invocation
+      reset(mockContext);
+      receiver.lastResult = -1;
     }
+  }
+
+  @Test
+  public void executeJob_constraintsUnsatisfied_schedulesJobRetry() throws RemoteException {
+    // Simulate job constraints not being met.
+    JobInvocation jobInvocation =
+        new JobInvocation.Builder()
+            .setTag("tag")
+            .setService("service")
+            .setTrigger(Trigger.NOW)
+            .build();
+    when(constraintChecker.areConstraintsSatisfied(eq(jobInvocation))).thenReturn(false);
+
+    executionDelegator.executeJob(jobInvocation);
+
+    // Confirm that service not bound
+    verify(mockContext, never())
+        .bindService(any(Intent.class), any(JobServiceConnection.class), anyInt());
+    assertThat(ExecutionDelegator.getJobServiceConnection("service")).isNull();
+
+    // Verify that job is set for a retry later.
+    assertThat(receiver.lastResult).isEqualTo(JobService.RESULT_FAIL_RETRY);
   }
 
   @Test
@@ -222,10 +252,7 @@ public class ExecutionDelegatorTest {
   }
 
   private void verifyExecuteJob(JobInvocation input) throws Exception {
-    reset(mockContext);
     when(mockContext.getPackageName()).thenReturn("com.example.foo");
-    receiver.lastResult = -1;
-
     receiver.setLatch(new CountDownLatch(1));
 
     when(mockContext.bindService(
@@ -298,9 +325,6 @@ public class ExecutionDelegatorTest {
             .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
             .build();
 
-    reset(mockContext);
-    receiver.lastResult = -1;
-
     when(mockContext.bindService(
             any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
         .thenReturn(true);
@@ -333,10 +357,11 @@ public class ExecutionDelegatorTest {
     final ServiceConnection connection = connCaptor.getValue();
     connection.onServiceConnected(null, jobServiceBinder);
 
-    ExecutionDelegator.stopJob(job, true);
+    ExecutionDelegator.stopJob(job, /* needToSendResult= */ false);
 
     TestUtil.assertJobsEqual(job, startedJobFuture.get(0, TimeUnit.SECONDS));
-    TestUtil.assertJobsEqual(job, stoppedJobFuture.get(0, TimeUnit.SECONDS));
+
+    verify(mockContext, timeout(1_000)).unbindService(connection);
   }
 
   @Test
@@ -349,8 +374,6 @@ public class ExecutionDelegatorTest {
             .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
             .build();
 
-    reset(mockContext);
-
     when(mockContext.bindService(
             any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
         .thenReturn(false);
@@ -360,6 +383,31 @@ public class ExecutionDelegatorTest {
     verify(mockContext)
         .bindService(intentCaptor.capture(), connCaptor.capture(), eq(BIND_AUTO_CREATE));
     verify(mockContext).unbindService(connCaptor.getValue());
+    assertEquals(JobService.RESULT_FAIL_RETRY, receiver.lastResult);
+  }
+
+  @Test
+  public void securityException_unbinds() throws Exception {
+    JobInvocation job =
+        new JobInvocation.Builder()
+            .setTag("TAG")
+            .setTrigger(getContentUriTrigger())
+            .setService(TestJobService.class.getName())
+            .setRetryStrategy(RetryStrategy.DEFAULT_EXPONENTIAL)
+            .build();
+
+    when(mockContext.bindService(
+            any(Intent.class), any(ServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenThrow(new SecurityException("should have gracefully handled this security exception"));
+
+    executionDelegator.executeJob(job);
+
+    // Verify that bindService was actually called
+    verify(mockContext).bindService(any(Intent.class), connCaptor.capture(), eq(BIND_AUTO_CREATE));
+    // And that unbindService was called in response to the security exception
+    verify(mockContext).unbindService(connCaptor.getValue());
+    // And that we should have sent RESULT_FAIL_RETRY back to the calling component
+    assertEquals(JobService.RESULT_FAIL_RETRY, receiver.lastResult);
   }
 
   private static final class TestJobReceiver implements ExecutionDelegator.JobFinishedCallback {

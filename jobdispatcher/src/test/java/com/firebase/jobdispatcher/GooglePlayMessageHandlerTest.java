@@ -52,7 +52,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests {@link GooglePlayMessageHandler}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@Config(manifest = Config.NONE, sdk = 21)
 public class GooglePlayMessageHandlerTest {
 
   @Mock Looper looper;
@@ -67,6 +67,7 @@ public class GooglePlayMessageHandlerTest {
   @Captor private ArgumentCaptor<Bundle> bundleCaptor;
   @Mock private IRemoteJobService jobServiceMock;
   @Mock private IBinder iBinderMock;
+  @Mock private ConstraintChecker constraintCheckerMock;
 
   ExecutionDelegator executionDelegator;
 
@@ -76,7 +77,10 @@ public class GooglePlayMessageHandlerTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     handler = new GooglePlayMessageHandler(looper, receiverMock);
-    executionDelegator = new ExecutionDelegator(contextMock, jobFinishedCallbackMock);
+
+    when(constraintCheckerMock.areConstraintsSatisfied(any(JobInvocation.class))).thenReturn(true);
+    executionDelegator =
+        new ExecutionDelegator(contextMock, jobFinishedCallbackMock, constraintCheckerMock);
     when(receiverMock.getExecutionDelegator()).thenReturn(executionDelegator);
     when(receiverMock.getApplicationContext()).thenReturn(contextMock);
     when(contextMock.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(appOpsManager);
@@ -120,22 +124,28 @@ public class GooglePlayMessageHandlerTest {
 
   @Test
   public void handleMessage_startExecution() throws Exception {
-    Message message = Message.obtain();
-    message.what = GooglePlayMessageHandler.MSG_START_EXEC;
+    Message startExecutionMsg = Message.obtain();
+    startExecutionMsg.what = GooglePlayMessageHandler.MSG_START_EXEC;
     Bundle data = new Bundle();
     data.putString(REQUEST_PARAM_TAG, "TAG");
-    message.setData(data);
-    message.replyTo = messengerMock;
+    startExecutionMsg.setData(data);
+    startExecutionMsg.replyTo = messengerMock;
+
     JobInvocation jobInvocation =
         new Builder()
             .setTag("tag")
             .setService(TestJobService.class.getName())
             .setTrigger(Trigger.NOW)
             .build();
+
     when(receiverMock.prepareJob(any(GooglePlayMessengerCallback.class), eq(data)))
         .thenReturn(jobInvocation);
 
-    handler.handleMessage(message);
+    when(contextMock.bindService(
+            any(Intent.class), any(JobServiceConnection.class), eq(BIND_AUTO_CREATE)))
+        .thenReturn(true);
+
+    handler.handleMessage(startExecutionMsg);
     verify(contextMock)
         .bindService(any(Intent.class), jobServiceConnectionCaptor.capture(), eq(BIND_AUTO_CREATE));
     assertTrue(jobServiceConnectionCaptor.getValue().hasJobInvocation(jobInvocation));

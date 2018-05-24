@@ -76,50 +76,89 @@ import com.firebase.jobdispatcher.JobService.JobResult;
 
   private final Context context;
   private final JobFinishedCallback jobFinishedCallback;
+  private final ConstraintChecker constraintChecker;
 
-  ExecutionDelegator(Context context, JobFinishedCallback jobFinishedCallback) {
+  ExecutionDelegator(
+      Context context,
+      JobFinishedCallback jobFinishedCallback,
+      ConstraintChecker constraintChecker) {
     this.context = context;
     this.jobFinishedCallback = jobFinishedCallback;
+    this.constraintChecker = constraintChecker;
   }
 
   /**
    * Executes the provided {@code jobInvocation} by kicking off the creation of a new Binder
    * connection to the Service.
+   *
+   * <p>Note job is not executed if its constraints are still unsatisfied. E.g. disconnected network
+   * connection for network-constrained jobs. In this case, job is failed but set to retry if
+   * eligible using the {@code JobService.RESULT_FAIL_RETRY} code.
    */
   void executeJob(JobInvocation jobInvocation) {
     if (jobInvocation == null) {
       return;
     }
 
+    // Check job constraints satisfied prior to starting job.
+    if (!constraintChecker.areConstraintsSatisfied(jobInvocation)) {
+      if (Log.isLoggable(TAG, Log.DEBUG)) {
+        Log.d(TAG, "Not executing job because constraints still unmet. Job: " + jobInvocation);
+      }
+      jobFinishedCallback.onJobFinished(jobInvocation, JobService.RESULT_FAIL_RETRY);
+      return;
+    }
+    if (Log.isLoggable(TAG, Log.DEBUG)) {
+      Log.d(TAG, "Proceeding to execute job because constraints met. Job: " + jobInvocation);
+    }
+
     synchronized (serviceConnections) {
       JobServiceConnection jobServiceConnection =
           serviceConnections.get(jobInvocation.getService());
-      if (jobServiceConnection != null && !jobServiceConnection.wasUnbound()) {
-        if (jobServiceConnection.hasJobInvocation(jobInvocation)
-            && !jobServiceConnection.isConnected()) {
-          // Fresh connection. Not yet connected or not able to connect.
-          // TODO(user) Handle invalid service when the connection can't be established.
-          return;
-        }
-      } else {
-        jobServiceConnection = new JobServiceConnection(execCallback, context);
-        serviceConnections.put(jobInvocation.getService(), jobServiceConnection);
+
+      if (jobServiceConnection != null) {
+        // We already have an open connection, so reuse that. The connection will handle both
+        // duplicate execution requests and binder failures.
+        jobServiceConnection.startJob(jobInvocation);
+        return;
       }
-      boolean wasConnected = jobServiceConnection.startJob(jobInvocation);
-      if (!wasConnected
-          && !context.bindService(
-              createBindIntent(jobInvocation), jobServiceConnection, BIND_AUTO_CREATE)) {
+
+      // No pre-existing connection, create a new one
+      jobServiceConnection = new JobServiceConnection(execCallback, context);
+      serviceConnections.put(jobInvocation.getService(), jobServiceConnection);
+      // Queue the job
+      jobServiceConnection.startJob(jobInvocation);
+      // And kick off the bind
+      boolean successfullyBound = tryBindingToJobService(jobInvocation, jobServiceConnection);
+
+      if (successfullyBound) {
+        // TODO(user): add a timeout to ensure the bind completes within ~18s or so
+      } else {
+        // TODO(user): we should track the number of times this happens and drop the job if
+        //                     it happens too often.
         Log.e(TAG, "Unable to bind to " + jobInvocation.getService());
         jobServiceConnection.unbind();
       }
     }
   }
 
-  @NonNull
-  private Intent createBindIntent(JobParameters jobParameters) {
-    Intent execReq = new Intent(JobService.ACTION_EXECUTE);
-    execReq.setClassName(context, jobParameters.getService());
-    return execReq;
+  /**
+   * Attempts to bind to the JobService associated with the provided {@code jobInvocation}.
+   *
+   * <p>Returns a boolean indicating whether the bind attempt succeeded.
+   */
+  private boolean tryBindingToJobService(JobInvocation job, JobServiceConnection connection) {
+    Intent bindIntent =
+        new Intent(JobService.ACTION_EXECUTE).setClassName(context, job.getService());
+
+    try {
+      return context.bindService(bindIntent, connection, BIND_AUTO_CREATE);
+    } catch (SecurityException e) {
+      // It's not clear what would cause a SecurityException when binding to the same app, but
+      // some change made in the N timeframe caused this to start happening.
+      Log.e(TAG, "Failed to bind to " + job.getService() + ": " + e);
+      return false;
+    }
   }
 
   /** Stops provided {@link JobInvocation job}. */

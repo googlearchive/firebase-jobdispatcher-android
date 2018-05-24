@@ -27,20 +27,20 @@ public class TestJobService extends JobService {
    * fly.
    */
   public interface JobServiceProxy {
-    boolean onStartJob(JobParameters job);
+    boolean onStartJob(JobService jobService, JobParameters job);
 
-    boolean onStopJob(JobParameters job);
+    boolean onStopJob(JobService jobService, JobParameters job);
   }
 
   public static final JobServiceProxy NOOP_PROXY =
       new JobServiceProxy() {
         @Override
-        public boolean onStartJob(JobParameters job) {
+        public boolean onStartJob(JobService jobService, JobParameters job) {
           return false;
         }
 
         @Override
-        public boolean onStopJob(JobParameters job) {
+        public boolean onStopJob(JobService jobService, JobParameters job) {
           return false;
         }
       };
@@ -65,14 +65,14 @@ public class TestJobService extends JobService {
   @Override
   public boolean onStartJob(@NonNull JobParameters job) {
     synchronized (lock) {
-      return currentProxy.onStartJob(job);
+      return currentProxy.onStartJob(this, job);
     }
   }
 
   @Override
   public boolean onStopJob(@NonNull JobParameters job) {
     synchronized (lock) {
-      return currentProxy.onStopJob(job);
+      return currentProxy.onStopJob(this, job);
     }
   }
 }

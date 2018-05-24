@@ -26,7 +26,7 @@ import org.robolectric.annotation.Config;
 
 /** Tests for the {@link Job.Builder} class. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 23)
+@Config(manifest = Config.NONE, sdk = 23)
 public class JobBuilderTest {
   private static final int[] ALL_LIFETIMES = {Lifetime.UNTIL_NEXT_BOOT, Lifetime.FOREVER};
 

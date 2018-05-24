@@ -16,6 +16,7 @@
 
 package com.firebase.jobdispatcher;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -41,6 +42,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 
 /** Provides common utilities helpful for testing. */
 public class TestUtil {
@@ -294,6 +297,19 @@ public class TestUtil {
 
     bundle.putParcelableArrayList(BundleProtocol.PACKED_PARAM_TRIGGERED_URIS, URIS);
     return bundle;
+  }
+
+  static void flushExecutorService(ExecutorService executorService) throws Exception {
+    // TODO(user): use a method reference when our gradle build supports them
+    final CountDownLatch latch = new CountDownLatch(1);
+    executorService.execute(
+        new Runnable() {
+          @Override
+          public void run() {
+            latch.countDown();
+          }
+        });
+    assertTrue("Timed out waiting for executor service to run", latch.await(3, SECONDS));
   }
 
   /** A simple data object that holds all the arguments passed in a binder transaction. */

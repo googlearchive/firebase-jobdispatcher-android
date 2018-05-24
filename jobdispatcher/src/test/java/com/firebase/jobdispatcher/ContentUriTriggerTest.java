@@ -30,7 +30,7 @@ import org.robolectric.annotation.Config;
 
 /** Test for {@link ContentUriTrigger}. */
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, manifest = Config.NONE, sdk = 21)
+@Config(manifest = Config.NONE, sdk = 21)
 public class ContentUriTriggerTest {
 
   @Test(expected = IllegalArgumentException.class)

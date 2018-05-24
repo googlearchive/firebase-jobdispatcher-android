@@ -5,7 +5,7 @@
 
 The Firebase JobDispatcher is a library for scheduling background jobs in your
 Android app. It provides a [JobScheduler][]-compatible API that works on all
-recent versions of Android (API level 9+) that have Google Play services
+recent versions of Android (API level 14+) that have Google Play services
 installed.
 
 ## Overview

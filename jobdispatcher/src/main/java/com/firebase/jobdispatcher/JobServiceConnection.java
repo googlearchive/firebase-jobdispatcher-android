@@ -28,6 +28,11 @@ import android.os.RemoteException;
 // import android.support.annotation.GuardedBy;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -78,6 +83,7 @@ class JobServiceConnection implements ServiceConnection {
         }
       }
     }
+
     // Mark jobs as started.
     for (JobInvocation invocation : startedJobs) {
       jobStatuses.put(invocation, true);
@@ -131,10 +137,23 @@ class JobServiceConnection implements ServiceConnection {
     if (!wasUnbound()) {
       binder = null;
       wasUnbound = true;
+
       try {
         context.unbindService(this);
       } catch (IllegalArgumentException e) {
         Log.w(TAG, "Error unbinding service: " + e.getMessage());
+      }
+
+      List<JobInvocation> jobsToFinish = new ArrayList<>(jobStatuses.size());
+
+      Iterator<JobInvocation> pendingJobsIterator = jobStatuses.keySet().iterator();
+      while (pendingJobsIterator.hasNext()) {
+        jobsToFinish.add(pendingJobsIterator.next());
+        pendingJobsIterator.remove();
+      }
+
+      for (JobInvocation job : jobsToFinish) {
+        requestRetryForJob(job);
       }
     }
   }
@@ -149,6 +168,10 @@ class JobServiceConnection implements ServiceConnection {
 
   /** Returns {@code true} if the job was started. */
   synchronized boolean startJob(JobInvocation jobInvocation) {
+    if (wasUnbound()) {
+      requestRetryForJob(jobInvocation);
+    }
+
     boolean connected = isConnected();
     if (connected) {
       // Need to stop running job
@@ -176,5 +199,13 @@ class JobServiceConnection implements ServiceConnection {
   @VisibleForTesting
   synchronized boolean hasJobInvocation(JobInvocation jobInvocation) {
     return jobStatuses.containsKey(jobInvocation);
+  }
+
+  private void requestRetryForJob(JobInvocation job) {
+    try {
+      callback.jobFinished(encodeJob(job), JobService.RESULT_FAIL_RETRY);
+    } catch (RemoteException e) {
+      Log.e(TAG, "Error sending result for job " + job.getTag() + ": " + e);
+    }
   }
 }
