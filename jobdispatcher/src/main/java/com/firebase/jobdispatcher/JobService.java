@@ -51,6 +51,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.json.JSONObject;
 
@@ -111,7 +112,13 @@ public abstract class JobService extends Service {
           /* maximumPoolSize= */ 1,
           /* keepAliveTime= */ 60L,
           /* unit= */ SECONDS,
-          /* workQueue= */ new LinkedBlockingQueue<Runnable>());
+          /* workQueue= */ new LinkedBlockingQueue<Runnable>(),
+          new ThreadFactory() {
+            @Override 
+            public Thread newThread(Runnable r) {
+              return new Thread(r, TAG + " " + JobService.this.getClass().getName());
+            }
+          });
 
   /**
    * Correlates job tags (unique strings) with Messages, which are used to signal the completion of
