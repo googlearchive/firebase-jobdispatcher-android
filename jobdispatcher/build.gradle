@@ -31,9 +31,16 @@ android {
 
     sourceSets {
         // A set of testing helpers that are shared across test types
-        testLib     { java.srcDir("src/main") }
-        test        { java.srcDir("src/testLib") } // Robolectric tests
-        androidTest { java.srcDir("src/testLib") } // Android (e2e) tests
+
+        // Robolectric tests
+        test        {
+          java.srcDirs += "$projectDir/src/testLib"
+        }
+
+        // Android (e2e) tests
+        androidTest {
+          java.srcDirs += "$projectDir/src/testLib"
+        }
     }
 
     lintOptions {
@@ -46,16 +53,12 @@ dependencies {
     implementation "com.android.support:support-compat:${project.ext.supportLibraryVersion}"
 
     def junit = 'junit:junit:4.12'
-    def robolectric = 'org.robolectric:robolectric:3.6.1'
     def guava = 'com.google.guava:guava:23.6-android'
     def truth = 'com.google.truth:truth:0.39'
 
-    // The common test library uses JUnit
-    testLibImplementation junit
-
     // Unit tests (using Robolectric)
     testImplementation junit
-    testImplementation robolectric
+    testImplementation 'org.robolectric:robolectric:3.8'
     testImplementation guava
     testImplementation truth
     testImplementation 'org.mockito:mockito-core:2.13.0'
@@ -64,7 +67,7 @@ dependencies {
     androidTestImplementation junit
     androidTestImplementation guava
     androidTestImplementation truth
-    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
 }
 
 task javadocs(type: Javadoc) {
