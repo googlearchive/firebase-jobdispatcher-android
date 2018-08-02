@@ -31,6 +31,8 @@ import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.Toast;
+
 import com.firebase.jobdispatcher.Constraint;
 import com.firebase.jobdispatcher.FirebaseJobDispatcher;
 import com.firebase.jobdispatcher.GooglePlayDriver;
@@ -38,9 +40,12 @@ import com.firebase.jobdispatcher.Job.Builder;
 import com.firebase.jobdispatcher.Lifetime;
 import com.firebase.jobdispatcher.ObservedUri;
 import com.firebase.jobdispatcher.Trigger;
+
 import java.util.Arrays;
 
-/** An Activity that shows a form UI allowing users to define a custom job. */
+/**
+ * An Activity that shows a form UI allowing users to define a custom job.
+ */
 public class JobFormActivity extends AppCompatActivity {
 
   public static final String TAG = "FJD.TEST_APP";
@@ -147,55 +152,59 @@ public class JobFormActivity extends AppCompatActivity {
     @SuppressWarnings("WrongConstant")
     @Override
     public void onClick(View v) {
-      final Builder builder =
+      try {
+        final Builder builder =
           jobDispatcher
-              .newJobBuilder()
-              .setTag(form.tag.get())
-              .setRecurring(form.recurring.get())
-              .setLifetime(form.persistent.get() ? Lifetime.FOREVER : Lifetime.UNTIL_NEXT_BOOT)
-              .setService(DemoJobService.class)
-              .setReplaceCurrent(form.replaceCurrent.get())
-              .setRetryStrategy(
-                  jobDispatcher.newRetryStrategy(
-                      form.retryStrategy.get(),
-                      form.getInitialBackoffSeconds(),
-                      form.getMaximumBackoffSeconds()));
+            .newJobBuilder()
+            .setTag(form.tag.get())
+            .setRecurring(form.recurring.get())
+            .setLifetime(form.persistent.get() ? Lifetime.FOREVER : Lifetime.UNTIL_NEXT_BOOT)
+            .setService(DemoJobService.class)
+            .setReplaceCurrent(form.replaceCurrent.get())
+            .setRetryStrategy(
+              jobDispatcher.newRetryStrategy(
+                form.retryStrategy.get(),
+                form.getInitialBackoffSeconds(),
+                form.getMaximumBackoffSeconds()));
 
-      if (form.constrainDeviceCharging.get()) {
-        builder.addConstraint(Constraint.DEVICE_CHARGING);
-      }
-      if (form.constrainOnAnyNetwork.get()) {
-        builder.addConstraint(Constraint.ON_ANY_NETWORK);
-      }
-      if (form.constrainOnUnmeteredNetwork.get()) {
-        builder.addConstraint(Constraint.ON_UNMETERED_NETWORK);
-      }
+        if (form.constrainDeviceCharging.get()) {
+          builder.addConstraint(Constraint.DEVICE_CHARGING);
+        }
+        if (form.constrainOnAnyNetwork.get()) {
+          builder.addConstraint(Constraint.ON_ANY_NETWORK);
+        }
+        if (form.constrainOnUnmeteredNetwork.get()) {
+          builder.addConstraint(Constraint.ON_UNMETERED_NETWORK);
+        }
 
-      int selectedTriggerPosition = triggerSpinner.getSelectedItemPosition();
-      switch (TriggerType.getByPosition(selectedTriggerPosition)) {
-        case NOW_TRIGGER:
-          builder.setTrigger(Trigger.NOW);
-          break;
-        case TIMED_TRIGGER:
-          builder.setTrigger(
+        int selectedTriggerPosition = triggerSpinner.getSelectedItemPosition();
+        switch (TriggerType.getByPosition(selectedTriggerPosition)) {
+          case NOW_TRIGGER:
+            builder.setTrigger(Trigger.NOW);
+            break;
+          case TIMED_TRIGGER:
+            builder.setTrigger(
               Trigger.executionWindow(form.getWinStartSeconds(), form.getWinEndSeconds()));
-          break;
-        case CONTENT_URI_TRIGGER:
-          Uri uri = uris[uriSpinner.getSelectedItemPosition()];
-          CheckBox notifyForDescendants = (CheckBox) findViewById(R.id.notify_for_descendants);
-          int flags =
+            break;
+          case CONTENT_URI_TRIGGER:
+            Uri uri = uris[uriSpinner.getSelectedItemPosition()];
+            CheckBox notifyForDescendants = (CheckBox) findViewById(R.id.notify_for_descendants);
+            int flags =
               notifyForDescendants.isChecked() ? ObservedUri.Flags.FLAG_NOTIFY_FOR_DESCENDANTS : 0;
-          ObservedUri observedUri = new ObservedUri(uri, flags);
-          builder.setTrigger(Trigger.contentUriTrigger(Arrays.asList(observedUri)));
-          break;
-        default:
-          Log.e(TAG, "Unknown trigger was selected.");
-          break;
-      }
-      Log.i("FJD.JobForm", "scheduling new job");
-      jobDispatcher.mustSchedule(builder.build());
+            ObservedUri observedUri = new ObservedUri(uri, flags);
+            builder.setTrigger(Trigger.contentUriTrigger(Arrays.asList(observedUri)));
+            break;
+          default:
+            Log.e(TAG, "Unknown trigger was selected.");
+            break;
+        }
+        Log.i("FJD.JobForm", "scheduling new job");
 
-      JobFormActivity.this.finish();
+        jobDispatcher.mustSchedule(builder.build());
+        JobFormActivity.this.finish();
+      } catch (Exception e) {
+        Toast.makeText(JobFormActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
+      }
     }
   }
 }
