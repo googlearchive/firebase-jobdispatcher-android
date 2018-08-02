@@ -32,6 +32,7 @@ public final class Job implements JobParameters {
   private final RetryStrategy retryStrategy;
   private final int lifetime;
   private final boolean recurring;
+  @JobConstraint
   private final int[] constraints;
   private final boolean replaceCurrent;
   private final Bundle extras;
@@ -50,6 +51,7 @@ public final class Job implements JobParameters {
 
   /** {@inheritDoc} */
   @NonNull
+  @JobConstraint
   @Override
   public int[] getConstraints() {
     return constraints;
@@ -126,6 +128,7 @@ public final class Job implements JobParameters {
     private String tag;
     private JobTrigger trigger = Trigger.NOW;
     private int lifetime = Lifetime.UNTIL_NEXT_BOOT;
+    @JobConstraint
     private int[] constraints;
 
     private RetryStrategy retryStrategy = RetryStrategy.DEFAULT_EXPONENTIAL;
