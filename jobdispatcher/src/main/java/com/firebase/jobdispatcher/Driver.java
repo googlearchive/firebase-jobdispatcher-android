@@ -53,4 +53,12 @@ public interface Driver {
 
   /** Indicates whether the backend is available. */
   boolean isAvailable();
+
+  /**
+   * Check whether job is running or not.
+   * @param serviceClassName Service class name ex:- {@link Class#getName()}
+   * @param tag tag of Job
+   * @return true if running otherwise false.
+   */
+  boolean isJobRunning(String serviceClassName, String tag);
 }

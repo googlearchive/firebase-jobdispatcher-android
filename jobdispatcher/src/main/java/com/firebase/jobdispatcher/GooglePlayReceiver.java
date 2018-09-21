@@ -288,22 +288,28 @@ public class GooglePlayReceiver extends Service implements ExecutionDelegator.Jo
    */
   static void onSchedule(Job job) {
     // Stop if running
+    if(isJobRunning(job.getService(), job.getTag())){
+      JobInvocation key =
+        new JobInvocation.Builder()
+          .setTag(job.getTag())
+          .setService(job.getService())
+          .setTrigger(job.getTrigger())
+          .build();
+      ExecutionDelegator.stopJob(key, false /* must not send the result */);
+    }
+  }
+
+  public static boolean isJobRunning(String jobService, String tag) {
     synchronized (callbacks) {
-      SimpleArrayMap<String, JobCallback> jobs = callbacks.get(job.getService());
+      SimpleArrayMap<String, JobCallback> jobs = callbacks.get(jobService);
       if (jobs == null) { // not running
-        return;
+        return false;
       }
-      JobCallback jobCallback = jobs.get(job.getTag());
+      JobCallback jobCallback = jobs.get(tag);
       if (jobCallback == null) { // not running
-        return;
+        return false;
       }
     }
-    JobInvocation key =
-        new JobInvocation.Builder()
-            .setTag(job.getTag())
-            .setService(job.getService())
-            .setTrigger(job.getTrigger())
-            .build();
-    ExecutionDelegator.stopJob(key, false /* must not send the result */);
+    return true;
   }
 }

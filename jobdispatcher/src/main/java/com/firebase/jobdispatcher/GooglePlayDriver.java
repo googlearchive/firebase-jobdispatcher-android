@@ -92,6 +92,11 @@ public final class GooglePlayDriver implements Driver {
   }
 
   @Override
+  public boolean isJobRunning(String serviceClassName, String tag) {
+    return GooglePlayReceiver.isJobRunning(serviceClassName, tag);
+  }
+
+  @Override
   public int cancel(@NonNull String tag) {
     context.sendBroadcast(createCancelRequest(tag));
 

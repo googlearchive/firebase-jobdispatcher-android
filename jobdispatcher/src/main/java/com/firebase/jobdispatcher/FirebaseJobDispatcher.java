@@ -99,6 +99,10 @@ public final class FirebaseJobDispatcher {
     return driver.cancel(tag);
   }
 
+  public boolean isJobRunning(String serviceClassName, String tag) {
+    return driver.isJobRunning(serviceClassName, tag);
+  }
+
   /**
    * Attempts to cancel all Jobs registered for this package.
    *
