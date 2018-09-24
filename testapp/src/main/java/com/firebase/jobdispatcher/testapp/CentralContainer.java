@@ -126,5 +126,10 @@ public final class CentralContainer {
     public boolean isAvailable() {
       return mDriver.isAvailable();
     }
+
+    @Override
+    public boolean isJobRunning(String serviceClassName, String tag) {
+      return mDriver.isJobRunning(serviceClassName, tag);
+    }
   }
 }
