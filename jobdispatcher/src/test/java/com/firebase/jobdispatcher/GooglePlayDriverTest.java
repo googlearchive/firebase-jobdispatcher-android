@@ -264,5 +264,10 @@ public class GooglePlayDriverTest {
     public boolean isAvailable() {
       return available;
     }
+
+    @Override
+    public boolean isJobRunning(String serviceClassName, String tag) {
+      return wrappedDriver.isJobRunning(serviceClassName, tag);
+    }
   }
 }
