@@ -3,10 +3,9 @@
 [ci-badge]: https://travis-ci.org/firebase/firebase-jobdispatcher-android.svg?branch=master
 [ci-link]: https://travis-ci.org/firebase/firebase-jobdispatcher-android
 
-<font color=red>With the launch of Android JetPack’s [WorkManager][] at Google I/O 2018 and its upcoming graduation to beta, we recommend looking at WorkManager for new projects and to submit your feature requests for that offering.
+**With the launch of Android JetPack’s [WorkManager][] at Google I/O 2018 and its upcoming graduation to beta, we recommend looking at WorkManager for new projects and to submit your feature requests for that offering.**
 
-Firebase Job Dispatcher will not be compatible with apps targeting releases beyond Android Q. Moving forward, we will focus our investments and efforts towards improving WorkManager.
-</font>
+**Firebase Job Dispatcher will not be compatible with apps targeting releases beyond Android Q. Moving forward, we will focus our investments and efforts towards improving WorkManager.**
 
 The Firebase JobDispatcher is a library for scheduling background jobs in your
 Android app. It provides a [JobScheduler][]-compatible API that works on all
