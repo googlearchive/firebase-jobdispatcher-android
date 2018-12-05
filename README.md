@@ -65,16 +65,18 @@ Play services installed.
 
 ### Comparison to other libraries
 
-Library                    | Minimum API | Requires Google Play   | Service API<sup>[1](#fn1)</sup> | Custom retry strategies
--------------------------- | ----------- | ---------------------- | ------------------------------- | -----------------------
-Framework [JobScheduler][] | 21          | No                     | JobScheduler                    | Yes
-Firebase JobDispatcher     | 14          | Yes                    | JobScheduler                    | Yes
-[evernote/android-job][]   | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes
+Library                                     | Minimum API | Requires Google Play   | Service API<sup>[1](#fn1)</sup> | Custom retry strategies
+------------------------------------------- | ----------- | ---------------------- | ------------------------------- | -----------------------
+Framework [JobScheduler][]                  | 21          | No                     | JobScheduler                    | Yes
+Firebase JobDispatcher                      | 14          | Yes                    | JobScheduler                    | Yes
+[evernote/android-job][]                    | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes
+Android [WorkManager][]<sup>[3](#fn3)</sup> | 14          | No<sup>[2](#fn2)</sup> | Custom                          | Yes
 
 <sup><a name="fn1">1</a></sup> Refers to the methods that need to be implemented in the
 Service subclass.<br>
-<sup><a name="fn2">2</a></sup> Uses AlarmManager to support API levels <= 21 if Google
+<sup><a name="fn2">2</a></sup> Uses AlarmManager or JobScheduler to support API levels <= 21 if Google
 Play services is unavailable.<br>
+<sup><a name="fn3">3</a></sup> Currently in alpha phase, soon to graduate to beta.</br>
 
 ## Getting started
 
