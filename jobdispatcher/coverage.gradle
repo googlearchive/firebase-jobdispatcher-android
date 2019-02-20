@@ -35,6 +35,6 @@ task coverage(type: JacocoReport, dependsOn: ["testDebugUnitTest"]) {
     reports {
         xml.enabled = true
         html.enabled = true
-        html.destination "${buildDir}/coverage_html"
+        html.destination = file("${buildDir}/coverage_html")
     }
 }
