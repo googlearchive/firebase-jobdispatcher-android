@@ -28,7 +28,10 @@ import java.lang.annotation.RetentionPolicy;
  * @see #FirebaseJobDispatcher(Driver)
  * @see Driver
  * @see JobParameters
+ * @deprecated Firebase Job Dispatcher is deprecated. Apps should migrate to WorkManager before Apr
+ *     7, 2020. Please see FJD's README.md file for more information.
  */
+@Deprecated
 public final class FirebaseJobDispatcher {
   /** Indicates the schedule request seems to have been successful. */
   public static final int SCHEDULE_RESULT_SUCCESS = 0;

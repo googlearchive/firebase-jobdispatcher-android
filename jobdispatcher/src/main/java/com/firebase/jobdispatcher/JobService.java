@@ -23,18 +23,14 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import android.app.Service;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.Message;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.support.annotation.AnyThread;
 import android.support.annotation.BinderThread;
-import android.os.RemoteException;
-// import android.support.annotation.GuardedBy;
 import android.support.annotation.IntDef;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
@@ -68,7 +64,11 @@ import org.json.JSONObject;
  * <p>Implementations should also override {@link #onStopJob(JobParameters)}, which will be called
  * if the scheduling engine wishes to interrupt your work (most likely because the runtime
  * constraints that are associated with the job in question are no longer met).
+ *
+ * @deprecated Firebase Job Dispatcher is deprecated. Apps should migrate to WorkManager before Apr
+ *     7, 2020. Please see FJD's README.md file for more information.
  */
+@Deprecated
 public abstract class JobService extends Service {
 
   /**

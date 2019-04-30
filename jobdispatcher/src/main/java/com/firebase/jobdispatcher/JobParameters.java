@@ -21,7 +21,13 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import com.firebase.jobdispatcher.Constraint.JobConstraint;
 
-/** JobParameters represents anything that can describe itself in terms of Job components. */
+/**
+ * JobParameters represents anything that can describe itself in terms of Job components.
+ *
+ * @deprecated Firebase Job Dispatcher is deprecated. Apps should migrate to WorkManager before Apr
+ *     7, 2020. Please see FJD's README.md file for more information.
+ */
+@Deprecated
 public interface JobParameters {
 
   /** Returns the name of the backing JobService class. */
