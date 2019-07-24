@@ -3,9 +3,9 @@ project.ext {
     projectName = "firebase-jobdispatcher-android"
     group = "com.firebase"
     version = "0.8.6"
-    supportLibraryVersion = "27.0.2"
-    compileSdk = 27
-    targetSdk = 27
+    supportLibraryVersion = "28.0.0"
+    compileSdk = 28
+    targetSdk = 28
     minSdk = 14
 
     licenseName = "The Apache Software License, Version 2.0"
