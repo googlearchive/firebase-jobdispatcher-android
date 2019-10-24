@@ -4,9 +4,13 @@
 [ci-link]: https://travis-ci.org/firebase/firebase-jobdispatcher-android
 
 Last year, we announced Android Jetpack WorkManager. WorkManager, the new job management system in Jetpack, incorporates the features of Firebase Job Dispatcher (FJD) and Android’s JobScheduler to provide a consistent job scheduling service back to API level 14 while leveraging JobScheduler on newer devices. WorkManager works with or without Google Play Services, which is something FJD cannot do. WorkManager was first released to alpha in May 2018 and then went through extensive iteration and improvement based on developer feedback including 10 alphas; it moved to beta on Dec 19, 2018, and was released to stable on Mar 5, 2019. One thing the team has been discussing at some length is whether it would be better for developers in the long run if we create one holistic solution via WorkManager; where we can pool all of our efforts and also give developers a single unified recommended path?
+
 After careful evaluation, the team has decided to focus all of our efforts on WorkManager and to deprecate Firebase Job Dispatcher. We have modified our plans in direct response to developer feedback to make this as easy for you as possible. We know that managing background work is a critical part of your app and these changes impact you. We want to support you through this migration as much as we can by giving you as much advance notice as possible to make these changes. Firebase Job Dispatcher will be archived in GitHub in about 1 year, on Apr 7, 2020. Apps should migrate to WorkManager or an alternative job management system before this date.
+
 We’ve created a detailed migration guide to assist you in the transition to WorkManager. After Apr 7, 2020, this GitHub repository will be archived and support for FJD customer issues will stop. Additionally, FJD will stop working once your app starts targeting an Android version after Android Q.
+
 We are continuing to invest in and add new features to WorkManager and welcome any feedback or feature requests.
+
 The Firebase JobDispatcher is a library for scheduling background jobs in your Android app. It provides a JobScheduler-compatible API that works on all recent versions of Android (API level 14+) that have Google Play services installed..
 
 ## Overview
