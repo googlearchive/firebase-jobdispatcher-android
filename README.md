@@ -1,7 +1,16 @@
-# Firebase JobDispatcher [DEPRECATED] [![Build Status][ci-badge]][ci-link]
+# Firebase JobDispatcher
 
 [ci-badge]: https://travis-ci.org/firebase/firebase-jobdispatcher-android.svg?branch=master
 [ci-link]: https://travis-ci.org/firebase/firebase-jobdispatcher-android
+
+## Status: Archived
+This repository has been archived and is no longer maintained.
+
+![status: inactive](https://img.shields.io/badge/status-inactive-red.svg)
+
+---
+
+## Update: April 2019
 
 **Last year, we announced Android Jetpack
 [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager/).
